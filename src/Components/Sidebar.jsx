@@ -23,9 +23,9 @@ const Sidebar = ({
     const fetchUserRole = async () => {
       try {
         // Get user data from localStorage
-        const userData = JSON.parse(localStorage.getItem('userData'));
+        const userData = JSON.parse(localStorage.getItem("userData"));
         // console.log("User data from localStorage:", userData);
-        
+
         if (!userData || !userData.role) {
           console.error("No user data or role found in localStorage");
           setDebugInfo("No user data found in localStorage");
@@ -42,17 +42,19 @@ const Sidebar = ({
 
         if (rolesResponse.data && rolesResponse.data.success) {
           const roles = rolesResponse.data.data;
-          
+
           // Verify if user's role exists in the system
-          const userRoleExists = roles.some(role => role.role_name === userRoleName);
+          const userRoleExists = roles.some(
+            (role) => role.role_name === userRoleName
+          );
           // console.log("Does user role exist in system?", userRoleExists);
-          
+
           if (userRoleExists) {
             setUserRole(userRoleName);
-            setDebugInfo(prev => `${prev} | Role verified in system`);
+            setDebugInfo((prev) => `${prev} | Role verified in system`);
           } else {
             console.error("User role not found in system roles");
-            setDebugInfo(prev => `${prev} | Role NOT found in system`);
+            setDebugInfo((prev) => `${prev} | Role NOT found in system`);
           }
         }
       } catch (rolesError) {
@@ -92,14 +94,6 @@ const Sidebar = ({
   const isParent = userRole === "parent";
   const isRestrictedUser = isTeacher || isParent;
 
-  // console.log("Role Debug:", {
-  //   userRole,
-  //   isTeacher,
-  //   isParent,
-  //   isRestrictedUser,
-  //   debugInfo
-  // });
-
   // Role-based sub-items configuration
   const getSubItems = (section) => {
     // If role is not yet loaded, show all sub-items temporarily
@@ -107,18 +101,23 @@ const Sidebar = ({
       // console.log("Role not loaded yet, showing all sub-items for:", section);
       switch (section) {
         case "enrolment":
-          return [{ label: "View All Enrolments", to: "/enrolments" }];
+          return [
+            { label: "View All Enrolments", to: "/enrolments" },
+            { label: "Enrol the student", to: "/enrol" },
+          ];
         case "teachers":
           return [{ label: "View All Teachers", to: "/teachers" }];
         case "parents":
-          return [
-            { label: "View All Parents", to: "/parents" },
-            { label: "Enrol the student", to: "/enrol" },
-          ];
+          return [{ label: "View All Parents", to: "/parents" }];
         case "classroom":
           return [
             { label: "View all classrooms", to: "/classrooms" },
-            { label: "View status Classrooms", to: "/status-classroom" },
+            { label: "View status Classrooms", to: "/classroom-status" },
+          ];
+        case "students":
+          return [
+            { label: "View all students", to: "/students" },
+            { label: "View status Students", to: "/status-student" },
           ];
         default:
           return [];
@@ -130,29 +129,24 @@ const Sidebar = ({
     // After role verification, apply restrictions
     switch (section) {
       case "enrolment":
-        return [{ label: "View All Enrolments", to: "/enrolments" }];
-      
+        return [
+          { label: "View All Enrolments", to: "/enrolments" },
+          { label: "Enrol the student", to: "/enrol" },
+        ];
+
       case "teachers":
         // Teachers section: Hidden for both teacher and parent roles
-        return isRestrictedUser ? [] : [{ label: "View All Teachers", to: "/teachers" }];
-      
-      case "parents":
-        // Parents section logic:
-        if (isParent) {
-          // When parent logs in: show Parents section but only with "Enrol the student"
-          // console.log("Parent user: Showing Parents section with only 'Enrol the student'");
-          return [{ label: "Enrol the student", to: "/enrol" }];
-        } else if (isTeacher) {
-          // Teacher sees only "Enrol the student"
-          return [{ label: "Enrol the student", to: "/enrol" }];
-        } else {
-          // Admin/other roles see both
-          return [
-            { label: "View All Parents", to: "/parents" },
-            { label: "Enrol the student", to: "/enrol" },
-          ];
-        }
-      
+        return isRestrictedUser
+          ? []
+          : [{ label: "View All Teachers", to: "/teachers" }];
+
+      case "parents": {
+        // Parents section: Hidden for both teacher and parent roles
+        return isRestrictedUser
+          ? []
+          : [{ label: "View All Parents", to: "/parents" }];
+      }
+
       case "classroom":
         // Classroom section: For teacher or parent, hide "View status Classrooms"
         if (isRestrictedUser) {
@@ -160,10 +154,21 @@ const Sidebar = ({
         } else {
           return [
             { label: "View all classrooms", to: "/classrooms" },
-            { label: "View status Classrooms", to: "/status-classroom" },
+            { label: "View status Classrooms", to: "/classroom-status" },
           ];
         }
-      
+
+      case "students":
+        // Students section: For teacher or parent, hide "View status Students"
+        if (isRestrictedUser) {
+          return [{ label: "View all students", to: "/students" }];
+        } else {
+          return [
+            { label: "View all students", to: "/students" },
+            { label: "View status Students", to: "/student-status" },
+          ];
+        }
+
       default:
         return [];
     }
@@ -190,10 +195,13 @@ const Sidebar = ({
         // console.log(`Teachers section visible: ${showTeachers}`);
         return showTeachers;
       case "parents":
-        // Parents section: Always visible for all roles, but sub-items are restricted
-        // console.log(`Parents section visible: true (sub-items restricted based on role)`);
-        return true;
+        // Parents section: Hidden for both teacher and parent roles
+        const showParents = !isRestrictedUser;
+        // console.log(`Parents section visible: ${showParents}`);
+        return showParents;
       case "classroom":
+        return true; // Always visible (sub-items are restricted)
+      case "students":
         return true; // Always visible (sub-items are restricted)
       default:
         return true;
@@ -258,7 +266,7 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Parents - Always visible, but sub-items restricted based on role */}
+        {/* Parents - Hidden for teacher and parent roles */}
         {shouldShowSection("parents") && (
           <ul className="nav flex-column">
             <SideBarLink
@@ -282,6 +290,21 @@ const Sidebar = ({
               isExpanded={activeSection === "Teachers"}
               onToggle={() => handleToggle("Teachers")}
               subItems={getSubItems("teachers")}
+              collapsed={collapsed && !isHovered}
+              onItemClick={handleItemClick}
+            />
+          </ul>
+        )}
+
+        {/* Students - Always visible, sub-items restricted */}
+        {shouldShowSection("students") && (
+          <ul className="nav flex-column">
+            <SideBarLink
+              iconType="bi-people"
+              label="Students"
+              isExpanded={activeSection === "Students"}
+              onToggle={() => handleToggle("Students")}
+              subItems={getSubItems("students")}
               collapsed={collapsed && !isHovered}
               onItemClick={handleItemClick}
             />

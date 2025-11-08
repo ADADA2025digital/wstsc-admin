@@ -38,11 +38,11 @@ export default function ClassroomsList() {
 
         // FIX: Properly extract role from nested structure
         let userRole = "unknown";
-        
+
         // Check for nested role object with role_name
         if (userData.role && userData.role.role_name) {
           userRole = userData.role.role_name;
-        } 
+        }
         // Check for direct role_name
         else if (userData.role_name && typeof userData.role_name === "string") {
           userRole = userData.role_name;
@@ -65,7 +65,7 @@ export default function ClassroomsList() {
         console.log("🎯 Extracted user info:", {
           userRole: userRole.toLowerCase(),
           userId,
-          rawRole: userData.role
+          rawRole: userData.role,
         });
 
         return {
@@ -190,7 +190,10 @@ export default function ClassroomsList() {
   });
 
   const handleView = (cls) => {
+    console.log("👁️ Navigating to classroom with c_id:", cls.id);
+
     navigate(`/classrooms/${cls.id}`, {
+      // cls.id is c_id from backend
       state: { classroom: cls },
     });
   };
@@ -391,8 +394,8 @@ export default function ClassroomsList() {
             </div>
             <h5 className="card-title mb-3">No Classrooms Available</h5>
             <p className="card-text text-muted mb-4">
-              Please enroll your students to view their classrooms. Once your 
-              children are enrolled in classes, you'll be able to see their 
+              Please enroll your students to view their classrooms. Once your
+              children are enrolled in classes, you'll be able to see their
               classroom information, schedules, and progress here.
             </p>
             <div className="d-flex justify-content-center gap-3">

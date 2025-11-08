@@ -163,8 +163,8 @@ export default function ParentTable() {
             address: addressText,
             status: personData.is_active ? "Active" : "Inactive",
             grade:
-              parent.children?.map(child => child.name).join(", ") || 
-              parent.students?.map(student => student.name).join(", ") ||
+              parent.children?.map((child) => child.name).join(", ") ||
+              parent.students?.map((student) => student.name).join(", ") ||
               "No children assigned",
             // Store original data for updates
             originalData: parent,
@@ -242,9 +242,7 @@ export default function ParentTable() {
       return true;
     } catch (err) {
       console.error("Error updating parent status:", err);
-      setError(
-        err.response?.data?.message || "Failed to update parent status"
-      );
+      setError(err.response?.data?.message || "Failed to update parent status");
       return false;
     }
   };
@@ -622,12 +620,12 @@ export default function ParentTable() {
       </div>
 
       {/* Create Parent Modal */}
-<CreatePersonModal
-  isOpen={showCreateModal}
-  onClose={() => setShowCreateModal(false)}
-  onPersonCreated={handleParentCreated}
-  personType="parent"
-/>
+      <CreatePersonModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onPersonCreated={handleParentCreated}
+        personType="parent"
+      />
     </div>
   );
 }

@@ -40,6 +40,11 @@ export default function ClassroomDetails() {
   const [editingClassroom, setEditingClassroom] = useState(false);
   const [editedClassName, setEditedClassName] = useState("");
 
+  // Remove teacher modal state
+  const [showRemoveTeacherModal, setShowRemoveTeacherModal] = useState(false);
+  const [removingTeacher, setRemovingTeacher] = useState(false);
+  const [teacherToRemove, setTeacherToRemove] = useState(null);
+
   // Get user role from localStorage
   const getUserRole = () => {
     try {
@@ -442,37 +447,59 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Remove teacher assignment
-  const handleRemoveTeacher = async (assignmentId, teacherName) => {
+  // Open remove teacher confirmation modal
+  const handleOpenRemoveTeacherModal = (assignmentId, teacherName) => {
     if (!canEdit) return;
 
-    console.log("🗑️ REMOVING TEACHER ASSIGNMENT:", {
+    console.log("📝 OPENING REMOVE TEACHER MODAL:", {
       assignmentId,
       teacherName,
     });
 
-    if (
-      window.confirm(`Are you sure you want to remove ${teacherName}
-from this classroom?`)
-    ) {
-      try {
-        const response = await api.delete(
-          `/classroom-teachers/${assignmentId}`
-        );
-        console.log("📦 REMOVE TEACHER API RESPONSE:", response.data);
+    setTeacherToRemove({
+      assignmentId,
+      teacherName,
+    });
+    setShowRemoveTeacherModal(true);
+  };
 
-        if (response.data.success) {
-          showMessage("success", "Teacher removed successfully");
-          await fetchAssignedTeachers(classroom.classId);
-        }
-      } catch (error) {
-        console.error("💥 ERROR removing teacher:", error);
-        console.error("Error response:", error.response?.data);
-        showMessage(
-          "danger",
-          error.response?.data?.message || "Failed to remove teacher"
-        );
+  // Close remove teacher modal
+  const handleCloseRemoveTeacherModal = () => {
+    console.log("❌ CLOSING REMOVE TEACHER MODAL");
+    setShowRemoveTeacherModal(false);
+    setTeacherToRemove(null);
+    setRemovingTeacher(false);
+  };
+
+  // Remove teacher assignment
+  const handleRemoveTeacher = async () => {
+    if (!canEdit || !teacherToRemove) return;
+
+    console.log("🗑️ REMOVING TEACHER ASSIGNMENT:", teacherToRemove);
+
+    setRemovingTeacher(true);
+    try {
+      const response = await api.delete(
+        `/classroom-teachers/${teacherToRemove.assignmentId}`
+      );
+      console.log("📦 REMOVE TEACHER API RESPONSE:", response.data);
+
+      if (response.data.success) {
+        showMessage("success", "Teacher removed successfully");
+        await fetchAssignedTeachers(classroom.classId);
+        handleCloseRemoveTeacherModal();
+      } else {
+        throw new Error(response.data.message || "Failed to remove teacher");
       }
+    } catch (error) {
+      console.error("💥 ERROR removing teacher:", error);
+      console.error("Error response:", error.response?.data);
+      showMessage(
+        "danger",
+        error.response?.data?.message || "Failed to remove teacher"
+      );
+    } finally {
+      setRemovingTeacher(false);
     }
   };
 
@@ -597,13 +624,24 @@ btn-outline-secondary"
                 <i className="bi bi-pencil me-2" />
                 Edit Classroom
               </ButtonGlobal>
-              <ButtonGlobal
-                onClick={handleOpenAssignTeacherModal}
-                className="btn btn-primary"
-              >
-                <i className="bi bi-person-plus me-2" />
-                Assign Teacher
-              </ButtonGlobal>
+
+              {/* Conditionally show Assign Teacher button or inactive message */}
+              {isActive ? (
+                <ButtonGlobal
+                  onClick={handleOpenAssignTeacherModal}
+                  className="btn btn-primary"
+                >
+                  <i className="bi bi-person-plus me-2" />
+                  Assign Teacher
+                </ButtonGlobal>
+              ) : (
+                <div className="text-muted small text-center">
+                  <i className="bi bi-exclamation-circle me-1" />
+                  Class is inactive
+                  <br />
+                  <small>Cannot assign teachers</small>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -707,7 +745,7 @@ bi-grid-1x2 me-2"
                           <p className="mb-0">{classroom.code}</p>
                         </div>
                         <div>
-                          <span className="small">Status</span>
+                          <span className="small">Status</span>{" "}
                           <Badge
                             bg={isActive ? "success" : "danger"}
                             className="fs-7"
@@ -774,22 +812,6 @@ fw-semibold"
                                 >
                                   {teacher.isCurrent ? "Current" : "Past"}
                                 </Badge>
-                                {canEdit && (
-                                  <Button
-                                    variant="outline-danger"
-                                    size="sm"
-                                    className="btn-icon"
-                                    title="Remove teacher"
-                                    onClick={() =>
-                                      handleRemoveTeacher(
-                                        teacher.assignmentId,
-                                        teacher.name
-                                      )
-                                    }
-                                  >
-                                    <i className="bi bi-x-lg"></i>
-                                  </Button>
-                                )}
                               </div>
                             </div>
                           ))}
@@ -797,8 +819,11 @@ fw-semibold"
                       ) : (
                         <EmptyState
                           title="No teachers assigned"
-                          subtitle="Click the 'Assign Teacher' button
-to add teachers to this classroom."
+                          subtitle={
+                            isActive && canEdit
+                              ? "Click the 'Assign Teacher' button to add teachers to this classroom."
+                              : "No teachers are currently assigned to this classroom."
+                          }
                           icon="bi bi-person-x"
                         />
                       )}
@@ -827,18 +852,8 @@ bi-person-lines-fill me-2"
 align-items-center mb-3"
                 >
                   <h5 className="mb-0">
-                    Teachers Assigned to
-                    {classroom.name}
+                    Teachers Assigned to {classroom.name}
                   </h5>
-                  {isActive && canEdit && (
-                    <ButtonGlobal
-                      onClick={handleOpenAssignTeacherModal}
-                      className="btn btn-primary"
-                    >
-                      <i className="bi bi-person-plus me-2" />
-                      Assign Teacher
-                    </ButtonGlobal>
-                  )}
                 </div>
 
                 <InfoCard title="" className="bg-secondary bg-opacity-10">
@@ -880,7 +895,7 @@ small"
                                 variant="outline-danger"
                                 size="sm"
                                 onClick={() =>
-                                  handleRemoveTeacher(
+                                  handleOpenRemoveTeacherModal(
                                     teacher.assignmentId,
                                     teacher.name
                                   )
@@ -899,6 +914,8 @@ small"
                       subtitle={
                         isActive && canEdit
                           ? "Click the 'Assign Teacher' button to add teachers."
+                          : !isActive && canEdit
+                          ? "Classroom is inactive. Activate it to assign teachers."
                           : "No teachers are currently assigned."
                       }
                       icon="bi bi-person-x"
@@ -1150,6 +1167,68 @@ text-primary me-2"
               <>
                 <i className="bi bi-check2 me-2" />
                 Assign Teacher
+              </>
+            )}
+          </ButtonGlobal>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Remove Teacher Confirmation Modal */}
+      <Modal
+        show={showRemoveTeacherModal}
+        onHide={handleCloseRemoveTeacherModal}
+        size="md"
+        centered
+        backdrop="static"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i className="bi bi-person-dash me-2 text-danger"></i>
+            Remove Teacher
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {teacherToRemove && (
+            <div className="text-center">
+              <div className="mb-4">
+                <i className="bi bi-exclamation-triangle text-warning fs-1"></i>
+              </div>
+              <h5 className="mb-3">
+                Are you sure you want to remove this teacher?
+              </h5>
+              <p className="text-muted">
+                You are about to remove{" "}
+                <strong>{teacherToRemove.teacherName}</strong> from{" "}
+                <strong>{classroom.name}</strong>. This action cannot be undone.
+              </p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="d-flex justify-content-between">
+          <Button
+            variant="secondary"
+            onClick={handleCloseRemoveTeacherModal}
+            disabled={removingTeacher}
+          >
+            Cancel
+          </Button>
+          <ButtonGlobal
+            onClick={handleRemoveTeacher}
+            className="btn btn-danger"
+            disabled={removingTeacher}
+          >
+            {removingTeacher ? (
+              <>
+                <div
+                  className="spinner-border spinner-border-sm me-2"
+                  role="status"
+                ></div>
+                Removing...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-person-x me-2" />
+                Remove Teacher
               </>
             )}
           </ButtonGlobal>

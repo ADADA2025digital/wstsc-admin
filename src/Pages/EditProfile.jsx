@@ -1,15 +1,6 @@
-// src/pages/EditProfile.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Col,
-  Row,
-  Tab,
-  Tabs,
-  Alert,
-  Form,
-} from "react-bootstrap";
+import { Badge, Col, Row, Tab, Tabs, Alert, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import ButtonGlobal from "../Components/Button";
 import InfoCard from "../Components/InfoCard";
@@ -17,7 +8,7 @@ import api from "../config/axiosConfig";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
@@ -40,7 +31,7 @@ const EditProfile = () => {
     city: "",
     state: "",
     postal_code: "",
-    country: ""
+    country: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,15 +42,15 @@ const EditProfile = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.get("/profile/person");
 
       if (response.data.success) {
         const profileData = response.data.data?.profile || {};
-        
+
         // Map data according to API response structure - data is in profile object
         const address = profileData.address || {};
-        
+
         const mappedData = {
           first_name: profileData.first_name || "",
           last_name: profileData.last_name || "",
@@ -76,21 +67,20 @@ const EditProfile = () => {
           city: address.city || "",
           state: address.state || "",
           postal_code: address.postal_code || "",
-          country: address.country || ""
+          country: address.country || "",
         };
-        
+
         setFormData(mappedData);
         setOriginalData(mappedData);
-        
-        showMessage("success", "Profile loaded successfully");
       } else {
         throw new Error(response.data.message || "Failed to load profile");
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message 
-        || error.message 
-        || "Failed to load profile data";
-      
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to load profile data";
+
       setError(errorMessage);
       showMessage("danger", errorMessage);
     } finally {
@@ -109,15 +99,15 @@ const EditProfile = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!formData.first_name || !formData.last_name || !formData.phone) {
       showMessage("warning", "Please fill in all required fields");
@@ -143,9 +133,9 @@ const EditProfile = () => {
         marital_status: formData.marital_status,
         occupation: formData.occupation,
         address_line1: formData.address_line1,
-        country: formData.country
+        country: formData.country,
       };
-      
+
       // Use the correct endpoint and send as JSON (not FormData)
       const response = await api.put("/profile/person", submitData, {
         headers: {
@@ -154,31 +144,33 @@ const EditProfile = () => {
       });
 
       if (response.data.success) {
-        showMessage("success", response.data.message || "Profile updated successfully!");
+        showMessage(
+          "success",
+          response.data.message || "Profile updated successfully!"
+        );
         // Refresh the data to get any server-computed fields
         await fetchProfileData();
         setTimeout(() => navigate(-1), 2000);
       } else {
         throw new Error(response.data.message || "Failed to update profile");
       }
-
     } catch (error) {
       let errorMessage = "Error updating profile. Please try again.";
-      
+
       // Handle validation errors
       if (error.response?.status === 422) {
         const validationErrors = error.response.data.errors;
-        errorMessage = Object.values(validationErrors).flat().join(', ');
+        errorMessage = Object.values(validationErrors).flat().join(", ");
         showMessage("warning", `Validation errors: ${errorMessage}`);
         return;
       }
-      
+
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       showMessage("danger", errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -196,7 +188,10 @@ const EditProfile = () => {
   if (loading) {
     return (
       <div className="container-fluid px-4 py-3">
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ height: "50vh" }}
+        >
           <div className="text-center">
             <p className="text-muted">Loading profile details...</p>
           </div>
@@ -218,7 +213,10 @@ const EditProfile = () => {
                 <button onClick={fetchProfileData} className="btn btn-primary">
                   Try Again
                 </button>
-                <button onClick={() => navigate(-1)} className="btn btn-outline-secondary">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="btn btn-outline-secondary"
+                >
                   Go Back
                 </button>
               </div>
@@ -263,6 +261,7 @@ const EditProfile = () => {
             className="btn btn-outline-secondary"
             disabled={isSubmitting}
           >
+            <i className="bi bi-arrow-left me-2"></i>
             Back
           </ButtonGlobal>
 
@@ -271,6 +270,7 @@ const EditProfile = () => {
             className="btn btn-primary"
             disabled={isSubmitting || !hasChanges}
           >
+            <i class="bi bi-floppy me-1"></i>{" "}
             {isSubmitting ? "Saving..." : "Save Changes"}
           </ButtonGlobal>
         </div>
@@ -286,10 +286,7 @@ const EditProfile = () => {
             fill
           >
             {/* Personal Information Tab */}
-            <Tab
-              eventKey="personal"
-              title="Personal Information"
-            >
+            <Tab eventKey="personal" title="Personal Information">
               <div className="p-4">
                 <form onSubmit={handleSubmit}>
                   <Row className="g-4">
@@ -437,10 +434,7 @@ const EditProfile = () => {
             </Tab>
 
             {/* Contact Information Tab */}
-            <Tab
-              eventKey="contact"
-              title="Contact Information"
-            >
+            <Tab eventKey="contact" title="Contact Information">
               <div className="p-4">
                 <Row className="g-4">
                   <Col md={6}>

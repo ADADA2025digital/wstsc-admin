@@ -147,10 +147,16 @@ const EnrolmentDetails = () => {
       {/* Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="fw-bold mb-1">Student Details</h4>
+          <h4 className="fw-bold mb-1">Student Enrolment Details</h4>
         </div>
 
         <div className="d-flex align-items-center gap-2">
+                    <ButtonGlobal
+            className="btn btn-outline-primary"
+          >
+            <i class="bi bi-check2-all me-2"></i>
+            Accept the Enrolment
+          </ButtonGlobal>
           <ButtonGlobal
             onClick={handleBack}
             className="btn btn-outline-secondary"
@@ -218,12 +224,11 @@ const EnrolmentDetails = () => {
                 <span className="small fw-semibold">Overseas Student</span>
                 <span className="fs-6">
                   <div
-                    bg={
+                    className={
                       studentData.overseas_student === "Yes"
-                        ? "warning"
-                        : "success"
+                        ? "bg-warning badge fs-7"
+                        : "bg-success badge fs-7"
                     }
-                    className="fs-7 badge"
                   >
                     {studentData.overseas_student || "No"}
                   </div>

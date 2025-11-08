@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import $ from "jquery";
 import api from "../../config/axiosConfig";
 import Form from "react-bootstrap/Form";
+import CreatePersonModal from "../../Components/CreatePersonModal";
 
 if (typeof window !== "undefined") {
   window.$ = $;
@@ -1141,10 +1142,11 @@ export default function TeachersTable() {
       )} */}
 
       {/* Create Teacher Modal */}
-      <CreateTeacherModal
+      <CreatePersonModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onTeacherCreated={handleTeacherCreated}
+        onPersonCreated={handleTeacherCreated}
+        personType="teacher"
       />
     </div>
   );

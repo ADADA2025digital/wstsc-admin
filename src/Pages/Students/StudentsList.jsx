@@ -22,7 +22,7 @@ import api from "../../config/axiosConfig";
 
 import { getCookie, formatDateToMMDDYYYY } from "../../config/utils";
 
-const EnrolStudents = () => {
+const StudentsList = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +31,115 @@ const EnrolStudents = () => {
   const [userRole, setUserRole] = useState(null);
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
+
+  // Seed data for students
+  const seedStudents = [
+    {
+      id: 1,
+      student_id: "STU0001",
+      first_given_name: "Emma",
+      family_name: "Johnson",
+      preferred_first_name: "Emma",
+      gender: "Female",
+      date_of_birth: "2015-03-15",
+      mainstream_enrollment_year: "2023",
+      overseas_student: "No",
+      status: "Active",
+      classroom: "Grade 2A",
+      parent_carers: [
+        {
+          first_name: "Sarah",
+          last_name: "Johnson",
+          email: "sarah.johnson@email.com",
+          mobile_phone: "+61 412 345 678",
+        },
+      ],
+    },
+    {
+      id: 2,
+      student_id: "STU0002",
+      first_given_name: "Liam",
+      family_name: "Smith",
+      preferred_first_name: "Liam",
+      gender: "Male",
+      date_of_birth: "2016-07-22",
+      mainstream_enrollment_year: "2024",
+      overseas_student: "Yes",
+      status: "Pending",
+      classroom: "Grade 1B",
+      parent_carers: [
+        {
+          first_name: "Michael",
+          last_name: "Smith",
+          email: "michael.smith@email.com",
+          mobile_phone: "+61 423 456 789",
+        },
+      ],
+    },
+    {
+      id: 3,
+      student_id: "STU0003",
+      first_given_name: "Olivia",
+      family_name: "Brown",
+      preferred_first_name: "Liv",
+      gender: "Female",
+      date_of_birth: "2015-11-08",
+      mainstream_enrollment_year: "2023",
+      overseas_student: "No",
+      status: "Active",
+      classroom: "Grade 2A",
+      parent_carers: [
+        {
+          first_name: "Jennifer",
+          last_name: "Brown",
+          email: "jennifer.brown@email.com",
+          mobile_phone: "+61 434 567 890",
+        },
+      ],
+    },
+    {
+      id: 4,
+      student_id: "STU0004",
+      first_given_name: "Noah",
+      family_name: "Wilson",
+      preferred_first_name: "Noah",
+      gender: "Male",
+      date_of_birth: "2016-02-14",
+      mainstream_enrollment_year: "2024",
+      overseas_student: "No",
+      status: "Active",
+      classroom: "Grade 1B",
+      parent_carers: [
+        {
+          first_name: "David",
+          last_name: "Wilson",
+          email: "david.wilson@email.com",
+          mobile_phone: "+61 445 678 901",
+        },
+      ],
+    },
+    {
+      id: 5,
+      student_id: "STU0005",
+      first_given_name: "Ava",
+      family_name: "Taylor",
+      preferred_first_name: "Ava",
+      gender: "Female",
+      date_of_birth: "2015-09-30",
+      mainstream_enrollment_year: "2023",
+      overseas_student: "Yes",
+      status: "Inactive",
+      classroom: "Grade 2B",
+      parent_carers: [
+        {
+          first_name: "Amanda",
+          last_name: "Taylor",
+          email: "amanda.taylor@email.com",
+          mobile_phone: "+61 456 789 012",
+        },
+      ],
+    },
+  ];
 
   // Get user data from localStorage on component mount
   useEffect(() => {
@@ -61,15 +170,8 @@ const EnrolStudents = () => {
     });
   };
 
-  // Fetch students from API
+  // Fetch students from seed data
   const fetchStudents = async (isRefresh = false) => {
-    // If user is parent/teacher, don't fetch all students
-    if (isRestrictedUser) {
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -78,51 +180,13 @@ const EnrolStudents = () => {
       }
       setError(null);
 
-      console.log("Fetching students from API...");
+      console.log("Loading students from seed data...");
 
-      const response = await api.get("/student-enrollment");
-      console.log("API Response:", response.data);
-
-      // Extract data from the response structure - CORRECTED CODE
-      let studentsData = [];
-
-      if (
-        response.data &&
-        response.data.students &&
-        response.data.students.data &&
-        Array.isArray(response.data.students.data)
-      ) {
-        studentsData = response.data.students.data;
-      } else if (
-        response.data &&
-        response.data.students &&
-        Array.isArray(response.data.students)
-      ) {
-        studentsData = response.data.students;
-      } else if (
-        response.data &&
-        response.data.data &&
-        Array.isArray(response.data.data)
-      ) {
-        studentsData = response.data.data;
-      } else if (Array.isArray(response.data)) {
-        studentsData = response.data;
-      } else {
-        console.warn("Unexpected API response structure:", response.data);
-        setError("Unexpected data format received from server");
-        return;
-      }
-
-      console.log("Extracted students data:", studentsData);
-
-      if (studentsData.length === 0) {
-        setStudents([]);
-        setLastRefreshTime(new Date());
-        return;
-      }
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Filter students for parent role
-      const filteredStudents = filterStudentsForParent(studentsData);
+      const filteredStudents = filterStudentsForParent(seedStudents);
 
       // Format students data for the table
       const formattedStudents = filteredStudents.map((student, index) => {
@@ -137,10 +201,8 @@ const EnrolStudents = () => {
 
         return {
           index: index + 1,
-          id: student.enrollment_id || `student-${index + 1}`,
-          student_id: `STU${(student.enrollment_id || index + 1)
-            .toString()
-            .padStart(4, "0")}`,
+          id: student.id,
+          student_id: student.student_id,
           full_name: `${student.first_given_name || ""} ${
             student.family_name || ""
           }`.trim(),
@@ -148,7 +210,8 @@ const EnrolStudents = () => {
           gender: student.gender || "",
           date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
           enrollment_year: student.mainstream_enrollment_year || "",
-          overseas_student: student.overseas_student || "No",
+          status: student.status || "Unknown",
+          classroom: student.classroom || "N/A",
           parent_name: firstParent.first_name
             ? `${firstParent.first_name} ${firstParent.last_name}`
             : "N/A",
@@ -162,33 +225,8 @@ const EnrolStudents = () => {
       setStudents(formattedStudents);
       setLastRefreshTime(new Date());
     } catch (err) {
-      console.error("Fetch error details:", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        stack: err.stack,
-      });
-
-      if (err.response?.status === 401) {
-        setError("Authentication required. Please check if you need to login.");
-      } else if (err.response?.status === 404) {
-        setError("Students endpoint not found. Please check the API URL.");
-      } else if (
-        err.code === "NETWORK_ERROR" ||
-        err.message.includes("Network Error")
-      ) {
-        setError(
-          "Network error. Please check if the backend server is running."
-        );
-      } else if (err.response?.status === 500) {
-        setError("Server error. Please try again later.");
-      } else {
-        setError(
-          err.response?.data?.message ||
-            err.message ||
-            "Failed to fetch students"
-        );
-      }
+      console.error("Fetch error:", err);
+      setError("Failed to load students data");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -215,7 +253,7 @@ const EnrolStudents = () => {
         destroy: true,
         columns: [
           {
-            title: "ID",
+            title: "#",
             data: "index",
             className: "text-center",
             width: "50px",
@@ -244,8 +282,25 @@ const EnrolStudents = () => {
             className: "text-center",
           },
           {
-            title: "Enrollment Year",
-            data: "enrollment_year",
+            title: "Status",
+            data: "status",
+            className: "text-center",
+            render: function (data, type, row) {
+              const statusClass =
+                data === "Active"
+                  ? "badge bg-success"
+                  : data === "Pending"
+                  ? "badge bg-warning"
+                  : data === "Inactive"
+                  ? "badge bg-secondary"
+                  : "badge bg-info";
+
+              return `<span class="${statusClass}">${data}</span>`;
+            },
+          },
+          {
+            title: "Classroom",
+            data: "classroom",
             className: "text-center",
           },
           {
@@ -257,17 +312,21 @@ const EnrolStudents = () => {
             data: "contact_email",
           },
           {
-            title: "Action",
+            title: "Actions",
             className: "text-center",
-            width: "80px",
+            width: "100px",
             data: null,
             orderable: false,
             render: function (data, type, row) {
               return `
-      <button class="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details">
-        <i class="bi bi-eye"></i>
-      </button>
-    `;
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary view-btn" 
+                          data-student-id="${row.id}" 
+                          title="View Details">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+              `;
             },
           },
         ],
@@ -285,12 +344,13 @@ const EnrolStudents = () => {
         },
       });
 
-      $("#studentTable").on("click", ".view-icon", function () {
+      // View student details - FIXED EVENT LISTENER
+      $("#studentTable").on("click", ".view-btn", function () {
         const studentId = $(this).data("student-id");
         console.log("View button clicked for student:", studentId);
         const student = students.find((s) => s.id === studentId);
         if (student) {
-          navigate(`/enrolment/${studentId}`, {
+          navigate(`/students/${studentId}`, {
             state: { studentData: student.raw_data },
           });
         }
@@ -318,27 +378,59 @@ const EnrolStudents = () => {
       <div className="container-fluid px-4 py-3">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h4 className="H4-heading fw-bold">Student Enrollment</h4>
+            <h4 className="H4-heading fw-bold">Students</h4>
           </div>
         </div>
 
         <Card className="mt-4">
           <Card.Body className="text-center py-5">
             <div className="mb-4">
-              <i className="bi bi-info-circle display-4 text-primary"></i>
+              <i className="bi bi-people display-4 text-primary"></i>
             </div>
             <p className="text-muted mb-4">
               {userRole === "parent"
-                ? "You haven't submitted any enrollment applications yet. Start by submitting a new enrollment form for your child."
-                : "Teacher access to student enrollment is limited. Please contact administration for full access."}
+                ? "You can view your children's information here. Contact the school administration for any updates."
+                : "Teacher access to student management is limited. Please contact administration for full access."}
             </p>
-            {userRole === "parent" && (
-              <button
-                className="btn btn-outline-primary"
-                onClick={() => navigate("/enrol")}
-              >
-                Student Enrollment
-              </button>
+            {userRole === "parent" && students.length > 0 && (
+              <div className="mt-4">
+                <h5>Your Children</h5>
+                <div className="row justify-content-center">
+                  {students.map((student) => (
+                    <div key={student.id} className="col-md-6 col-lg-4 mb-3">
+                      <Card>
+                        <Card.Body>
+                          <h6>{student.full_name}</h6>
+                          <p className="mb-1">Class: {student.classroom}</p>
+                          <p className="mb-1">
+                            Status:{" "}
+                            <span
+                              className={`badge ${
+                                student.raw_data.status === "Active"
+                                  ? "bg-success"
+                                  : student.raw_data.status === "Pending"
+                                  ? "bg-warning"
+                                  : "bg-secondary"
+                              }`}
+                            >
+                              {student.raw_data.status}
+                            </span>
+                          </p>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => navigate(`/students/${student.id}`, {
+                              state: { studentData: student.raw_data }
+                            })}
+                          >
+                            View Details
+                          </Button>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </Card.Body>
         </Card>
@@ -363,12 +455,12 @@ const EnrolStudents = () => {
     <div className="container-fluid px-4 py-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="H4-heading fw-bold">Student Enrolments</h4>
+          <h4 className="H4-heading fw-bold">Students Management</h4>
         </div>
 
         <div className="d-flex align-items-center gap-3">
           {lastRefreshTime && (
-            <p className="mb-0 ">
+            <p className="mb-0 text-muted">
               Last updated: {lastRefreshTime.toLocaleTimeString()}
             </p>
           )}
@@ -404,11 +496,17 @@ const EnrolStudents = () => {
           {students.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-muted">No students found.</p>
-              <ButtonGlobal onClick={handleRefresh} text="Refresh" />
+              <ButtonGlobal 
+                onClick={handleAddStudent} 
+                text="Add First Student" 
+                className="btn btn-primary"
+              />
             </div>
           ) : (
             <div>
-              <p className="mb-3">Showing {students.length} students</p>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <p className="mb-0">Showing {students.length} students</p>
+              </div>
               <table
                 id="studentTable"
                 className="table table-striped table-hover custom-data-table w-100"
@@ -421,4 +519,4 @@ const EnrolStudents = () => {
   );
 };
 
-export default EnrolStudents;
+export default StudentsList;

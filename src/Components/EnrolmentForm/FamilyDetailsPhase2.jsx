@@ -1,0 +1,944 @@
+import React, { useState } from "react";
+import TextInput from "../TextInput.jsx";
+import TextArea from "../TextArea.jsx";
+import RadioGroup from "../RadioGroup.jsx";
+import SelectInput from "../SelectInput.jsx";
+import { useEnrolmentForm } from "../../Context/EnrolmentFormContext";
+
+export default function FamilyDetailsPhase2({ onNext }) {
+  const genderOptions = [
+    { value: "Female", label: "Female" },
+    { value: "Male", label: "Male" },
+    { value: "Others", label: "Others" },
+  ];
+
+  const relationOptions = [
+    { value: "Father", label: "Father" },
+    { value: "Mother", label: "Mother" },
+    { value: "Guardian", label: "Guardian" },
+    { value: "Brother", label: "Brother" },
+    { value: "Sister", label: "Sister" },
+    { value: "Grandfather", label: "Grandfather" },
+    { value: "Grandmother", label: "Grandmother" },
+    { value: "Uncle", label: "Uncle" },
+    { value: "Aunt", label: "Aunt" },
+  ];
+
+  const maritalStatusOptions = [
+    { value: "Single", label: "Single" },
+    { value: "Married", label: "Married" },
+    { value: "Divorced", label: "Divorced" },
+    { value: "Widowed", label: "Widowed" },
+    { value: "Separated", label: "Separated" },
+    { value: "De facto", label: "De facto" },
+  ];
+
+  const addressTypeOptions = [
+    { value: "home", label: "Home" },
+    { value: "work", label: "Work" },
+    { value: "other", label: "Other" },
+  ];
+
+  const stateOptions = [
+    { value: "New South Wales", label: "New South Wales" },
+    {
+      value: "Australian Capital Territory",
+      label: "Australian Capital Territory",
+    },
+    { value: "Victoria", label: "Victoria" },
+    { value: "Northern Territory", label: "Northern Territory" },
+    { value: "South Australia", label: "South Australia" },
+    { value: "Queensland", label: "Queensland" },
+    { value: "Western Australia", label: "Western Australia" },
+    { value: "Tasmania", label: "Tasmania" },
+  ];
+
+  const { formData, updateFormData, validateField, getError, validateSection, errors } =
+    useEnrolmentForm();
+  const [sectionError, setSectionError] = useState("");
+  const [showCarer2, setShowCarer2] = useState(false);
+  const [touchedFields, setTouchedFields] = useState({
+    parent_carer_1: {},
+    parent_carer_2: {}
+  });
+
+  const handleInputChange = (section, field, value) => {
+    updateFormData(section, field, value);
+    if (sectionError) {
+      setSectionError("");
+    }
+  };
+
+  const handleBlur = (section, field) => {
+    const value = formData[section]?.[field];
+    validateField(section, field, value);
+    
+    // Mark field as touched
+    setTouchedFields(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: true
+      }
+    }));
+  };
+
+  // Helper function to determine if field should show as required
+  const shouldShowRequired = (section, field) => {
+    // For carer 1, show required for specific fields
+    if (section === "parent_carer_1") {
+      const requiredFields = [
+        "title", "gender", "relationship_to_student", "first_name", "last_name",
+        "country_of_birth", "date_of_birth", "nationality", "email", "mobile_phone",
+        "marital_status", "occupation", "street_name", "suburb", "state", "postal_code"
+      ];
+      return requiredFields.includes(field);
+    }
+    
+    // For carer 2, never show required since all fields are optional
+    return false;
+  };
+
+  // Check if a parent section is fully validated (no errors)
+  const isParentSectionValid = (section) => {
+    // Required fields for carer 1
+    const requiredFieldsCarer1 = [
+      "title",
+      "gender",
+      "relationship_to_student",
+      "first_name",
+      "last_name",
+      "country_of_birth",
+      "date_of_birth",
+      "nationality",
+      "email",
+      "mobile_phone",
+      "marital_status",
+      "occupation",
+      "street_name",
+      "suburb",
+      "state",
+      "postal_code",
+    ];
+
+    const fieldsToCheck = section === "parent_carer_1" ? requiredFieldsCarer1 : [];
+
+    const missingFields = [];
+    const isValid = fieldsToCheck.every((field) => {
+      const value = formData[section]?.[field];
+      const hasValue = value !== null && value !== undefined && value !== "";
+      if (!hasValue) {
+        missingFields.push(field);
+      }
+      return hasValue;
+    });
+
+    if (!isValid) {
+      console.log(`Missing fields in ${section}:`, missingFields);
+    }
+
+    return isValid;
+  };
+
+  const handleNext = () => {
+    // First, validate all visible sections
+    let hasParent1Errors = false;
+    let hasParent2Errors = false;
+
+    // Debug arrays to track which fields are failing
+    const parent1FailedFields = [];
+
+    // Validate parent/carer 1 - only required fields
+    const requiredFieldsCarer1 = [
+      "title",
+      "gender",
+      "relationship_to_student",
+      "first_name",
+      "last_name",
+      "country_of_birth",
+      "date_of_birth",
+      "nationality",
+      "email",
+      "mobile_phone",
+      "marital_status",
+      "occupation",
+      "street_name",
+      "suburb",
+      "state",
+      "postal_code",
+    ];
+
+    requiredFieldsCarer1.forEach((field) => {
+      const value = formData.parent_carer_1[field];
+      const isValid = validateField("parent_carer_1", field, value);
+      if (!isValid) {
+        hasParent1Errors = true;
+        parent1FailedFields.push({
+          field,
+          value,
+          error: getError("parent_carer_1", field)
+        });
+      }
+    });
+
+    // Validate parent/carer 2 if shown - all fields are optional
+    if (showCarer2) {
+      const optionalFieldsCarer2 = [
+        "title", "gender", "relationship_to_student", "first_name", "last_name",
+        "country_of_birth", "date_of_birth", "nationality", "email", "mobile_phone",
+        "marital_status", "occupation", "street_number", "street_name", "suburb",
+        "state", "postal_code", "country"
+      ];
+
+      optionalFieldsCarer2.forEach((field) => {
+        const value = formData.parent_carer_2[field];
+        // Only validate if field has value (all fields are optional)
+        if (value && value !== "") {
+          if (!validateField("parent_carer_2", field, value)) {
+            hasParent2Errors = true;
+          }
+        }
+      });
+    }
+
+    // Check if sections are complete (have values for required fields)
+    const hasParent1Complete = isParentSectionValid("parent_carer_1");
+    const hasParent2Complete = showCarer2 
+      ? Object.keys(formData.parent_carer_2).some(
+          (key) => formData.parent_carer_2[key] && formData.parent_carer_2[key] !== ""
+        )
+      : false;
+
+    console.log("=== DETAILED VALIDATION RESULTS ===");
+    console.log("Parent 1 Complete:", hasParent1Complete);
+    console.log("Parent 1 Errors:", hasParent1Errors);
+    console.log("Parent 1 Failed Fields:", parent1FailedFields);
+    console.log("Form Data Parent 1:", formData.parent_carer_1);
+    console.log("All Errors:", errors);
+    console.log("===================================");
+
+    // User can proceed if at least one parent section is complete AND has no errors
+    const canProceed = 
+      (hasParent1Complete && !hasParent1Errors) || 
+      (showCarer2 && hasParent2Complete && !hasParent2Errors);
+
+    if (canProceed) {
+      setSectionError("");
+      if (onNext) {
+        onNext();
+      }
+    } else {
+      // Provide more specific error message
+      let errorMessage = "Please complete all required fields for Parent/Carer 1";
+      
+      if (hasParent1Errors) {
+        errorMessage = "Please fix the validation errors in Parent/Carer 1 details";
+        
+        // Add specific field information if available
+        if (parent1FailedFields.length > 0) {
+          errorMessage += `\nErrors in: ${parent1FailedFields.map(f => f.field).join(', ')}`;
+        }
+      } else if (!hasParent1Complete) {
+        errorMessage = "Please complete all required fields for Parent/Carer 1";
+      }
+      
+      setSectionError(errorMessage);
+    }
+  };
+
+  // Handle checkbox change for showing carer 2
+  const handleShowCarer2Change = (checked) => {
+    setShowCarer2(checked);
+    // Clear any existing errors for carer 2 when hiding the section
+    if (!checked) {
+      setSectionError("");
+    }
+  };
+
+  return (
+    <section className="container bg-light p-3">
+      <h2 className="h4 mb-3">
+        Parent/Carer 1 with whom this student normally lives
+      </h2>
+
+      {/* Personal Details */}
+      <div className="row align-items-end gap-4 mb-4">
+        <div className="col-md-2">
+          <SelectInput
+            id="title1"
+            label="Title"
+            note="(eg Mr/Ms/Mrs/Dr)"
+            placeholder="Select title"
+            value={formData.parent_carer_1.title}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "title", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "title")}
+            error={getError("parent_carer_1", "title")}
+            required={shouldShowRequired("parent_carer_1", "title")}
+            options={[
+              { value: "Mr", label: "Mr" },
+              { value: "Ms", label: "Ms" },
+              { value: "Mrs", label: "Mrs" },
+              { value: "Miss", label: "Miss" },
+              { value: "Dr", label: "Dr" },
+              { value: "Prof", label: "Prof" },
+              { value: "Rev", label: "Rev" },
+            ]}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="firstname1"
+            label="First name"
+            value={formData.parent_carer_1.first_name}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "first_name", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "first_name")}
+            error={getError("parent_carer_1", "first_name")}
+            required={shouldShowRequired("parent_carer_1", "first_name")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="lastname1"
+            label="Last name"
+            value={formData.parent_carer_1.last_name}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "last_name", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "last_name")}
+            error={getError("parent_carer_1", "last_name")}
+            required={shouldShowRequired("parent_carer_1", "last_name")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="middlename1"
+            label="Middle name"
+            value={formData.parent_carer_1.middle_name}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "middle_name", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "middle_name")}
+            error={getError("parent_carer_1", "middle_name")}
+            required={shouldShowRequired("parent_carer_1", "middle_name")}
+          />
+        </div>
+      </div>
+
+      <div className="row align-items-end gap-4 mb-4">
+        <div className="col-md-2">
+          <SelectInput
+            id="gender1"
+            label="Gender"
+            placeholder="Select gender"
+            value={formData.parent_carer_1.gender || ""}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "gender", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "gender")}
+            error={getError("parent_carer_1", "gender")}
+            required={shouldShowRequired("parent_carer_1", "gender")}
+            options={genderOptions}
+          />
+        </div>
+        <div className="col-md-3">
+          <SelectInput
+            id="relationshiptostudent1"
+            label="Relationship to student"
+            placeholder="Select relationship"
+            value={formData.parent_carer_1.relationship_to_student || ""}
+            onChange={(value) =>
+              handleInputChange(
+                "parent_carer_1",
+                "relationship_to_student",
+                value
+              )
+            }
+            onBlur={() =>
+              handleBlur("parent_carer_1", "relationship_to_student")
+            }
+            error={getError("parent_carer_1", "relationship_to_student")}
+            required={shouldShowRequired("parent_carer_1", "relationship_to_student")}
+            options={relationOptions}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="dateofbirth1"
+            label="Date of Birth"
+            type="date"
+            value={formData.parent_carer_1.date_of_birth}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "date_of_birth", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "date_of_birth")}
+            error={getError("parent_carer_1", "date_of_birth")}
+            required={shouldShowRequired("parent_carer_1", "date_of_birth")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="countryofbirth1"
+            label="Country of birth"
+            value={formData.parent_carer_1.country_of_birth}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "country_of_birth", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "country_of_birth")}
+            error={getError("parent_carer_1", "country_of_birth")}
+            required={shouldShowRequired("parent_carer_1", "country_of_birth")}
+          />
+        </div>
+      </div>
+
+      <div className="row align-items-end gap-4 mb-4">
+        <div className="col-md-2">
+          <TextInput
+            id="nationality1"
+            label="Nationality"
+            value={formData.parent_carer_1.nationality}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "nationality", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "nationality")}
+            error={getError("parent_carer_1", "nationality")}
+            required={shouldShowRequired("parent_carer_1", "nationality")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="email1"
+            label="Email"
+            type="email"
+            value={formData.parent_carer_1.email}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "email", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "email")}
+            error={getError("parent_carer_1", "email")}
+            required={shouldShowRequired("parent_carer_1", "email")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="mobilephone1"
+            label="Mobile Phone"
+            value={formData.parent_carer_1.mobile_phone}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "mobile_phone", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "mobile_phone")}
+            error={getError("parent_carer_1", "mobile_phone")}
+            required={shouldShowRequired("parent_carer_1", "mobile_phone")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="altphone1"
+            label="Alternative Phone"
+            value={formData.parent_carer_1.alternative_phone}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "alternative_phone", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "alternative_phone")}
+            error={getError("parent_carer_1", "alternative_phone")}
+            required={shouldShowRequired("parent_carer_1", "alternative_phone")}
+          />
+        </div>
+      </div>
+
+      <div className="row align-items-end gap-4 mb-4">
+        <div className="col-md-2">
+          <SelectInput
+            id="maritalstatus1"
+            label="Marital Status"
+            placeholder="Select marital status"
+            value={formData.parent_carer_1.marital_status || ""}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "marital_status", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "marital_status")}
+            error={getError("parent_carer_1", "marital_status")}
+            required={shouldShowRequired("parent_carer_1", "marital_status")}
+            options={maritalStatusOptions}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="occupation1"
+            label="Occupation"
+            value={formData.parent_carer_1.occupation}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "occupation", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "occupation")}
+            error={getError("parent_carer_1", "occupation")}
+            required={shouldShowRequired("parent_carer_1", "occupation")}
+          />
+        </div>
+      </div>
+
+      {/* Address Section for Carer 1 */}
+      <h3 className="h5 mb-3 mt-4">Address Details</h3>
+      <div className="row align-items-end gap-5 mb-4">
+        <div className="col-md-3">
+          <SelectInput
+            id="addresstype1"
+            label="Address Type"
+            placeholder="Select address type"
+            value={formData.parent_carer_1.address_type || ""}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "address_type", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "address_type")}
+            error={getError("parent_carer_1", "address_type")}
+            required={shouldShowRequired("parent_carer_1", "address_type")}
+            options={addressTypeOptions}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="streetnumber1"
+            label="Street No"
+            value={formData.parent_carer_1.street_number}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "street_number", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "street_number")}
+            error={getError("parent_carer_1", "street_number")}
+            required={shouldShowRequired("parent_carer_1", "street_number")}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="streetname1"
+            label="Street Name"
+            value={formData.parent_carer_1.street_name}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "street_name", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "street_name")}
+            error={getError("parent_carer_1", "street_name")}
+            required={shouldShowRequired("parent_carer_1", "street_name")}
+          />
+        </div>
+      </div>
+
+      <div className="row align-items-end gap-5 mb-4">
+        <div className="col-md-3">
+          <TextInput
+            id="suburb1"
+            label="Suburb"
+            value={formData.parent_carer_1.suburb}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "suburb", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "suburb")}
+            error={getError("parent_carer_1", "suburb")}
+            required={shouldShowRequired("parent_carer_1", "suburb")}
+          />
+        </div>
+        <div className="col-md-3">
+          <SelectInput
+            id="state1"
+            label="State"
+            placeholder="Select state"
+            value={formData.parent_carer_1.state || ""}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "state", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "state")}
+            error={getError("parent_carer_1", "state")}
+            required={shouldShowRequired("parent_carer_1", "state")}
+            options={stateOptions}
+          />
+        </div>
+        <div className="col-md-3">
+          <TextInput
+            id="postalcode1"
+            label="Postal Code"
+            value={formData.parent_carer_1.postal_code}
+            onChange={(value) =>
+              handleInputChange("parent_carer_1", "postal_code", value)
+            }
+            onBlur={() => handleBlur("parent_carer_1", "postal_code")}
+            error={getError("parent_carer_1", "postal_code")}
+            required={shouldShowRequired("parent_carer_1", "postal_code")}
+          />
+        </div>
+      </div>
+
+      {/* Show Carer 2 Checkbox */}
+      <div className="row mt-4">
+        <div className="col-12">
+          <div className="form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="showCarer2"
+              checked={showCarer2}
+              onChange={(e) => handleShowCarer2Change(e.target.checked)}
+            />
+            <label className="form-check-label fw-bold" htmlFor="showCarer2">
+              I wish to add Parent/Carer 2 details
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Parent/Carer 2 Section - Conditionally Rendered */}
+      {showCarer2 && (
+        <>
+          <h2 className="h4 mb-3 mt-4">
+            B. Parent/Carer 2 with whom this student normally lives
+          </h2>
+
+          {/* Personal Details for Carer 2 */}
+          <div className="row align-items-end gap-4 mb-4">
+            <div className="col-md-2">
+              <SelectInput
+                id="title2"
+                label="Title"
+                note="(eg Mr/Ms/Mrs/Dr)"
+                value={formData.parent_carer_2.title}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "title", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "title")}
+                error={getError("parent_carer_2", "title")}
+                required={false}
+                options={[
+                  { value: "Mr", label: "Mr" },
+                  { value: "Ms", label: "Ms" },
+                  { value: "Mrs", label: "Mrs" },
+                  { value: "Miss", label: "Miss" },
+                  { value: "Dr", label: "Dr" },
+                  { value: "Prof", label: "Prof" },
+                  { value: "Rev", label: "Rev" },
+                ]}
+                placeholder="Select title"
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="firstname2"
+                label="First name"
+                value={formData.parent_carer_2.first_name}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "first_name", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "first_name")}
+                error={getError("parent_carer_2", "first_name")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="lastname2"
+                label="Last name"
+                value={formData.parent_carer_2.last_name}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "last_name", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "last_name")}
+                error={getError("parent_carer_2", "last_name")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="middlename2"
+                label="Middle name"
+                value={formData.parent_carer_2.middle_name}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "middle_name", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "middle_name")}
+                error={getError("parent_carer_2", "middle_name")}
+                required={false}
+              />
+            </div>
+          </div>
+
+          <div className="row align-items-end gap-4 mb-4">
+            <div className="col-md-2">
+              <SelectInput
+                id="gender2"
+                label="Gender"
+                placeholder="Select gender"
+                value={formData.parent_carer_2.gender || ""}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "gender", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "gender")}
+                error={getError("parent_carer_2", "gender")}
+                required={false}
+                options={genderOptions}
+              />
+            </div>
+            <div className="col-md-3">
+              <SelectInput
+                id="relationshiptostudent2"
+                label="Relationship to student"
+                placeholder="Select relationship"
+                value={formData.parent_carer_2.relationship_to_student || ""}
+                onChange={(value) =>
+                  handleInputChange(
+                    "parent_carer_2",
+                    "relationship_to_student",
+                    value
+                  )
+                }
+                onBlur={() =>
+                  handleBlur("parent_carer_2", "relationship_to_student")
+                }
+                error={getError("parent_carer_2", "relationship_to_student")}
+                options={relationOptions}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="dateofbirth2"
+                label="Date of Birth"
+                type="date"
+                value={formData.parent_carer_2.date_of_birth}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "date_of_birth", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "date_of_birth")}
+                error={getError("parent_carer_2", "date_of_birth")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="countryofbirth2"
+                label="Country of birth"
+                value={formData.parent_carer_2.country_of_birth}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "country_of_birth", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "country_of_birth")}
+                error={getError("parent_carer_2", "country_of_birth")}
+                required={false}
+              />
+            </div>
+          </div>
+
+          <div className="row align-items-end gap-4 mb-4">
+            <div className="col-md-2">
+              <TextInput
+                id="nationality2"
+                label="Nationality"
+                value={formData.parent_carer_2.nationality}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "nationality", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "nationality")}
+                error={getError("parent_carer_2", "nationality")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="email2"
+                label="Email"
+                type="email"
+                value={formData.parent_carer_2.email}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "email", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "email")}
+                error={getError("parent_carer_2", "email")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="mobilephone2"
+                label="Mobile Phone"
+                value={formData.parent_carer_2.mobile_phone}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "mobile_phone", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "mobile_phone")}
+                error={getError("parent_carer_2", "mobile_phone")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="altphone2"
+                label="Alternative Phone"
+                value={formData.parent_carer_2.alternative_phone}
+                onChange={(value) =>
+                  handleInputChange(
+                    "parent_carer_2",
+                    "alternative_phone",
+                    value
+                  )
+                }
+                onBlur={() => handleBlur("parent_carer_2", "alternative_phone")}
+                error={getError("parent_carer_2", "alternative_phone")}
+                required={false}
+              />
+            </div>
+          </div>
+
+          <div className="row align-items-end gap-4 mb-4">
+            <div className="col-md-2">
+              <SelectInput
+                id="maritalstatus2"
+                label="Marital Status"
+                placeholder="Select marital status"
+                value={formData.parent_carer_2.marital_status || ""}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "marital_status", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "marital_status")}
+                error={getError("parent_carer_2", "marital_status")}
+                required={false}
+                options={maritalStatusOptions}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="occupation2"
+                label="Occupation"
+                value={formData.parent_carer_2.occupation}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "occupation", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "occupation")}
+                error={getError("parent_carer_2", "occupation")}
+                required={false}
+              />
+            </div>
+          </div>
+
+          {/* Address Section for Carer 2 */}
+          <h3 className="h5 mb-3 mt-4">Address Details</h3>
+          <div className="row align-items-end gap-5 mb-4">
+            <div className="col-md-3">
+              <SelectInput
+                id="addresstype2"
+                label="Address Type"
+                placeholder="Select address type"
+                value={formData.parent_carer_2.address_type || ""}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "address_type", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "address_type")}
+                error={getError("parent_carer_2", "address_type")}
+                required={false}
+                options={addressTypeOptions}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="streetnumber2"
+                label="Street No"
+                value={formData.parent_carer_2.street_number}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "street_number", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "street_number")}
+                error={getError("parent_carer_2", "street_number")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="streetname2"
+                label="Street Name"
+                value={formData.parent_carer_2.street_name}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "street_name", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "street_name")}
+                error={getError("parent_carer_2", "street_name")}
+                required={false}
+              />
+            </div>
+          </div>
+
+          <div className="row align-items-end gap-5 mb-4">
+            <div className="col-md-3">
+              <TextInput
+                id="suburb2"
+                label="Suburb"
+                value={formData.parent_carer_2.suburb}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "suburb", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "suburb")}
+                error={getError("parent_carer_2", "suburb")}
+                required={false}
+              />
+            </div>
+            <div className="col-md-3">
+              <SelectInput
+                id="state2"
+                label="State"
+                placeholder="Select state"
+                value={formData.parent_carer_2.state || ""}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "state", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "state")}
+                error={getError("parent_carer_2", "state")}
+                required={false}
+                options={stateOptions}
+              />
+            </div>
+            <div className="col-md-3">
+              <TextInput
+                id="postalcode2"
+                label="Postal Code"
+                value={formData.parent_carer_2.postal_code}
+                onChange={(value) =>
+                  handleInputChange("parent_carer_2", "postal_code", value)
+                }
+                onBlur={() => handleBlur("parent_carer_2", "postal_code")}
+                error={getError("parent_carer_2", "postal_code")}
+                required={false}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Section Error Message above the button */}
+      {sectionError && (
+        <div className="container py-3">
+          <div className="row">
+            <div className="col-12">
+              <div className="alert alert-danger" role="alert">
+                {sectionError}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Next Button */}
+      <div className="container py-3 py-lg-5">
+        <div className="row">
+          <div className="col-12 d-flex justify-content-center align-items-center z-2">
+            <button
+              type="button"
+              onClick={handleNext}
+              className="btn globalbutton rounded-0 dark-text fw-bold fs-5 position-relative overflow-hidden"
+            >
+              Move to next step
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

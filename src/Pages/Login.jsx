@@ -341,7 +341,7 @@ const Login = () => {
                 </div>
                 
                 <button
-                  class="border-0 text-white form-btn"
+                  className="border-0 text-white form-btn"
                   type="submit"
                   disabled={loading || !isFormValid()}
                   style={{

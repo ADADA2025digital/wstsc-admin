@@ -795,18 +795,18 @@ export default function TeachersTable() {
                 return `
                   <div id="status-toggle-${
                     row.id
-                  }" class="status-toggle-container">
-                    <div class="d-flex align-items-center justify-content-center">
-                      <div class="spinner-border spinner-border-sm text-primary d-none" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                  }" className="status-toggle-container">
+                    <div className="d-flex align-items-center justify-content-center">
+                      <div className="spinner-border spinner-border-sm text-primary d-none" role="status">
+                        <span className="visually-hidden">Loading...</span>
                       </div>
-                      <div class="form-check form-switch">
-                        <input class="form-check-input status-toggle-input" type="checkbox" 
+                      <div className="form-check form-switch">
+                        <input className="form-check-input status-toggle-input" type="checkbox" 
                           ${data === "Active" ? "checked" : ""}
                           data-teacher-id="${row.id}"
                           style="cursor: pointer;"
                         >
-                        <label class="form-check-label small fw-medium ${
+                        <label className="form-check-label small fw-medium ${
                           data === "Active" ? "text-success" : "text-danger"
                         }" 
                                style="cursor: pointer;">
@@ -835,12 +835,12 @@ export default function TeachersTable() {
             orderable: false,
             render: function (data, type, row) {
               return `
-      <div class="d-flex justify-content-center gap-2">
-        <button class="btn btn-sm btn-outline-primary view-btn" 
+      <div className="d-flex justify-content-center gap-2">
+        <button className="btn btn-sm btn-outline-primary view-btn" 
                 data-id="${row.id}" 
                 data-name="${encodeURIComponent(row.full_name)}"
                 title="View Details">
-          <i class="bi bi-eye"></i>
+          <i className="bi bi-eye"></i>
         </button>
       </div>
     `;

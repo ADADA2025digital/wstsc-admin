@@ -346,7 +346,7 @@ const PasswordSetup = () => {
 
                 <button
                   type="submit"
-                  class="border-0 text-white form-btn"
+                  className="border-0 text-white form-btn"
                   disabled={loading}
                 >
                   {loading ? (

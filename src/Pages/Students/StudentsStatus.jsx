@@ -13,7 +13,6 @@ import {
   Table,
   Form,
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 import ButtonGlobal from "../../Components/Button";
 import { formatDateToMMDDYYYY } from "../../config/utils";
 import api from "../../config/axiosConfig";

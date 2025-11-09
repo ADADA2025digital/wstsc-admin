@@ -5,40 +5,40 @@ const Register = () => {
     <>
       <div className="container-fluid p-0">
         <section className="container">
-          <div class="form-container bg-white rounded-4 border p-4">
-            <h2 class="title text-center fw-bold py-2 mb-2">Create account</h2>
-            <p class="sub-title mb-1 small">
+          <div className="form-container bg-white rounded-4 border p-4">
+            <h2 className="title text-center fw-bold py-2 mb-2">Create account</h2>
+            <p className="sub-title mb-1 small">
               Let's begin your learning journey today!
             </p>
 
-            <form class="form w-100 d-flex flex-column gap-3 mb-3">
+            <form className="form w-100 d-flex flex-column gap-3 mb-3">
               <input
                 type="text"
-                class="form-control input border"
+                className="form-control input border"
                 placeholder="Name"
               />
               <input
                 type="email"
-                class="form-control input border"
+                className="form-control input border"
                 placeholder="Email"
               />
               <input
                 type="password"
-                class="form-control input border"
+                className="form-control input border"
                 placeholder="Password"
               />
-              <button class="border-0 text-white form-btn">Create account</button>
+              <button className="border-0 text-white form-btn">Create account</button>
             </form>
-            <p class="sign-up-label m-0 text-muted">
-              Already have an account?<span class="sign-up-link ms-1 text-decoration-underline fw-bold">Log in</span>
+            <p className="sign-up-label m-0 text-muted">
+              Already have an account?<span className="sign-up-link ms-1 text-decoration-underline fw-bold">Log in</span>
             </p>
-            <div class="buttons-container w-100 d-flex flex-column justify-content-start gap-3 mt-3">
-              <div class="apple-Register-button">
+            <div className="buttons-container w-100 d-flex flex-column justify-content-start gap-3 mt-3">
+              <div className="apple-Register-button">
                 <svg
                   stroke="currentColor"
                   fill="currentColor"
                   stroke-width="0"
-                  class="apple-icon"
+                  className="apple-icon"
                   viewBox="0 0 1024 1024"
                   height="1em"
                   width="1em"
@@ -48,7 +48,7 @@ const Register = () => {
                 </svg>
                 <span>Sign up with Apple</span>
               </div>
-              <div class="google-Register-button">
+              <div className="google-Register-button">
                 <svg
                   stroke="currentColor"
                   fill="currentColor"
@@ -56,7 +56,7 @@ const Register = () => {
                   version="1.1"
                   x="0px"
                   y="0px"
-                  class="google-icon"
+                  className="google-icon"
                   viewBox="0 0 48 48"
                   height="1em"
                   width="1em"

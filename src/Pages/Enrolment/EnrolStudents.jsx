@@ -14,7 +14,6 @@ import {
   Card,
   Button,
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 import ButtonGlobal from "../../Components/Button";
 import { useNavigate } from "react-router-dom";
@@ -264,8 +263,8 @@ const EnrolStudents = () => {
             orderable: false,
             render: function (data, type, row) {
               return `
-      <button class="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details">
-        <i class="bi bi-eye"></i>
+      <button className="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details">
+        <i className="bi bi-eye"></i>
       </button>
     `;
             },

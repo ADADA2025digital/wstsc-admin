@@ -11,7 +11,6 @@ import {
   Tabs,
   Form,
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
@@ -55,6 +54,7 @@ const TeacherDetails = () => {
         const apiData = response.data.data.teacher;
         const transformedData = transformTeacherData(apiData);
         setTeacherData(transformedData);
+        console.log("✅ Fetched and transformed teacher data:", transformedData);
       } else {
         setError(response.data.message || "Failed to fetch teacher details");
       }

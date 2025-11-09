@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { Form, Row, Col, Button, Alert, Badge } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 // If you keep seed in a separate module, import it.
 // For demo, you can duplicate or import from a shared file.

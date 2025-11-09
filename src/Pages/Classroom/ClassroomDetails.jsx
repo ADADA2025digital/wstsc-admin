@@ -11,7 +11,7 @@ import {
   Modal,
   Button,
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
+css/bootstrap.min.css";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard, { EmptyState } from "../../Components/InfoCard";
 import api from "../../config/axiosConfig.jsx";

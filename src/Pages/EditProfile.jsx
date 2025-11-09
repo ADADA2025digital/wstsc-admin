@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Col, Row, Tab, Tabs, Alert, Form } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
+import {
+  Badge,
+  Col,
+  Row,
+  Tab,
+  Tabs,
+  Alert,
+  Form,
+  Image,
+} from "react-bootstrap";
 import ButtonGlobal from "../Components/Button";
 import InfoCard from "../Components/InfoCard";
 import api from "../config/axiosConfig";
@@ -33,6 +41,12 @@ const EditProfile = () => {
     postal_code: "",
     country: "",
   });
+
+  // Profile picture state
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState("");
+  const [profilePictureFile, setProfilePictureFile] = useState(null);
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [originalData, setOriginalData] = useState({});
@@ -72,6 +86,12 @@ const EditProfile = () => {
 
         setFormData(mappedData);
         setOriginalData(mappedData);
+
+        // Set profile picture if available
+        if (profileData.photo_url) {
+          setProfilePicture(profileData.photo_url);
+          setProfilePicturePreview(profileData.photo_url);
+        }
       } else {
         throw new Error(response.data.message || "Failed to load profile");
       }
@@ -103,6 +123,109 @@ const EditProfile = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Handle profile picture selection
+  const handleProfilePictureChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+      if (!validTypes.includes(file.type)) {
+        showMessage(
+          "warning",
+          "Please select a valid image file (JPEG, PNG, GIF)"
+        );
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showMessage("warning", "Image size should be less than 5MB");
+        return;
+      }
+
+      setProfilePictureFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePicturePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload profile picture - FIXED VERSION
+  const handleProfilePictureUpload = async () => {
+    if (!profilePictureFile) {
+      showMessage("warning", "Please select a picture to upload");
+      return;
+    }
+
+    setIsUploadingPicture(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("profile_picture", profilePictureFile);
+
+      const response = await api.post("/profile/picture", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        showMessage(
+          "success",
+          response.data.message || "Profile picture updated successfully!"
+        );
+
+        // Update the profile picture with the new URL from response
+        const newPhotoUrl = response.data.data?.profile?.photo_url;
+        if (newPhotoUrl) {
+          setProfilePicture(newPhotoUrl);
+          setProfilePicturePreview(newPhotoUrl);
+        }
+
+        // Clear the file input but DON'T refresh the entire form data
+        setProfilePictureFile(null);
+
+        // Update originalData with the new photo URL to prevent false "unsaved changes"
+        if (newPhotoUrl) {
+          setOriginalData((prev) => ({
+            ...prev,
+            // No form fields to update, just the photo URL in state
+          }));
+        }
+      } else {
+        throw new Error(
+          response.data.message || "Failed to upload profile picture"
+        );
+      }
+    } catch (error) {
+      let errorMessage = "Error uploading profile picture. Please try again.";
+
+      // Handle validation errors
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data.errors;
+        errorMessage = Object.values(validationErrors).flat().join(", ");
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      showMessage("danger", errorMessage);
+    } finally {
+      setIsUploadingPicture(false);
+    }
+  };
+
+  // Remove profile picture preview
+  const handleRemovePicture = () => {
+    setProfilePictureFile(null);
+    setProfilePicturePreview(profilePicture); // Reset to current profile picture
   };
 
   const handleSubmit = async (e) => {
@@ -148,8 +271,41 @@ const EditProfile = () => {
           "success",
           response.data.message || "Profile updated successfully!"
         );
-        // Refresh the data to get any server-computed fields
-        await fetchProfileData();
+        // Refresh the data to get any server-computed fields but preserve current form state
+        const updatedProfileData = response.data.data?.profile || {};
+        const updatedAddress = updatedProfileData.address || {};
+
+        // Update originalData with the new values to reset the comparison baseline
+        setOriginalData((prev) => ({
+          ...prev,
+          first_name: updatedProfileData.first_name || prev.first_name,
+          last_name: updatedProfileData.last_name || prev.last_name,
+          middle_name: updatedProfileData.middle_name || prev.middle_name,
+          phone: updatedProfileData.phone || prev.phone,
+          alternate_phone:
+            updatedProfileData.alternate_phone || prev.alternate_phone,
+          gender: updatedProfileData.gender || prev.gender,
+          date_of_birth: updatedProfileData.date_of_birth || prev.date_of_birth,
+          nationality: updatedProfileData.nationality || prev.nationality,
+          marital_status:
+            updatedProfileData.marital_status || prev.marital_status,
+          occupation: updatedProfileData.occupation || prev.occupation,
+          address_line1: updatedAddress.address_line1 || prev.address_line1,
+          city: updatedAddress.city || prev.city,
+          state: updatedAddress.state || prev.state,
+          postal_code: updatedAddress.postal_code || prev.postal_code,
+          country: updatedAddress.country || prev.country,
+        }));
+
+        // Also update profile picture if it changed
+        if (
+          updatedProfileData.photo_url &&
+          updatedProfileData.photo_url !== profilePicture
+        ) {
+          setProfilePicture(updatedProfileData.photo_url);
+          setProfilePicturePreview(updatedProfileData.photo_url);
+        }
+
         setTimeout(() => navigate(-1), 2000);
       } else {
         throw new Error(response.data.message || "Failed to update profile");
@@ -179,6 +335,8 @@ const EditProfile = () => {
 
   const handleCancel = () => {
     setFormData(originalData);
+    setProfilePictureFile(null);
+    setProfilePicturePreview(profilePicture);
     navigate(-1);
   };
 
@@ -247,11 +405,11 @@ const EditProfile = () => {
           <h4 className="fw-bold mb-1">Edit Profile</h4>
           <p className="text-muted mb-0">
             Update your personal information and preferences
-            {/* {hasChanges && (
+            {hasChanges && (
               <Badge bg="warning" text="dark" className="ms-2">
                 Unsaved Changes
               </Badge>
-            )} */}
+            )}
           </p>
         </div>
 
@@ -270,7 +428,7 @@ const EditProfile = () => {
             className="btn btn-primary"
             disabled={isSubmitting || !hasChanges}
           >
-            <i class="bi bi-floppy me-1"></i>{" "}
+            <i className="bi bi-floppy me-1"></i>{" "}
             {isSubmitting ? "Saving..." : "Save Changes"}
           </ButtonGlobal>
         </div>
@@ -538,6 +696,105 @@ const EditProfile = () => {
                           </Form.Group>
                         </div>
                       </div>
+                    </InfoCard>
+                  </Col>
+                </Row>
+              </div>
+            </Tab>
+
+            {/* Profile Picture Tab */}
+            <Tab eventKey="picture" title="Profile Picture">
+              <div className="p-4">
+                <Row className="g-4">
+                  <Col md={12}>
+                    <InfoCard title="Profile Picture" className="bg-white">
+                      <Row className="align-items-center">
+                        {/* Left Side - Profile Picture Preview */}
+                        <Col md={6} className="text-center">
+                          <div className="mb-4">
+                            {profilePicturePreview ? (
+                              <Image
+                                src={profilePicturePreview}
+                                alt="Profile preview"
+                                roundedCircle
+                                style={{
+                                  width: "200px",
+                                  height: "200px",
+                                  objectFit: "cover",
+                                  border: "3px solid #dee2e6",
+                                }}
+                              />
+                            ) : (
+                              <div
+                                className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                                style={{
+                                  width: "200px",
+                                  height: "200px",
+                                  border: "3px dashed #dee2e6",
+                                }}
+                              >
+                                <i className="bi bi-person fs-1 text-muted"></i>
+                              </div>
+                            )}
+                          </div>
+                        </Col>
+
+                        {/* Right Side - Form Controls */}
+                        <Col md={6}>
+                          {/* File Input */}
+                          <Form.Group className="mb-3">
+                            <Form.Label className="d-block text-start">
+                              Choose a new profile picture
+                            </Form.Label>
+                            <Form.Control
+                              type="file"
+                              accept="image/*"
+                              onChange={handleProfilePictureChange}
+                              className="w-100"
+                              style={{ maxWidth: "100%" }}
+                            />
+                            <Form.Text className="text-muted d-block text-start">
+                              Supported formats: JPEG, PNG, GIF. Max size: 5MB
+                            </Form.Text>
+                          </Form.Group>
+
+                          {/* Action Buttons */}
+                          <div className="d-flex gap-2 justify-content-start">
+                            <ButtonGlobal
+                              onClick={handleProfilePictureUpload}
+                              className="btn btn-primary"
+                              disabled={
+                                !profilePictureFile || isUploadingPicture
+                              }
+                            >
+                              <i className="bi bi-upload me-1"></i>
+                              {isUploadingPicture
+                                ? "Uploading..."
+                                : "Upload Picture"}
+                            </ButtonGlobal>
+
+                            {profilePictureFile && (
+                              <ButtonGlobal
+                                onClick={handleRemovePicture}
+                                className="btn btn-outline-secondary"
+                                disabled={isUploadingPicture}
+                              >
+                                <i className="bi bi-x me-1"></i>
+                                Cancel
+                              </ButtonGlobal>
+                            )}
+                          </div>
+
+                          {/* Current Picture Info */}
+                          {profilePicture && !profilePictureFile && (
+                            <div className="mt-3">
+                              <p className="text-muted small mb-0 text-start">
+                                Current profile picture is active
+                              </p>
+                            </div>
+                          )}
+                        </Col>
+                      </Row>
                     </InfoCard>
                   </Col>
                 </Row>

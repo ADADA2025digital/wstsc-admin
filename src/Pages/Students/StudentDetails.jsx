@@ -12,7 +12,6 @@ import {
   Alert,
   Spinner
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 const StudentDetails = () => {
   const { id } = useParams();

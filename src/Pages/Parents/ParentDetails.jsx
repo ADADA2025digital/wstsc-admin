@@ -13,7 +13,6 @@ import {
   Tabs,
   Container,
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard, { EmptyState } from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";

@@ -6,7 +6,6 @@ import {
   Tab,
   Tabs,
 } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
@@ -154,7 +153,7 @@ const EnrolmentDetails = () => {
                     <ButtonGlobal
             className="btn btn-outline-primary"
           >
-            <i class="bi bi-check2-all me-2"></i>
+            <i className="bi bi-check2-all me-2"></i>
             Accept the Enrolment
           </ButtonGlobal>
           <ButtonGlobal

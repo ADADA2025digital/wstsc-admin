@@ -10,61 +10,6 @@ if (typeof window !== "undefined") {
   window.jQuery = $;
 }
 
-// Status Toggle Component
-const StatusToggle = ({ parent, onStatusChange }) => {
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(parent.status);
-
-  const handleStatusToggle = async () => {
-    const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
-
-    setIsUpdatingStatus(true);
-
-    try {
-      const success = await onStatusChange(parent.id, newStatus);
-      if (success) {
-        setCurrentStatus(newStatus);
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  const isActive = currentStatus === "Active";
-
-  return (
-    <div className="d-flex align-items-center justify-content-center gap-2">
-      {isUpdatingStatus && (
-        <div
-          className="spinner-border spinner-border-sm text-primary"
-          role="status"
-        >
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      )}
-      <Form.Check
-        type="switch"
-        id={`status-toggle-${parent.id}`}
-        label={
-          <span
-            className={`fw-medium small ${
-              isActive ? "text-success" : "text-danger"
-            }`}
-          >
-            {currentStatus}
-          </span>
-        }
-        checked={isActive}
-        onChange={handleStatusToggle}
-        disabled={isUpdatingStatus}
-        className="mb-0"
-      />
-    </div>
-  );
-};
-
 // Main ParentTable Component
 export default function ParentTable() {
   const [loading, setLoading] = useState(true);
@@ -191,14 +136,6 @@ export default function ParentTable() {
     fetchParents();
   }, []);
 
-  // Debug function to check data structure
-  const debugDataStructure = (data) => {
-    if (data.length > 0) {
-      console.log("First parent data structure:", data[0]);
-      console.log("Available properties:", Object.keys(data[0]));
-    }
-  };
-
   const handleAddParent = () => {
     setShowCreateModal(true);
   };
@@ -231,7 +168,7 @@ export default function ParentTable() {
 
   const updateParentStatus = async (parentId, newStatus) => {
     try {
-      const response = await api.patch(`/admin/persons/${parentId}/status`, {
+      const response = await api.patch(`/admin/persons/${parentId}/toggle-status`, {
         is_active: newStatus === "Active",
       });
 
@@ -261,21 +198,42 @@ export default function ParentTable() {
       return false;
     } catch (error) {
       console.error("Error handling status change:", error);
+      setError("Failed to update parent status");
       return false;
     }
   };
 
-  const initializeDataTable = (parentsData) => {
-    // Debug the data structure before initializing DataTables
-    debugDataStructure(parentsData);
-
-    // Check if we have valid data with required properties
-    if (parentsData.length > 0 && !parentsData[0].full_name) {
-      console.error("Data missing required properties:", parentsData[0]);
-      setError("Data format error: Missing required fields");
-      return;
+  // Custom render function for Status column
+  const renderStatusToggle = (data, type, row) => {
+    if (type === "display") {
+      const isActive = row.status === "Active";
+      return `
+        <div class="d-flex align-items-center justify-content-center">
+          <div class="form-check form-switch mb-0">
+            <input 
+              class="form-check-input status-toggle-input" 
+              type="checkbox" 
+              ${isActive ? "checked" : ""}
+              data-parent-id="${row.id}"
+              style="cursor: pointer;"
+            >
+            <label class="form-check-label small fw-medium ${
+              isActive ? "text-success" : "text-danger"
+            }" 
+                   style="cursor: pointer; margin-left: 0.5rem;">
+              ${row.status}
+            </label>
+          </div>
+          <div id="spinner-${row.id}" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      `;
     }
+    return data;
+  };
 
+  const initializeDataTable = (parentsData) => {
     try {
       const table = $("#parentsTable").DataTable({
         data: parentsData,
@@ -291,7 +249,6 @@ export default function ParentTable() {
             title: "Full Name",
             data: "full_name",
             render: function (data, type, row) {
-              // Safe rendering with fallback
               return data || "Unknown Name";
             },
           },
@@ -322,37 +279,7 @@ export default function ParentTable() {
             data: "status",
             className: "text-center",
             orderable: false,
-            render: function (data, type, row) {
-              // For DataTables display, we'll use a placeholder
-              // The actual toggle will be handled by React
-              if (type === "display") {
-                return `
-                  <div id="status-toggle-${
-                    row.id
-                  }" className="status-toggle-container">
-                    <div className="d-flex align-items-center justify-content-center">
-                      <div className="spinner-border spinner-border-sm text-primary d-none" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                      <div className="form-check form-switch">
-                        <input className="form-check-input status-toggle-input" type="checkbox" 
-                          ${data === "Active" ? "checked" : ""}
-                          data-parent-id="${row.id}"
-                          style="cursor: pointer;"
-                        >
-                        <label className="form-check-label small fw-medium ${
-                          data === "Active" ? "text-success" : "text-danger"
-                        }" 
-                               style="cursor: pointer;">
-                          ${data}
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                `;
-              }
-              return data;
-            },
+            render: renderStatusToggle,
           },
           {
             title: "Children",
@@ -369,12 +296,11 @@ export default function ParentTable() {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <div className="d-flex justify-content-center gap-2">
-                  <button className="btn btn-sm btn-outline-primary view-btn" 
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary view-btn" 
                           data-id="${row.id}" 
-                          data-name="${encodeURIComponent(row.full_name)}"
                           title="View Details">
-                    <i className="bi bi-eye"></i>
+                    <i class="bi bi-eye"></i>
                   </button>
                 </div>
               `;
@@ -402,68 +328,58 @@ export default function ParentTable() {
         },
       });
 
-      // Clear previous delegated handlers
-      $("#parentsTable tbody").off("click", ".view-btn");
-      $("#parentsTable tbody").off("change", ".status-toggle-input");
+      // Handle status toggle events
+      $("#parentsTable tbody").on("change", ".status-toggle-input", async function () {
+        const parentId = $(this).data("parent-id");
+        const isChecked = $(this).is(":checked");
+        const newStatus = isChecked ? "Active" : "Inactive";
+        const $label = $(this).siblings("label");
+        const $spinner = $(`#spinner-${parentId}`);
+        
+        // Show loading state
+        $(this).prop("disabled", true);
+        $spinner.removeClass("d-none");
+        const originalText = $label.text();
+        $label.text("Updating...");
+        
+        try {
+          const success = await handleStatusChange(parentId, newStatus);
+          if (success) {
+            $label.text(newStatus);
+            $label.removeClass("text-success text-danger")
+                  .addClass(newStatus === "Active" ? "text-success" : "text-danger");
+            
+            // Update row styling
+            const $row = $(this).closest("tr");
+            if (newStatus === "Inactive") {
+              $row.addClass("table-secondary");
+            } else {
+              $row.removeClass("table-secondary");
+            }
+          } else {
+            // Revert on error
+            $(this).prop("checked", !isChecked);
+            $label.text(originalText);
+          }
+        } catch (error) {
+          console.error("Error updating status:", error);
+          $(this).prop("checked", !isChecked);
+          $label.text(originalText);
+        } finally {
+          $(this).prop("disabled", false);
+          $spinner.addClass("d-none");
+        }
+      });
 
       // VIEW: view parent details
       $("#parentsTable tbody").on("click", ".view-btn", function () {
         const parentId = $(this).data("id");
-        const parentName = $(this).data("name");
         const parent = parentsData.find((p) => p.id === parentId);
         if (parent) {
           handleViewParent(parent);
         }
       });
 
-      // STATUS TOGGLE: handle status changes
-      $("#parentsTable tbody").on(
-        "change",
-        ".status-toggle-input",
-        async function () {
-          const parentId = $(this).data("parent-id");
-          const newStatus = $(this).is(":checked") ? "Active" : "Inactive";
-          const $container = $(this).closest(".status-toggle-container");
-          const $spinner = $container.find(".spinner-border");
-          const $label = $container.find(".form-check-label");
-
-          // Show loading spinner
-          $spinner.removeClass("d-none");
-          $(this).prop("disabled", true);
-
-          try {
-            const success = await handleStatusChange(parentId, newStatus);
-
-            if (success) {
-              // Update label
-              $label.text(newStatus);
-              $label.removeClass("text-success text-danger");
-              $label.addClass(
-                newStatus === "Active" ? "text-success" : "text-danger"
-              );
-
-              // Update row styling
-              const $row = $(this).closest("tr");
-              if (newStatus === "Inactive") {
-                $row.addClass("table-secondary");
-              } else {
-                $row.removeClass("table-secondary");
-              }
-            } else {
-              // Revert toggle on error
-              $(this).prop("checked", !$(this).is(":checked"));
-            }
-          } catch (error) {
-            console.error("Error updating status:", error);
-            // Revert toggle on error
-            $(this).prop("checked", !$(this).is(":checked"));
-          } finally {
-            // Hide loading spinner
-            $spinner.addClass("d-none");
-            $(this).prop("disabled", false);
-          }
-        }
-      );
     } catch (error) {
       console.error("Error initializing DataTable:", error);
       setError(
@@ -490,8 +406,16 @@ export default function ParentTable() {
     };
   }, [loading, parents]);
 
-  // Add custom CSS for toggle switches
+  // Add custom CSS for toggle switches and ensure Bootstrap Icons are loaded
   useEffect(() => {
+    // Add Bootstrap Icons if not already present
+    if (!document.querySelector('link[href*="bootstrap-icons"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css';
+      document.head.appendChild(link);
+    }
+
     const style = document.createElement("style");
     style.textContent = `
       .form-check-input:checked {
@@ -506,10 +430,15 @@ export default function ParentTable() {
       .form-switch .form-check-input {
         width: 3em;
         height: 1.5em;
-        margin-right: 0.5rem;
       }
       .status-toggle-container {
         min-width: 120px;
+      }
+      .bi::before {
+        display: inline-block;
+      }
+      .table-secondary {
+        background-color: rgba(0, 0, 0, 0.02) !important;
       }
     `;
     document.head.appendChild(style);

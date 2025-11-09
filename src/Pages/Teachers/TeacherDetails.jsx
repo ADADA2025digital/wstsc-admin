@@ -25,6 +25,8 @@ const TeacherDetails = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [classroomAssignments, setClassroomAssignments] = useState([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
 
   useEffect(() => {
     if (location.state?.teacherData) {
@@ -54,6 +56,10 @@ const TeacherDetails = () => {
         const apiData = response.data.data.teacher;
         const transformedData = transformTeacherData(apiData);
         setTeacherData(transformedData);
+        
+        // Fetch classroom assignments separately
+        await fetchClassroomAssignments(teacherId);
+        
         console.log("✅ Fetched and transformed teacher data:", transformedData);
       } else {
         setError(response.data.message || "Failed to fetch teacher details");
@@ -66,38 +72,80 @@ const TeacherDetails = () => {
     }
   };
 
+  // Fetch classroom assignments separately
+  const fetchClassroomAssignments = async (teacherId) => {
+    try {
+      setLoadingAssignments(true);
+      
+      // Try different possible endpoints for classroom assignments
+      const endpoints = [
+        `/admin/teachers/${teacherId}/classrooms`,
+        `/admin/teachers/${teacherId}/assignments`,
+        `/admin/classrooms?teacher_id=${teacherId}`
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await api.get(endpoint);
+          if (response.data.success && response.data.data) {
+            const assignments = response.data.data.classrooms || 
+                               response.data.data.assignments || 
+                               response.data.data;
+            if (assignments && assignments.length > 0) {
+              setClassroomAssignments(assignments);
+              console.log("✅ Found classroom assignments:", assignments);
+              break;
+            }
+          }
+        } catch (err) {
+          console.log(`Endpoint ${endpoint} not available:`, err.message);
+          continue;
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching classroom assignments:", err);
+      // Don't set error state for assignments as it's not critical
+    } finally {
+      setLoadingAssignments(false);
+    }
+  };
+
   // Fixed helper function to transform API data
   const transformTeacherData = (apiData) => {
     console.log("🔍 Transforming teacher data:", apiData);
     
-    // Use the direct properties from apiData since they're available
-    const isActive = apiData.status === "Active";
+    // Extract data from nested structure
+    const personData = apiData.person || {};
+    const addressData = apiData.address || {};
     
-    console.log("✅ Derived is_active from status:", apiData.status, "->", isActive);
+    // Use the direct properties from apiData since they're available
+    const isActive = apiData.is_active === true;
+    
+    console.log("✅ Derived is_active from status:", apiData.is_active, "->", isActive);
     
     return {
-      id: apiData.id,
-      person_id: apiData.id, // Use teacher ID as person ID for the API call
-      first_name: apiData.first_name || "",
-      last_name: apiData.last_name || "",
-      middle_name: apiData.middle_name || "",
-      full_name: apiData.full_name || "",
-      gender: apiData.gender || "",
-      date_of_birth: apiData.date_of_birth || "",
-      nationality: apiData.nationality || "",
-      email: apiData.email || "",
-      phone: apiData.phone || "",
-      alternate_phone: apiData.alternate_phone || "",
-      marital_status: apiData.marital_status || "",
-      occupation: apiData.occupation || "Teacher",
-      address: apiData.address || "",
-      status: apiData.status || "Active",
-      is_active: isActive, // This is now properly set
-      grade: apiData.grade || "Not assigned",
-      profile_picture: apiData.profile_picture,
+      id: apiData.user_id,
+      person_id: apiData.person_id,
+      first_name: personData.first_name || apiData.first_name || "",
+      last_name: personData.last_name || apiData.last_name || "",
+      middle_name: personData.middle_name || apiData.middle_name || "",
+      full_name: personData.full_name || apiData.name || "",
+      gender: personData.gender || addressData.gender || "",
+      date_of_birth: personData.date_of_birth || addressData.date_of_birth || "",
+      nationality: personData.nationality || "",
+      email: personData.email || apiData.email || "",
+      phone: personData.phone || apiData.phone || "",
+      alternate_phone: personData.alternate_phone || "",
+      marital_status: personData.marital_status || "",
+      occupation: personData.occupation || "Teacher",
+      address: addressData.address || personData.address || "",
+      status: isActive ? "Active" : "Inactive",
+      is_active: isActive,
+      grade: personData.grade || "Not assigned",
+      profile_picture: apiData.profile_picture || personData.photo_url,
       role: apiData.role,
       addresses: apiData.addresses || [],
-      classroom_assignments: apiData.classroom_assignments || []
+      // classroom_assignments will be fetched separately
     };
   };
 
@@ -217,13 +265,6 @@ const TeacherDetails = () => {
       </div>
     );
   }
-
-  // Debug current state on render
-  console.log("🎯 RENDER - Current teacher status:", {
-    is_active: teacherData.is_active,
-    status: teacherData.status,
-    full_name: teacherData.full_name
-  });
 
   return (
     <div className="container-fluid px-4 py-3">
@@ -383,7 +424,7 @@ const TeacherDetails = () => {
                         </div>
                         <div>
                           <span className="small">Gender</span>
-                          <p className="mb-0">{teacherData.gender}</p>
+                          <p className="mb-0">{teacherData.gender || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Date of Birth</span>
@@ -400,19 +441,19 @@ const TeacherDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">Nationality</span>
-                          <p className="mb-0 fw-medium">{teacherData.nationality}</p>
+                          <p className="mb-0 fw-medium">{teacherData.nationality || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Marital Status</span>
-                          <p className="mb-0">{teacherData.marital_status}</p>
+                          <p className="mb-0">{teacherData.marital_status || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Occupation</span>
-                          <p className="mb-0">{teacherData.occupation}</p>
+                          <p className="mb-0">{teacherData.occupation || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Grade</span>
-                          <p className="mb-0">{teacherData.grade}</p>
+                          <p className="mb-0">{teacherData.grade || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Status</span>
@@ -482,11 +523,11 @@ const TeacherDetails = () => {
                           <div className="d-flex flex-column gap-3">
                             <div>
                               <span className="small">Occupation/Position</span>
-                              <p className="mb-0 fw-medium">{teacherData.occupation}</p>
+                              <p className="mb-0 fw-medium">{teacherData.occupation || "—"}</p>
                             </div>
                             <div>
                               <span className="small">Grade Level</span>
-                              <p className="mb-0">{teacherData.grade}</p>
+                              <p className="mb-0">{teacherData.grade || "—"}</p>
                             </div>
                           </div>
                         </Col>
@@ -505,11 +546,22 @@ const TeacherDetails = () => {
                             </div>
                             <div>
                               <span className="small">Classroom Assignments</span>
-                              <p className="mb-0">
-                                {teacherData.classroom_assignments?.length > 0 
-                                  ? `${teacherData.classroom_assignments.length} classes`
-                                  : "No assignments"}
-                              </p>
+                              <div className="mb-0">
+                                {loadingAssignments ? (
+                                  <Spinner animation="border" size="sm" className="me-2" />
+                                ) : classroomAssignments.length > 0 ? (
+                                  <div>
+                                    <Badge bg="info" className="me-1">
+                                      {classroomAssignments.length} classes
+                                    </Badge>
+                                    <small className="text-muted d-block mt-1">
+                                      {classroomAssignments.map(cls => cls.name || cls.class_name).join(', ')}
+                                    </small>
+                                  </div>
+                                ) : (
+                                  "No assignments"
+                                )}
+                              </div>
                             </div>
                           </div>
                         </Col>

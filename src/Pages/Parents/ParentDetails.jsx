@@ -1,41 +1,37 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  Breadcrumb,
   Card,
   Row,
   Col,
-  Button,
   Spinner,
   Alert,
   Badge,
   Tab,
   Tabs,
-  Container,
+  Form,
 } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
-import InfoCard, { EmptyState } from "../../Components/InfoCard";
+import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
+import api from "../../config/axiosConfig";
 
 const ParentDetails = () => {
-  const { name } = useParams(); // Using name parameter
+  const { name } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [parentData, setParentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
-    console.log("ParentDetails mounted with name:", name);
-    console.log("Location state:", location.state);
-    
     if (location.state?.parentData) {
-      console.log("Using parent data from location state");
-      setParentData(location.state.parentData);
+      const transformedData = transformParentData(location.state.parentData);
+      setParentData(transformedData);
       setLoading(false);
     } else {
-      console.log("Fetching parent details from API");
       fetchParentDetails();
     }
   }, [name, location.state]);
@@ -45,41 +41,132 @@ const ParentDetails = () => {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching parent data for name:", name);
+      const parentId = location.state?.parentId || getParentIdFromName(name);
       
-      // API call to fetch parent data by name
-      // You'll need to implement this endpoint on your backend
-      const response = await fetch(`/api/parents/name/${encodeURIComponent(name)}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch parent data: ${response.status} ${response.statusText}`);
+      if (!parentId) {
+        setError("Parent ID not found");
+        return;
       }
+
+      const response = await api.get(`/admin/parents/${parentId}`);
       
-      const parent = await response.json();
-      console.log("Fetched parent data:", parent);
-      
-      if (parent) {
-        setParentData(parent);
+      if (response.data.success) {
+        const apiData = response.data.data.parent;
+        const transformedData = transformParentData(apiData);
+        setParentData(transformedData);
+        console.log("✅ Fetched and transformed parent data:", transformedData);
       } else {
-        setError("Parent data not found. Please go back and try again.");
+        setError(response.data.message || "Failed to fetch parent details");
       }
     } catch (err) {
       console.error("Error fetching parent details:", err);
-      setError("Failed to fetch parent details: " + err.message);
+      setError("Failed to fetch parent details: " + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    console.log("Navigating back to parents list");
-    navigate("/parents");
+  // Helper function to transform API data
+  const transformParentData = (apiData) => {
+    console.log("🔍 Transforming parent data:", apiData);
+    
+    // Use the direct properties from apiData since they're available
+    const isActive = apiData.status === "Active";
+    
+    console.log("✅ Derived is_active from status:", apiData.status, "->", isActive);
+    
+    return {
+      id: apiData.id,
+      person_id: apiData.id, // Use parent ID as person ID for the API call
+      first_name: apiData.first_name || "",
+      last_name: apiData.last_name || "",
+      middle_name: apiData.middle_name || "",
+      full_name: apiData.full_name || "",
+      gender: apiData.gender || "",
+      date_of_birth: apiData.date_of_birth || "",
+      nationality: apiData.nationality || "",
+      email: apiData.email || "",
+      phone: apiData.phone || "",
+      alternate_phone: apiData.alternate_phone || "",
+      marital_status: apiData.marital_status || "",
+      occupation: apiData.occupation || "Parent",
+      address: apiData.address || "",
+      status: apiData.status || "Active",
+      is_active: isActive, // This is now properly set
+      profile_picture: apiData.profile_picture,
+      role: apiData.role,
+      addresses: apiData.addresses || [],
+      children: apiData.children || [],
+      // Additional fields that might be available
+      city: apiData.city || "",
+      state: apiData.state || "",
+      zip_code: apiData.zip_code || "",
+      emergency_contact_name: apiData.emergency_contact_name || "",
+      emergency_contact_phone: apiData.emergency_contact_phone || "",
+      emergency_contact_relationship: apiData.emergency_contact_relationship || "",
+      created_at: apiData.created_at,
+      updated_at: apiData.updated_at,
+      last_login: apiData.last_login
+    };
   };
 
-  const handleEdit = () => {
-    console.log("Navigating to edit page for:", name);
-    navigate(`/parents/edit/${encodeURIComponent(name)}`, { state: { parentData } });
+  const getParentIdFromName = (parentName) => {
+    console.log("Need to implement getParentIdFromName for:", parentName);
+    return null;
   };
+
+  // Function to toggle parent status
+  const handleStatusToggle = async (newStatus) => {
+    if (!parentData) {
+      console.error("No parent data available");
+      return;
+    }
+
+    const personId = parentData.person_id || parentData.id;
+
+    if (!personId) {
+      console.error("No valid person ID found in parent data");
+      alert("Cannot update status: Person ID not available");
+      return;
+    }
+
+    try {
+      setUpdatingStatus(true);
+      
+      console.log("🔄 Toggling status for person ID:", personId);
+      const response = await api.patch(`/admin/persons/${personId}/toggle-status`);
+      
+      if (response.data.success) {
+        const updatedPerson = response.data.data.person;
+        
+        console.log("✅ Status update response:", updatedPerson);
+        
+        // Update parent data with consistent status
+        setParentData(prevData => ({
+          ...prevData,
+          status: updatedPerson.status_text,
+          is_active: updatedPerson.new_status
+        }));
+        
+        console.log("✅ Status updated successfully to:", updatedPerson.status_text);
+      } else {
+        throw new Error(response.data.message || "Failed to update status");
+      }
+    } catch (err) {
+      console.error("❌ Error updating parent status:", err);
+      alert("Failed to update status: " + (err.response?.data?.message || err.message));
+      
+      // Revert the toggle if the API call failed
+      setParentData(prevData => ({
+        ...prevData,
+        is_active: !newStatus // Revert to previous state
+      }));
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleBack = () => navigate("/parents");
 
   // Loading state
   if (loading) {
@@ -90,11 +177,7 @@ const ParentDetails = () => {
           style={{ height: "50vh" }}
         >
           <div className="text-center">
-            <div
-              className="spinner-border text-primary"
-              role="status"
-              aria-hidden="true"
-            ></div>
+            <Spinner animation="border" variant="primary" />
             <p className="mt-3 text-muted">Loading parent details...</p>
           </div>
         </div>
@@ -106,7 +189,7 @@ const ParentDetails = () => {
   if (error) {
     return (
       <div className="container-fluid px-4 py-3">
-        <div className="alert alert-danger mb-4" role="alert">
+        <Alert variant="danger" className="mb-4">
           <div className="d-flex align-items-start">
             <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
             <div>
@@ -118,7 +201,7 @@ const ParentDetails = () => {
               </button>
             </div>
           </div>
-        </div>
+        </Alert>
       </div>
     );
   }
@@ -127,22 +210,29 @@ const ParentDetails = () => {
   if (!parentData) {
     return (
       <div className="container-fluid px-4 py-3">
-        <div className="alert alert-warning mb-4" role="alert">
+        <Alert variant="warning" className="mb-4">
           <div className="d-flex align-items-start">
             <i className="bi bi-info-circle-fill me-3 fs-4"></i>
             <div>
               <h4 className="alert-heading mb-1">No Data Found</h4>
-              <p className="mb-3">No parent data available for: {name}.</p>
+              <p className="mb-3">No parent data available for {decodeURIComponent(name)}.</p>
               <button onClick={handleBack} className="btn btn-primary">
                 <i className="bi bi-arrow-left me-2"></i>
                 Back to Parents
               </button>
             </div>
           </div>
-        </div>
+        </Alert>
       </div>
     );
   }
+
+  // Debug current state on render
+  console.log("🎯 RENDER - Current parent status:", {
+    is_active: parentData.is_active,
+    status: parentData.status,
+    full_name: parentData.full_name
+  });
 
   return (
     <div className="container-fluid px-4 py-3">
@@ -161,101 +251,117 @@ const ParentDetails = () => {
             <i className="bi bi-arrow-left me-2" />
             Back to List
           </ButtonGlobal>
-          <ButtonGlobal
-            onClick={handleEdit}
-            className="btn btn-primary"
-          >
-            <i className="bi bi-pencil-square me-2" />
-            Edit Parent
-          </ButtonGlobal>
         </div>
       </div>
 
       {/* Parent Summary Card */}
-      <div className="card mb-4 border-0 shadow-sm bg-secondary bg-opacity-10">
-        <div className="card-header bg-transparent py-3">
+      <Card className="mb-4 border-0 shadow-sm bg-light">
+        <Card.Header className="bg-transparent py-3">
           <div className="d-flex justify-content-between align-items-center">
             <h5 className="mb-0">
               <i className="bi bi-person-badge me-2"></i>
               Parent Information
             </h5>
-            <Badge 
-              bg={parentData.status === "Active" ? "success" : "danger"}
-              className="fs-7"
-            >
-              {parentData.status}
-            </Badge>
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <Form.Check
+                  type="switch"
+                  id="parent-status-switch"
+                  checked={parentData.is_active}
+                  onChange={(e) => handleStatusToggle(e.target.checked)}
+                  disabled={updatingStatus}
+                  className="fs-5"
+                />
+                <span className="fw-medium">
+                  {updatingStatus && (
+                    <Spinner animation="border" size="sm" className="ms-2" />
+                  )}
+                </span>
+              </div>
+              <Badge 
+                bg={parentData.is_active ? "success" : "secondary"}
+                className="fs-7"
+              >
+                {parentData.is_active ? "Active" : "Inactive"}
+              </Badge>
+            </div>
           </div>
-        </div>
-        <div className="card-body p-4">
-          <div className="row g-4">
-            <div className="col-md-3">
+        </Card.Header>
+        <Card.Body className="p-4">
+          <Row className="g-4">
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Full Name</span>
                 <span className="fs-6 fw-medium">
                   {parentData.full_name}
                 </span>
               </div>
-            </div>
-            <div className="col-md-3">
+            </Col>
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Gender</span>
                 <span className="fs-6">{parentData.gender || "—"}</span>
               </div>
-            </div>
-            <div className="col-md-3">
+            </Col>
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Date of Birth</span>
                 <span className="fs-6">
                   {formatDateToMMDDYYYY(parentData.date_of_birth)}
                 </span>
               </div>
-            </div>
-            <div className="col-md-3">
+            </Col>
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Nationality</span>
                 <span className="fs-6">
                   {parentData.nationality || "—"}
                 </span>
               </div>
-            </div>
+            </Col>
 
-            <div className="col-md-3">
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Occupation</span>
                 <span className="fs-6">
                   {parentData.occupation || "—"}
                 </span>
               </div>
-            </div>
-            <div className="col-md-3">
+            </Col>
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Marital Status</span>
                 <span className="fs-6">
                   {parentData.marital_status || "—"}
                 </span>
               </div>
-            </div>
-            <div className="col-md-3">
+            </Col>
+            <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Status</span>
                 <span className="fs-6">
                   <Badge 
-                    bg={parentData.status === "Active" ? "success" : "danger"}
+                    bg={parentData.is_active ? "success" : "secondary"}
                     className="fs-7"
                   >
-                    {parentData.status}
+                    {parentData.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </span>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            </Col>
+            <Col md={3}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold">Parent ID</span>
+                <span className="fs-6">{parentData.id}</span>
+              </div>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
 
       {/* Detailed Information Tabs */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
+      <Card className="border-0 shadow-sm">
+        <Card.Body className="p-0">
           <Tabs
             activeKey={activeTab}
             onSelect={(k) => setActiveTab(k)}
@@ -263,40 +369,23 @@ const ParentDetails = () => {
             fill
           >
             {/* Personal Information Tab */}
-            <Tab
-              eventKey="personal"
-              title={
-                <span>
-                  <i className="bi bi-person me-2"></i>
-                  Personal Information
-                </span>
-              }
-            >
+            <Tab eventKey="personal" title="Personal Information">
               <div className="p-3">
                 <Row className="g-3">
                   <Col md={6}>
-                    <InfoCard
-                      title="Personal Details"
-                      className="bg-secondary bg-opacity-10"
-                    >
+                    <InfoCard title="Personal Details" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">First Name</span>
-                          <p className="mb-0 fw-medium">
-                            {parentData.first_name}
-                          </p>
+                          <p className="mb-0 fw-medium">{parentData.first_name}</p>
                         </div>
                         <div>
                           <span className="small">Last Name</span>
-                          <p className="mb-0 fw-medium">
-                            {parentData.last_name}
-                          </p>
+                          <p className="mb-0 fw-medium">{parentData.last_name}</p>
                         </div>
                         <div>
                           <span className="small">Middle Name</span>
-                          <p className="mb-0">
-                            {parentData.middle_name || "—"}
-                          </p>
+                          <p className="mb-0">{parentData.middle_name || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Gender</span>
@@ -313,37 +402,28 @@ const ParentDetails = () => {
                   </Col>
 
                   <Col md={6}>
-                    <InfoCard
-                      title="Background Information"
-                      className="bg-secondary bg-opacity-10"
-                    >
+                    <InfoCard title="Background Information" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">Nationality</span>
-                          <p className="mb-0 fw-medium">
-                            {parentData.nationality}
-                          </p>
+                          <p className="mb-0 fw-medium">{parentData.nationality}</p>
                         </div>
                         <div>
                           <span className="small">Marital Status</span>
-                          <p className="mb-0">
-                            {parentData.marital_status}
-                          </p>
+                          <p className="mb-0">{parentData.marital_status}</p>
                         </div>
                         <div>
                           <span className="small">Occupation</span>
-                          <p className="mb-0">
-                            {parentData.occupation}
-                          </p>
+                          <p className="mb-0">{parentData.occupation}</p>
                         </div>
                         <div>
                           <span className="small">Status</span>
                           <p className="mb-0">
                             <Badge 
-                              bg={parentData.status === "Active" ? "success" : "danger"}
+                              bg={parentData.is_active ? "success" : "secondary"}
                               className="fs-7"
                             >
-                              {parentData.status}
+                              {parentData.is_active ? "Active" : "Inactive"}
                             </Badge>
                           </p>
                         </div>
@@ -355,22 +435,11 @@ const ParentDetails = () => {
             </Tab>
 
             {/* Contact Information Tab */}
-            <Tab
-              eventKey="contacts"
-              title={
-                <span>
-                  <i className="bi bi-telephone me-2"></i>
-                  Contact Information
-                </span>
-              }
-            >
+            <Tab eventKey="contacts" title="Contact Information">
               <div className="p-3">
                 <Row className="g-3">
                   <Col md={6}>
-                    <InfoCard
-                      title="Primary Contact"
-                      className="bg-secondary bg-opacity-10"
-                    >
+                    <InfoCard title="Primary Contact" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">Email</span>
@@ -380,32 +449,41 @@ const ParentDetails = () => {
                         </div>
                         <div>
                           <span className="small">Phone</span>
-                          <p className="mb-0">
-                            {parentData.phone || "—"}
-                          </p>
+                          <p className="mb-0">{parentData.phone || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Alternate Phone</span>
-                          <p className="mb-0">
-                            {parentData.alternate_phone || "—"}
-                          </p>
+                          <p className="mb-0">{parentData.alternate_phone || "—"}</p>
                         </div>
                       </div>
                     </InfoCard>
                   </Col>
 
                   <Col md={6}>
-                    <InfoCard
-                      title="Address Information"
-                      className="bg-secondary bg-opacity-10"
-                    >
+                    <InfoCard title="Address Information" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">Residential Address</span>
-                          <p className="mb-0">
-                            {parentData.address || "—"}
-                          </p>
+                          <p className="mb-0">{parentData.address || "—"}</p>
                         </div>
+                        {parentData.city && (
+                          <div>
+                            <span className="small">City</span>
+                            <p className="mb-0">{parentData.city}</p>
+                          </div>
+                        )}
+                        {parentData.state && (
+                          <div>
+                            <span className="small">State</span>
+                            <p className="mb-0">{parentData.state}</p>
+                          </div>
+                        )}
+                        {parentData.zip_code && (
+                          <div>
+                            <span className="small">Zip Code</span>
+                            <p className="mb-0">{parentData.zip_code}</p>
+                          </div>
+                        )}
                       </div>
                     </InfoCard>
                   </Col>
@@ -414,22 +492,11 @@ const ParentDetails = () => {
             </Tab>
 
             {/* Children Information Tab */}
-            <Tab
-              eventKey="children"
-              title={
-                <span>
-                  <i className="bi bi-people me-2"></i>
-                  Children Information
-                </span>
-              }
-            >
+            <Tab eventKey="children" title="Children Information">
               <div className="p-3">
                 <Row className="g-3">
                   <Col md={12}>
-                    <InfoCard
-                      title="Associated Children"
-                      className="bg-secondary bg-opacity-10"
-                    >
+                    <InfoCard title="Associated Children" className="bg-light">
                       {parentData.children && parentData.children.length > 0 ? (
                         <div className="table-responsive">
                           <table className="table table-hover">
@@ -445,11 +512,11 @@ const ParentDetails = () => {
                               {parentData.children.map((child) => (
                                 <tr key={child.id}>
                                   <td>{child.full_name}</td>
-                                  <td>{child.grade}</td>
+                                  <td>{child.grade || "—"}</td>
                                   <td>{child.class || "—"}</td>
                                   <td>
-                                    <Badge bg={child.status === "Active" ? "success" : "secondary"}>
-                                      {child.status}
+                                    <Badge bg={child.is_active ? "success" : "secondary"}>
+                                      {child.is_active ? "Active" : "Inactive"}
                                     </Badge>
                                   </td>
                                 </tr>
@@ -458,19 +525,76 @@ const ParentDetails = () => {
                           </table>
                         </div>
                       ) : (
-                        <EmptyState
-                          message="No children associated with this parent"
-                          className="py-4"
-                        />
+                        <div className="text-center py-4 text-muted">
+                          <i className="bi bi-people fs-1 mb-3"></i>
+                          <p>No children associated with this parent</p>
+                        </div>
                       )}
                     </InfoCard>
                   </Col>
                 </Row>
               </div>
             </Tab>
+
+            {/* Additional Information Tab */}
+            <Tab eventKey="additional" title="Additional Information">
+              <div className="p-3">
+                <Row className="g-3">
+                  <Col md={6}>
+                    <InfoCard title="System Information" className="bg-light">
+                      <div className="d-flex flex-column gap-3">
+                        <div>
+                          <span className="small">Created At</span>
+                          <p className="mb-0">
+                            {parentData.created_at ? formatDateToMMDDYYYY(parentData.created_at) : "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="small">Updated At</span>
+                          <p className="mb-0">
+                            {parentData.updated_at ? formatDateToMMDDYYYY(parentData.updated_at) : "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="small">Last Login</span>
+                          <p className="mb-0">
+                            {parentData.last_login ? formatDateToMMDDYYYY(parentData.last_login) : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </InfoCard>
+                  </Col>
+
+                  <Col md={6}>
+                    <InfoCard title="Emergency Contact" className="bg-light">
+                      <div className="d-flex flex-column gap-3">
+                        <div>
+                          <span className="small">Emergency Contact Name</span>
+                          <p className="mb-0">
+                            {parentData.emergency_contact_name || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="small">Emergency Contact Phone</span>
+                          <p className="mb-0">
+                            {parentData.emergency_contact_phone || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="small">Relationship</span>
+                          <p className="mb-0">
+                            {parentData.emergency_contact_relationship || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </InfoCard>
+                  </Col>
+                </Row>
+              </div>
+            </Tab>
           </Tabs>
-        </div>
-      </div>
+        </Card.Body>
+      </Card>
     </div>
   );
 };

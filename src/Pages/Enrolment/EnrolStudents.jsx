@@ -263,10 +263,10 @@ const EnrolStudents = () => {
             orderable: false,
             render: function (data, type, row) {
               return `
-      <button className="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details">
-        <i className="bi bi-eye"></i>
-      </button>
-    `;
+                <button class="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details" style="border: 1px solid #0d6efd; background: transparent; padding: 4px 8px; border-radius: 4px;">
+                  <i class="bi bi-eye" style="font-size: 16px; color: #0d6efd;"></i>
+                </button>
+              `;
             },
           },
         ],
@@ -284,7 +284,8 @@ const EnrolStudents = () => {
         },
       });
 
-      $("#studentTable").on("click", ".view-icon", function () {
+      // Corrected click event - using .view-btn instead of .view-icon
+      $("#studentTable").on("click", ".view-btn", function () {
         const studentId = $(this).data("student-id");
         console.log("View button clicked for student:", studentId);
         const student = students.find((s) => s.id === studentId);

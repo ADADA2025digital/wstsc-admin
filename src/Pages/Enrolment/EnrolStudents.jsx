@@ -153,6 +153,7 @@ const EnrolStudents = () => {
             : "N/A",
           contact_email: contactEmail,
           contact_phone: contactPhone,
+          status: student.status || "pending", // Added status field
           raw_data: student,
         };
       });
@@ -246,6 +247,29 @@ const EnrolStudents = () => {
             title: "Enrollment Year",
             data: "enrollment_year",
             className: "text-center",
+          },
+          {
+            title: "Status",
+            data: "status",
+            className: "text-center",
+            width: "100px",
+            render: function (data, type, row) {
+              let badgeClass = "badge ";
+              switch (data) {
+                case "approved":
+                  badgeClass += "bg-success";
+                  break;
+                case "rejected":
+                  badgeClass += "bg-danger";
+                  break;
+                case "pending":
+                  badgeClass += "bg-warning";
+                  break;
+                default:
+                  badgeClass += "bg-secondary";
+              }
+              return `<span class="${badgeClass}" style="padding: 4px 8px; border-radius: 12px; font-size: 12px; text-transform: capitalize;">${data}</span>`;
+            },
           },
           {
             title: "Parent Name",

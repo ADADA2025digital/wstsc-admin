@@ -16,6 +16,7 @@ const EnrolmentDetails = () => {
   const [activeTab, setActiveTab] = useState("parents");
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
+  const [alertInfo, setAlertInfo] = useState({ show: false, type: "", message: "" });
 
   useEffect(() => {
     if (location.state?.studentData) {
@@ -25,6 +26,20 @@ const EnrolmentDetails = () => {
       fetchStudentDetails();
     }
   }, [id, location.state]);
+
+  // Show alert function
+  const showAlert = (type, message) => {
+    setAlertInfo({ show: true, type, message });
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+      setAlertInfo({ show: false, type: "", message: "" });
+    }, 5000);
+  };
+
+  // Hide alert manually
+  const hideAlert = () => {
+    setAlertInfo({ show: false, type: "", message: "" });
+  };
 
   const fetchStudentDetails = async () => {
     try {
@@ -47,59 +62,54 @@ const EnrolmentDetails = () => {
     navigate(`/enrolment/edit/${id}`, { state: { studentData } });
 
   // Accept Enrolment API Integration using your axios instance
-  const handleAcceptEnrolment = async () => {
-    if (!id) {
-      alert("No enrolment ID found");
-      return;
-    }
+const handleAcceptEnrolment = async () => {
+  if (!id) {
+    showAlert("danger", "No enrolment ID found");
+    return;
+  }
 
-    // Confirmation dialog
-    const isConfirmed = window.confirm(
-      "Are you sure you want to accept this enrolment? This action cannot be undone."
-    );
+  // Removed the confirmation dialog
+
+  try {
+    setAcceptLoading(true);
+    setDebugInfo("Starting API call...");
     
-    if (!isConfirmed) return;
+    // Using your axios instance - much simpler!
+    const response = await api.post(`/admin/enrollments/${id}/approve`);
 
-    try {
-      setAcceptLoading(true);
-      setDebugInfo("Starting API call...");
-      
-      // Using your axios instance - much simpler!
-      const response = await api.post(`/admin/enrollments/${id}/approve`);
+    setDebugInfo("Enrolment accepted successfully!");
 
-      setDebugInfo("Enrolment accepted successfully!");
+    if (response.data.success) {
+      // Update local state to reflect the approved status
+      setStudentData(prevData => ({
+        ...prevData,
+        status: "approved",
+        // Update with API response data
+        ...response.data.data.enrollment
+      }));
 
-      if (response.data.success) {
-        // Update local state to reflect the approved status
-        setStudentData(prevData => ({
-          ...prevData,
-          status: "approved",
-          // Update with API response data
-          ...response.data.data.enrollment
-        }));
-
-        // Show success message
-        alert("Enrolment accepted successfully!");
-      } else {
-        throw new Error(response.data.message || "Failed to accept enrolment");
-      }
-    } catch (err) {
-      console.error("Error accepting enrolment:", err);
-      setDebugInfo(`Error: ${err.message}`);
-      
-      // User-friendly error messages
-      if (err.response?.status === 401) {
-        // The interceptor will handle the redirect automatically
-        alert("Authentication failed. Your session may have expired. Please log in again.");
-      } else if (err.message.includes("Network Error") || err.message.includes("timeout")) {
-        alert("Network error. Please check your internet connection and try again.");
-      } else {
-        alert(`Failed to accept enrolment: ${err.response?.data?.message || err.message}`);
-      }
-    } finally {
-      setAcceptLoading(false);
+      // Show success message using Bootstrap alert
+      showAlert("success", "Enrolment accepted successfully!");
+    } else {
+      throw new Error(response.data.message || "Failed to accept enrolment");
     }
-  };
+  } catch (err) {
+    console.error("Error accepting enrolment:", err);
+    setDebugInfo(`Error: ${err.message}`);
+    
+    // User-friendly error messages using Bootstrap alerts
+    if (err.response?.status === 401) {
+      // The interceptor will handle the redirect automatically
+      showAlert("danger", "Authentication failed. Your session may have expired. Please log in again.");
+    } else if (err.message.includes("Network Error") || err.message.includes("timeout")) {
+      showAlert("warning", "Network error. Please check your internet connection and try again.");
+    } else {
+      showAlert("danger", `Failed to accept enrolment: ${err.response?.data?.message || err.message}`);
+    }
+  } finally {
+    setAcceptLoading(false);
+  }
+};
 
   // Test API connection function using your axios instance
   const testAPIConnection = async () => {
@@ -110,9 +120,11 @@ const EnrolmentDetails = () => {
       
       setDebugInfo(`Test API connection successful! Status: ${response.status}`);
       console.log("Test API connection status:", response.status);
+      showAlert("success", "API connection test successful!");
     } catch (error) {
       setDebugInfo(`Test API connection failed: ${error.message}`);
       console.error("Test API connection failed:", error);
+      showAlert("danger", "API connection test failed!");
     }
   };
 
@@ -214,35 +226,25 @@ const EnrolmentDetails = () => {
 
   return (
     <div className="container-fluid px-4 py-3">
-      {/* Debug Section - Remove in production */}
-      <div className="alert alert-info mb-3">
-        <div className="d-flex justify-content-between align-items-start">
-          <div>
-            <h6 className="mb-2">Debug Information</h6>
-            <p className="mb-1 small">
-              <strong>Enrolment ID:</strong> {id} | 
-              <strong> Status:</strong> {debugInfo}
-            </p>
+      {/* Success/Error Alert */}
+      {alertInfo.show && (
+        <div className={`alert alert-${alertInfo.type} alert-dismissible fade show mb-3`} role="alert">
+          <div className="d-flex align-items-center">
+            <i className={`bi ${
+              alertInfo.type === "success" ? "bi-check-circle-fill" :
+              alertInfo.type === "warning" ? "bi-exclamation-triangle-fill" :
+              "bi-exclamation-circle-fill"
+            } me-2`}></i>
+            <span>{alertInfo.message}</span>
           </div>
-          <div className="d-flex gap-2">
-            <button 
-              onClick={testAPIConnection}
-              className="btn btn-sm btn-outline-info"
-            >
-              Test API
-            </button>
-            <button 
-              onClick={() => {
-                console.log("Using axios instance with interceptors");
-                console.log("All cookies:", document.cookie);
-              }}
-              className="btn btn-sm btn-outline-secondary"
-            >
-              Debug Auth
-            </button>
-          </div>
+          <button 
+            type="button" 
+            className="btn-close" 
+            onClick={hideAlert}
+            aria-label="Close"
+          ></button>
         </div>
-      </div>
+      )}
 
       {/* Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">

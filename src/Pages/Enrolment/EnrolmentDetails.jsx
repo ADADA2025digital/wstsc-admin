@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import {
-  Row,
-  Col,
-  Tab,
-  Tabs,
-} from "react-bootstrap";
+import { Row, Col, Tab, Tabs } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
+import api from "../../config/axiosConfig";
 
 const EnrolmentDetails = () => {
   const { id } = useParams();
@@ -18,6 +14,8 @@ const EnrolmentDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("parents");
+  const [acceptLoading, setAcceptLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
     if (location.state?.studentData) {
@@ -32,7 +30,10 @@ const EnrolmentDetails = () => {
     try {
       setLoading(true);
       setError(null);
-      // API call would go here
+      // API call would go here using your axios instance
+      // Example:
+      // const response = await api.get(`/admin/enrollments/${id}`);
+      // setStudentData(response.data.data);
       setError("Student data not found. Please go back and try again.");
     } catch (err) {
       setError("Failed to fetch student details: " + err.message);
@@ -44,6 +45,76 @@ const EnrolmentDetails = () => {
   const handleBack = () => navigate("/enrolments");
   const handleEdit = () =>
     navigate(`/enrolment/edit/${id}`, { state: { studentData } });
+
+  // Accept Enrolment API Integration using your axios instance
+  const handleAcceptEnrolment = async () => {
+    if (!id) {
+      alert("No enrolment ID found");
+      return;
+    }
+
+    // Confirmation dialog
+    const isConfirmed = window.confirm(
+      "Are you sure you want to accept this enrolment? This action cannot be undone."
+    );
+    
+    if (!isConfirmed) return;
+
+    try {
+      setAcceptLoading(true);
+      setDebugInfo("Starting API call...");
+      
+      // Using your axios instance - much simpler!
+      const response = await api.post(`/admin/enrollments/${id}/approve`);
+
+      setDebugInfo("Enrolment accepted successfully!");
+
+      if (response.data.success) {
+        // Update local state to reflect the approved status
+        setStudentData(prevData => ({
+          ...prevData,
+          status: "approved",
+          // Update with API response data
+          ...response.data.data.enrollment
+        }));
+
+        // Show success message
+        alert("Enrolment accepted successfully!");
+      } else {
+        throw new Error(response.data.message || "Failed to accept enrolment");
+      }
+    } catch (err) {
+      console.error("Error accepting enrolment:", err);
+      setDebugInfo(`Error: ${err.message}`);
+      
+      // User-friendly error messages
+      if (err.response?.status === 401) {
+        // The interceptor will handle the redirect automatically
+        alert("Authentication failed. Your session may have expired. Please log in again.");
+      } else if (err.message.includes("Network Error") || err.message.includes("timeout")) {
+        alert("Network error. Please check your internet connection and try again.");
+      } else {
+        alert(`Failed to accept enrolment: ${err.response?.data?.message || err.message}`);
+      }
+    } finally {
+      setAcceptLoading(false);
+    }
+  };
+
+  // Test API connection function using your axios instance
+  const testAPIConnection = async () => {
+    try {
+      setDebugInfo("Testing API connection...");
+      
+      const response = await api.get("/admin/enrollments");
+      
+      setDebugInfo(`Test API connection successful! Status: ${response.status}`);
+      console.log("Test API connection status:", response.status);
+    } catch (error) {
+      setDebugInfo(`Test API connection failed: ${error.message}`);
+      console.error("Test API connection failed:", error);
+    }
+  };
 
   // Helper function to get parent by type
   const getParentByType = (type) => {
@@ -143,6 +214,36 @@ const EnrolmentDetails = () => {
 
   return (
     <div className="container-fluid px-4 py-3">
+      {/* Debug Section - Remove in production */}
+      <div className="alert alert-info mb-3">
+        <div className="d-flex justify-content-between align-items-start">
+          <div>
+            <h6 className="mb-2">Debug Information</h6>
+            <p className="mb-1 small">
+              <strong>Enrolment ID:</strong> {id} | 
+              <strong> Status:</strong> {debugInfo}
+            </p>
+          </div>
+          <div className="d-flex gap-2">
+            <button 
+              onClick={testAPIConnection}
+              className="btn btn-sm btn-outline-info"
+            >
+              Test API
+            </button>
+            <button 
+              onClick={() => {
+                console.log("Using axios instance with interceptors");
+                console.log("All cookies:", document.cookie);
+              }}
+              className="btn btn-sm btn-outline-secondary"
+            >
+              Debug Auth
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -150,11 +251,24 @@ const EnrolmentDetails = () => {
         </div>
 
         <div className="d-flex align-items-center gap-2">
-                    <ButtonGlobal
-            className="btn btn-outline-primary"
+          <ButtonGlobal
+            onClick={handleAcceptEnrolment}
+            className="btn btn-success"
+            disabled={acceptLoading || studentData.status === "approved"}
           >
-            <i className="bi bi-check2-all me-2"></i>
-            Accept the Enrolment
+            {acceptLoading ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                Processing...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-check2-all me-2"></i>
+                {studentData.status === "approved" ? "Enrolment Accepted" : "Accept the Enrolment"}
+              </>
+            )}
           </ButtonGlobal>
           <ButtonGlobal
             onClick={handleBack}
@@ -245,9 +359,21 @@ const EnrolmentDetails = () => {
               </div>
             </div>
             <div className="col-md-3">
-              <div className="d-flex flex-column">
-                <span className="small fw-semibold">Dates of Attendance</span>
-                <span className="fs-6">{studentData.dates_of_attendance}</span>
+              <div className="d-flex flex-column align-items-start">
+                <span className="small fw-semibold">Status</span>
+                <span
+                  className={`badge ${
+                    studentData.status === "approved"
+                      ? "bg-success"
+                      : studentData.status === "pending"
+                      ? "bg-warning"
+                      : studentData.status === "rejected"
+                      ? "bg-danger"
+                      : "bg-secondary"
+                  }`}
+                >
+                  {studentData.status}
+                </span>
               </div>
             </div>
           </div>

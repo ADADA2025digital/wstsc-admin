@@ -44,13 +44,13 @@ function App() {
 
           <Route path="/enrolments" element={<EnrolStudents />} />
           <Route path="/enrolment/:id" element={<EnrolmentDetails />} />
+          <Route path="/enrol" element={<EnrolmentForm />} />
 
           <Route path="/teachers" element={<TeachersTable />} />
-          <Route path="/teachers/:name" element={<TeacherDetails />} />
+          <Route path="/teachers/:id" element={<TeacherDetails />} />
 
           <Route path="/parents" element={<ParentTable />} />
           <Route path="/parents/:name" element={<ParentDetails />} />
-          <Route path="/enrol" element={<EnrolmentForm />} />
 
           <Route path="/classrooms" element={<ClassroomsList />} />
           <Route path="/classrooms/:id" element={<ClassroomDetails />} />

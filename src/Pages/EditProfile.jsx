@@ -12,7 +12,9 @@ import {
 } from "react-bootstrap";
 import ButtonGlobal from "../Components/Button";
 import InfoCard from "../Components/InfoCard";
+import SelectInput from "../Components/SelectInput";
 import api from "../config/axiosConfig";
+import { Country, State, City } from "country-state-city";
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -21,6 +23,11 @@ const EditProfile = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
   const [apiMessage, setApiMessage] = useState({ type: "", text: "" });
+
+  // Location data states
+  const [countriesList, setCountriesList] = useState([]);
+  const [statesList, setStatesList] = useState([]);
+  const [citiesList, setCitiesList] = useState([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -40,6 +47,7 @@ const EditProfile = () => {
     state: "",
     postal_code: "",
     country: "",
+    suburb: "",
   });
 
   // Profile picture state
@@ -51,6 +59,121 @@ const EditProfile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [originalData, setOriginalData] = useState({});
 
+  // Initialize countries on component mount
+  useEffect(() => {
+    initializeCountries();
+  }, []);
+
+  // Update states when country changes
+  useEffect(() => {
+    if (formData.country) {
+      loadStates(formData.country);
+    } else {
+      setStatesList([]);
+      setCitiesList([]);
+    }
+  }, [formData.country]);
+
+  // Update cities when state changes
+  useEffect(() => {
+    if (formData.country && formData.state) {
+      loadCities(formData.country, formData.state);
+    } else {
+      setCitiesList([]);
+    }
+  }, [formData.country, formData.state]);
+
+  // Initialize countries list
+  const initializeCountries = () => {
+    try {
+      const countriesData = Country.getAllCountries();
+      
+      const formattedCountries = countriesData.map(country => ({
+        value: country.isoCode,
+        label: country.name
+      }));
+
+      formattedCountries.sort((a, b) => a.label.localeCompare(b.label));
+      
+      setCountriesList(formattedCountries);
+    } catch (error) {
+      console.error("Error loading countries:", error);
+      setCountriesList([
+        { value: "US", label: "United States" },
+        { value: "AU", label: "Australia" },
+        { value: "CA", label: "Canada" },
+        { value: "GB", label: "United Kingdom" },
+        { value: "IN", label: "India" },
+        { value: "CN", label: "China" },
+        { value: "JP", label: "Japan" },
+        { value: "DE", label: "Germany" },
+        { value: "FR", label: "France" },
+      ]);
+    }
+  };
+
+  // Load states for selected country
+  const loadStates = (countryCode) => {
+    try {
+      const statesData = State.getStatesOfCountry(countryCode);
+      
+      const formattedStates = statesData.map(state => ({
+        value: state.isoCode,
+        label: state.name
+      }));
+
+      formattedStates.sort((a, b) => a.label.localeCompare(b.label));
+      
+      setStatesList(formattedStates);
+      
+      // Clear city and state if country changes and state is no longer valid
+      if (formData.state && !formattedStates.find(state => state.value === formData.state)) {
+        setFormData(prev => ({
+          ...prev,
+          state: "",
+          city: "",
+          suburb: ""
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading states:", error);
+      setStatesList([]);
+    }
+  };
+
+  // Load cities for selected state
+  const loadCities = (countryCode, stateCode) => {
+    try {
+      const citiesData = City.getCitiesOfState(countryCode, stateCode);
+      
+      const formattedCities = citiesData.map(city => ({
+        value: city.name,
+        label: city.name
+      }));
+
+      // Remove duplicates and sort
+      const uniqueCities = formattedCities.filter((city, index, self) =>
+        index === self.findIndex(c => c.value === city.value)
+      );
+      
+      uniqueCities.sort((a, b) => a.label.localeCompare(b.label));
+      
+      setCitiesList(uniqueCities);
+      
+      // Clear city if state changes and city is no longer valid
+      if (formData.city && !uniqueCities.find(city => city.value === formData.city)) {
+        setFormData(prev => ({
+          ...prev,
+          city: "",
+          suburb: ""
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading cities:", error);
+      setCitiesList([]);
+    }
+  };
+
   // Fetch current profile data from /profile/person endpoint
   const fetchProfileData = async () => {
     try {
@@ -61,8 +184,6 @@ const EditProfile = () => {
 
       if (response.data.success) {
         const profileData = response.data.data?.profile || {};
-
-        // Map data according to API response structure - data is in profile object
         const address = profileData.address || {};
 
         const mappedData = {
@@ -82,10 +203,19 @@ const EditProfile = () => {
           state: address.state || "",
           postal_code: address.postal_code || "",
           country: address.country || "",
+          suburb: address.suburb || "",
         };
 
         setFormData(mappedData);
         setOriginalData(mappedData);
+
+        // Load states and cities based on saved country/state
+        if (mappedData.country) {
+          loadStates(mappedData.country);
+          if (mappedData.state) {
+            loadCities(mappedData.country, mappedData.state);
+          }
+        }
 
         // Set profile picture if available
         if (profileData.photo_url) {
@@ -125,6 +255,14 @@ const EditProfile = () => {
     }));
   };
 
+  // Handle select input changes
+  const handleSelectChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   // Handle profile picture selection
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
@@ -156,7 +294,7 @@ const EditProfile = () => {
     }
   };
 
-  // Upload profile picture - FIXED VERSION
+  // Upload profile picture
   const handleProfilePictureUpload = async () => {
     if (!profilePictureFile) {
       showMessage("warning", "Please select a picture to upload");
@@ -257,6 +395,7 @@ const EditProfile = () => {
         occupation: formData.occupation,
         address_line1: formData.address_line1,
         country: formData.country,
+        suburb: formData.suburb,
       };
 
       // Use the correct endpoint and send as JSON (not FormData)
@@ -295,6 +434,7 @@ const EditProfile = () => {
           state: updatedAddress.state || prev.state,
           postal_code: updatedAddress.postal_code || prev.postal_code,
           country: updatedAddress.country || prev.country,
+          suburb: updatedAddress.suburb || prev.suburb,
         }));
 
         // Also update profile picture if it changed
@@ -644,29 +784,59 @@ const EditProfile = () => {
                           </Form.Group>
                         </div>
 
-                        <div className="col-md-6">
-                          <Form.Group>
-                            <Form.Label>City</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="city"
-                              value={formData.city}
-                              onChange={handleInputChange}
-                              placeholder="Melbourne"
-                            />
-                          </Form.Group>
+                        {/* Country Select */}
+                        <div className="col-12">
+                          <SelectInput
+                            id="country"
+                            label="Country"
+                            value={formData.country}
+                            onChange={(value) => handleSelectChange("country", value)}
+                            placeholder="Select Country"
+                            options={countriesList}
+                          />
                         </div>
 
+                        {/* State/Province Select */}
+                        <div className="col-md-6">
+                          <SelectInput
+                            id="state"
+                            label="State/Province"
+                            value={formData.state}
+                            onChange={(value) => handleSelectChange("state", value)}
+                            placeholder={statesList.length > 0 ? "Select State" : "Select Country First"}
+                            options={statesList}
+                            disabled={!formData.country}
+                          />
+                        </div>
+
+                        {/* City Select */}
+                        <div className="col-md-6">
+                          <SelectInput
+                            id="city"
+                            label="City"
+                            value={formData.city}
+                            onChange={(value) => handleSelectChange("city", value)}
+                            placeholder={citiesList.length > 0 ? "Select City" : "Select State First"}
+                            options={citiesList}
+                            disabled={!formData.state}
+                          />
+                        </div>
+
+                        {/* Suburb Input */}
                         <div className="col-md-6">
                           <Form.Group>
-                            <Form.Label>State</Form.Label>
+                            <Form.Label>Suburb</Form.Label>
                             <Form.Control
                               type="text"
-                              name="state"
-                              value={formData.state}
+                              name="suburb"
+                              value={formData.suburb}
                               onChange={handleInputChange}
-                              placeholder="VIC"
+                              placeholder="Enter suburb"
+                              disabled={!formData.city}
                             />
+                            <Form.Text className="text-muted">
+                              Enter your local suburb/area
+                            </Form.Text>
                           </Form.Group>
                         </div>
 
@@ -679,19 +849,6 @@ const EditProfile = () => {
                               value={formData.postal_code}
                               onChange={handleInputChange}
                               placeholder="3000"
-                            />
-                          </Form.Group>
-                        </div>
-
-                        <div className="col-md-6">
-                          <Form.Group>
-                            <Form.Label>Country</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="country"
-                              value={formData.country}
-                              onChange={handleInputChange}
-                              placeholder="Australia"
                             />
                           </Form.Group>
                         </div>

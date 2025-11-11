@@ -31,115 +31,6 @@ const StudentsList = () => {
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
 
-  // Seed data for students
-  const seedStudents = [
-    {
-      id: 1,
-      student_id: "STU0001",
-      first_given_name: "Emma",
-      family_name: "Johnson",
-      preferred_first_name: "Emma",
-      gender: "Female",
-      date_of_birth: "2015-03-15",
-      mainstream_enrollment_year: "2023",
-      overseas_student: "No",
-      status: "Active",
-      classroom: "Grade 2A",
-      parent_carers: [
-        {
-          first_name: "Sarah",
-          last_name: "Johnson",
-          email: "sarah.johnson@email.com",
-          mobile_phone: "+61 412 345 678",
-        },
-      ],
-    },
-    {
-      id: 2,
-      student_id: "STU0002",
-      first_given_name: "Liam",
-      family_name: "Smith",
-      preferred_first_name: "Liam",
-      gender: "Male",
-      date_of_birth: "2016-07-22",
-      mainstream_enrollment_year: "2024",
-      overseas_student: "Yes",
-      status: "Pending",
-      classroom: "Grade 1B",
-      parent_carers: [
-        {
-          first_name: "Michael",
-          last_name: "Smith",
-          email: "michael.smith@email.com",
-          mobile_phone: "+61 423 456 789",
-        },
-      ],
-    },
-    {
-      id: 3,
-      student_id: "STU0003",
-      first_given_name: "Olivia",
-      family_name: "Brown",
-      preferred_first_name: "Liv",
-      gender: "Female",
-      date_of_birth: "2015-11-08",
-      mainstream_enrollment_year: "2023",
-      overseas_student: "No",
-      status: "Active",
-      classroom: "Grade 2A",
-      parent_carers: [
-        {
-          first_name: "Jennifer",
-          last_name: "Brown",
-          email: "jennifer.brown@email.com",
-          mobile_phone: "+61 434 567 890",
-        },
-      ],
-    },
-    {
-      id: 4,
-      student_id: "STU0004",
-      first_given_name: "Noah",
-      family_name: "Wilson",
-      preferred_first_name: "Noah",
-      gender: "Male",
-      date_of_birth: "2016-02-14",
-      mainstream_enrollment_year: "2024",
-      overseas_student: "No",
-      status: "Active",
-      classroom: "Grade 1B",
-      parent_carers: [
-        {
-          first_name: "David",
-          last_name: "Wilson",
-          email: "david.wilson@email.com",
-          mobile_phone: "+61 445 678 901",
-        },
-      ],
-    },
-    {
-      id: 5,
-      student_id: "STU0005",
-      first_given_name: "Ava",
-      family_name: "Taylor",
-      preferred_first_name: "Ava",
-      gender: "Female",
-      date_of_birth: "2015-09-30",
-      mainstream_enrollment_year: "2023",
-      overseas_student: "Yes",
-      status: "Inactive",
-      classroom: "Grade 2B",
-      parent_carers: [
-        {
-          first_name: "Amanda",
-          last_name: "Taylor",
-          email: "amanda.taylor@email.com",
-          mobile_phone: "+61 456 789 012",
-        },
-      ],
-    },
-  ];
-
   // Get user data from localStorage on component mount
   useEffect(() => {
     const userDataFromStorage = localStorage.getItem("userData");
@@ -169,7 +60,7 @@ const StudentsList = () => {
     });
   };
 
-  // Fetch students from seed data
+  // Fetch students from API
   const fetchStudents = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -179,53 +70,101 @@ const StudentsList = () => {
       }
       setError(null);
 
-      console.log("Loading students from seed data...");
+      console.log("Fetching students from API...");
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Make API call to get all students
+      const response = await api.get("/class-students");
 
-      // Filter students for parent role
-      const filteredStudents = filterStudentsForParent(seedStudents);
+      console.log("API Response:", response.data);
 
-      // Format students data for the table
-      const formattedStudents = filteredStudents.map((student, index) => {
-        const firstParent =
-          student.parent_carers && student.parent_carers.length > 0
-            ? student.parent_carers[0]
-            : {};
+      if (response.data && response.data.success) {
+        // Extract class_students array from the response
+        const classStudents = response.data.data?.class_students || [];
 
-        // For this API structure, contact details come from parent_carers
-        const contactEmail = firstParent.email || "N/A";
-        const contactPhone = firstParent.mobile_phone || "N/A";
+        console.log("Raw class students data:", classStudents);
 
-        return {
-          index: index + 1,
-          id: student.id,
-          student_id: student.student_id,
-          full_name: `${student.first_given_name || ""} ${
-            student.family_name || ""
-          }`.trim(),
-          preferred_name: student.preferred_first_name || "",
-          gender: student.gender || "",
-          date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
-          enrollment_year: student.mainstream_enrollment_year || "",
-          status: student.status || "Unknown",
-          classroom: student.classroom || "N/A",
-          parent_name: firstParent.first_name
-            ? `${firstParent.first_name} ${firstParent.last_name}`
-            : "N/A",
-          contact_email: contactEmail,
-          contact_phone: contactPhone,
-          raw_data: student,
-        };
-      });
+        // Transform the API response to match your expected student structure
+        const studentsData = classStudents.map((cs) => {
+          const student = cs.student || {};
+          const classroom = cs.classroom || {};
 
-      console.log("Formatted students:", formattedStudents);
-      setStudents(formattedStudents);
-      setLastRefreshTime(new Date());
+          return {
+            id: student.enrollment_id || cs.student_id,
+            student_id: `STU${String(
+              student.enrollment_id || cs.student_id
+            ).padStart(4, "0")}`,
+            first_given_name: student.first_given_name || "",
+            family_name: student.family_name || "",
+            preferred_first_name: student.preferred_first_name || "",
+            gender: student.gender || "Unknown",
+            date_of_birth: student.date_of_birth || "",
+            mainstream_enrollment_year: cs.enr_year || "",
+            status: cs.is_active ? "Active" : "Inactive",
+            classroom: classroom.class_name || "N/A",
+            parent_carers: student.parent_carers || [], // This might need separate API call
+            // Add other fields that might be needed
+            raw_class_student: cs,
+          };
+        });
+
+        console.log("Transformed students data:", studentsData);
+
+        // Filter students for parent role
+        const filteredStudents = filterStudentsForParent(studentsData);
+
+        // Format students data for the table
+        const formattedStudents = filteredStudents.map((student, index) => {
+          const firstParent =
+            student.parent_carers && student.parent_carers.length > 0
+              ? student.parent_carers[0]
+              : {};
+
+          // For this API structure, contact details come from parent_carers
+          const contactEmail = firstParent.email || "N/A";
+          const contactPhone = firstParent.mobile_phone || "N/A";
+
+          return {
+            index: index + 1,
+            id: student.id,
+            student_id: student.student_id,
+            full_name: `${student.first_given_name || ""} ${
+              student.family_name || ""
+            }`.trim(),
+            preferred_name: student.preferred_first_name || "",
+            gender: student.gender || "",
+            date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
+            enrollment_year: student.mainstream_enrollment_year || "",
+            status: student.status || "Unknown",
+            classroom: student.classroom || "N/A",
+            parent_name: firstParent.first_name
+              ? `${firstParent.first_name} ${firstParent.last_name}`
+              : "N/A",
+            contact_email: contactEmail,
+            contact_phone: contactPhone,
+            raw_data: student,
+          };
+        });
+
+        console.log("Formatted students:", formattedStudents);
+        setStudents(formattedStudents);
+        setLastRefreshTime(new Date());
+      } else {
+        throw new Error(response.data?.message || "Failed to fetch students");
+      }
     } catch (err) {
       console.error("Fetch error:", err);
-      setError("Failed to load students data");
+
+      // Handle different error scenarios
+      if (err.response) {
+        // Server responded with error status
+        setError(err.response.data?.message || `Error: ${err.response.status}`);
+      } else if (err.request) {
+        // Request was made but no response received
+        setError("Network error: Unable to connect to server");
+      } else {
+        // Other errors
+        setError(err.message || "Failed to load students data");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -294,7 +233,7 @@ const StudentsList = () => {
                   ? "badge bg-secondary"
                   : "badge bg-info";
 
-              return `<span className="${statusClass}">${data}</span>`;
+              return `<span class="${statusClass}">${data}</span>`;
             },
           },
           {
@@ -318,11 +257,11 @@ const StudentsList = () => {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <div className="d-flex justify-content-center gap-2">
-                  <button className="btn btn-sm btn-outline-primary view-btn" 
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary view-btn" 
                           data-student-id="${row.id}" 
                           title="View Details">
-                    <i className="bi bi-eye"></i>
+                    <i class="bi bi-eye"></i>
                   </button>
                 </div>
               `;
@@ -365,10 +304,6 @@ const StudentsList = () => {
 
   const handleRefresh = () => {
     fetchStudents(true);
-  };
-
-  const handleAddStudent = () => {
-    navigate("/students/add");
   };
 
   // Show restricted access message for parents/teachers
@@ -418,9 +353,11 @@ const StudentsList = () => {
                           <Button
                             variant="outline-primary"
                             size="sm"
-                            onClick={() => navigate(`/students/${student.id}`, {
-                              state: { studentData: student.raw_data }
-                            })}
+                            onClick={() =>
+                              navigate(`/students/${student.id}`, {
+                                state: { studentData: student.raw_data },
+                              })
+                            }
                           >
                             View Details
                           </Button>
@@ -429,6 +366,16 @@ const StudentsList = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {userRole === "parent" && students.length === 0 && (
+              <div className="mt-4">
+                <p className="text-muted">
+                  No children found associated with your account.
+                </p>
+                <Button variant="outline-primary" onClick={handleRefresh}>
+                  Refresh
+                </Button>
               </div>
             )}
           </Card.Body>
@@ -463,20 +410,18 @@ const StudentsList = () => {
               Last updated: {lastRefreshTime.toLocaleTimeString()}
             </p>
           )}
-          <div className="d-flex align-items-center gap-2">
-            <ButtonGlobal
-              onClick={handleRefresh}
-              className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
-              disabled={refreshing}
-              style={{
-                opacity: refreshing ? 0.7 : 1,
-              }}
-            >
-              <i
-                className={`bi bi-arrow-clockwise ${refreshing ? "spin" : ""}`}
-              />
-            </ButtonGlobal>
-          </div>
+
+          <button
+            onClick={handleRefresh}
+            className={`btn btn-outline-secondary d-flex align-items-center justify-content-center ${
+              refreshing ? "opacity-75" : ""
+            }`}
+            disabled={refreshing}
+          >
+            <i
+              className={`bi bi-arrow-clockwise ${refreshing ? "spin" : ""}`}
+            ></i>
+          </button>
         </div>
       </div>
 
@@ -494,10 +439,11 @@ const StudentsList = () => {
         <div className="card mt-1 p-3 rounded-3 shadow">
           {students.length === 0 ? (
             <div className="text-center py-4">
+              <i className="bi bi-people display-4 text-muted mb-3"></i>
               <p className="text-muted">No students found.</p>
-              <ButtonGlobal 
-                onClick={handleAddStudent} 
-                text="Add First Student" 
+              <ButtonGlobal
+                onClick={handleAddStudent}
+                text="Add First Student"
                 className="btn btn-primary"
               />
             </div>

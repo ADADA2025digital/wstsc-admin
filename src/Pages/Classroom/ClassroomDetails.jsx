@@ -33,6 +33,8 @@ export default function ClassroomDetails() {
   const [activeTab, setActiveTab] = useState("overview");
   const [apiMessage, setApiMessage] = useState({ type: "", text: "" });
   const [assignedTeachers, setAssignedTeachers] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   // Edit classroom modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -43,6 +45,16 @@ export default function ClassroomDetails() {
   const [showRemoveTeacherModal, setShowRemoveTeacherModal] = useState(false);
   const [removingTeacher, setRemovingTeacher] = useState(false);
   const [teacherToRemove, setTeacherToRemove] = useState(null);
+
+  // Teacher assignment modal state
+  const [showAssignTeacherModal, setShowAssignTeacherModal] = useState(false);
+  const [availableTeachers, setAvailableTeachers] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [assigningTeacher, setAssigningTeacher] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState("");
+  const [assignmentDate, setAssignmentDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [notes, setNotes] = useState("");
 
   // Get user role from localStorage
   const getUserRole = () => {
@@ -61,16 +73,6 @@ export default function ClassroomDetails() {
 
   const userRole = getUserRole();
   const canEdit = EDITABLE_ROLES.includes(userRole);
-
-  // Teacher assignment modal state
-  const [showAssignTeacherModal, setShowAssignTeacherModal] = useState(false);
-  const [availableTeachers, setAvailableTeachers] = useState([]);
-  const [loadingTeachers, setLoadingTeachers] = useState(false);
-  const [assigningTeacher, setAssigningTeacher] = useState(false);
-  const [selectedTeacher, setSelectedTeacher] = useState("");
-  const [assignmentDate, setAssignmentDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [notes, setNotes] = useState("");
 
   // Fetch classroom by ID
   const fetchClassroomById = async (classroomId) => {
@@ -93,7 +95,6 @@ export default function ClassroomDetails() {
           code: classroomData.class_code || classroomData.class_id,
           status: classroomData.is_active ? "Active" : "Inactive",
           isActive: classroomData.is_active,
-          students: [], // Students would come from a different endpoint
           rawData: classroomData,
         };
 
@@ -105,6 +106,13 @@ export default function ClassroomDetails() {
           classroomData.class_id
         );
         await fetchAssignedTeachers(classroomData.class_id);
+        
+        // Fetch students when classroom data is loaded
+        console.log(
+          "👨‍🎓 Now fetching students for classroom ID:",
+          classroomData.class_id
+        );
+        await fetchClassStudents(classroomData.class_id);
       } else {
         console.error("❌ CLASSROOM DETAILS API FAILED");
         setError("Failed to load classroom details.");
@@ -188,6 +196,54 @@ export default function ClassroomDetails() {
     }
   };
 
+  // Fetch class students
+  const fetchClassStudents = async (classId) => {
+    try {
+      setLoadingStudents(true);
+      console.log("👨‍🎓 START: Fetching students for class:", classId);
+
+      const response = await api.get(`/class-students/class/${classId}`);
+      console.log("📦 CLASS STUDENTS API RESPONSE:", response.data);
+
+      if (response.data && response.data.success) {
+        const studentsData = response.data.data.students || [];
+        console.log("🎯 RAW STUDENTS DATA:", studentsData);
+
+        // Map the student data to a more usable format
+        const mappedStudents = studentsData.map((studentData, index) => {
+          const student = studentData.student || {};
+          return {
+            id: studentData.csid || student.enrollment_id || index,
+            enrollmentId: student.enrollment_id,
+            csid: studentData.csid,
+            studentId: studentData.student_id,
+            firstName: student.first_given_name,
+            familyName: student.family_name,
+            preferredName: student.preferred_first_name,
+            fullName: `${student.first_given_name || ''} ${student.family_name || ''}`.trim(),
+            gender: student.gender,
+            dateOfBirth: student.date_of_birth,
+            enrollmentYear: studentData.enr_year,
+            isActive: studentData.is_active,
+            rawData: studentData
+          };
+        });
+
+        console.log("✅ MAPPED STUDENTS:", mappedStudents);
+        setStudents(mappedStudents);
+      } else {
+        console.error("❌ CLASS STUDENTS API FAILED:", response.data);
+        setStudents([]);
+      }
+    } catch (error) {
+      console.error("💥 ERROR fetching class students:", error);
+      console.error("Error response:", error.response?.data);
+      setStudents([]);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
   // Fetch available teachers using the correct API endpoint
   const fetchAvailableTeachers = async () => {
     try {
@@ -241,6 +297,10 @@ export default function ClassroomDetails() {
   useEffect(() => {
     console.log("👨‍🏫 ASSIGNED TEACHERS STATE UPDATED:", assignedTeachers);
   }, [assignedTeachers]);
+
+  useEffect(() => {
+    console.log("👨‍🎓 STUDENTS STATE UPDATED:", students);
+  }, [students]);
 
   useEffect(() => {
     console.log("⏳ LOADING STATE:", loading);
@@ -502,13 +562,19 @@ export default function ClassroomDetails() {
     }
   };
 
+  // Refresh students data
+  const refreshStudents = async () => {
+    if (classroom?.classId) {
+      await fetchClassStudents(classroom.classId);
+    }
+  };
+
   if (loading) {
     console.log("⏳ RENDERING LOADING STATE");
     return (
       <div className="container-fluid px-4 py-3">
         <div
-          className="d-flex justify-content-center
-align-items-center"
+          className="d-flex justify-content-center align-items-center"
           style={{ height: "50vh" }}
         >
           <div className="text-center">
@@ -569,7 +635,7 @@ align-items-center"
     );
   }
 
-  const studentCount = classroom.students?.length || 0;
+  const studentCount = students.length;
   const teacherCount = assignedTeachers.length;
   const isActive = classroom.isActive;
 
@@ -607,8 +673,7 @@ align-items-center"
         <div className="d-flex align-items-center gap-2">
           <ButtonGlobal
             onClick={handleBack}
-            className="btn
-btn-outline-secondary"
+            className="btn btn-outline-secondary"
           >
             <i className="bi bi-arrow-left me-2" />
             Back to List
@@ -719,10 +784,7 @@ btn-outline-secondary"
               eventKey="overview"
               title={
                 <span>
-                  <i
-                    className="bi
-bi-grid-1x2 me-2"
-                  ></i>
+                  <i className="bi bi-grid-1x2 me-2"></i>
                   Overview
                 </span>
               }
@@ -774,18 +836,15 @@ bi-grid-1x2 me-2"
                           {assignedTeachers.map((teacher, index) => (
                             <div
                               key={teacher.assignmentId || index}
-                              className="list-group-item d-flex justify-content-between
-align-items-center"
+                              className="list-group-item d-flex justify-content-between align-items-center"
                             >
                               <div className="d-flex align-items-center">
                                 <i
-                                  className="bi bi-person-circle me-3
-text-primary fs-5"
+                                  className="bi bi-person-circle me-3 text-primary fs-5"
                                 ></i>
                                 <div>
                                   <h6
-                                    className="mb-0
-fw-semibold"
+                                    className="mb-0 fw-semibold"
                                   >
                                     {teacher.name}
                                   </h6>
@@ -837,18 +896,14 @@ fw-semibold"
               eventKey="teachers"
               title={
                 <span>
-                  <i
-                    className="bi
-bi-person-lines-fill me-2"
-                  ></i>
+                  <i className="bi bi-person-lines-fill me-2"></i>
                   Teachers ({teacherCount})
                 </span>
               }
             >
               <div className="p-3">
                 <div
-                  className="d-flex justify-content-between
-align-items-center mb-3"
+                  className="d-flex justify-content-between align-items-center mb-3"
                 >
                   <h5 className="mb-0">
                     Teachers Assigned to {classroom.name}
@@ -861,14 +916,12 @@ align-items-center mb-3"
                       {assignedTeachers.map((teacher, index) => (
                         <div
                           key={teacher.assignmentId || index}
-                          className="list-group-item d-flex justify-content-between
-align-items-center"
+                          className="list-group-item d-flex justify-content-between align-items-center"
                         >
                           <div>
                             <h6 className="mb-1 fw-semibold">{teacher.name}</h6>
                             <p
-                              className="mb-1 text-muted
-small"
+                              className="mb-1 text-muted small"
                             >
                               {teacher.email}
                             </p>
@@ -929,43 +982,123 @@ small"
               eventKey="students"
               title={
                 <span>
-                  <i
-                    className="bi
-bi-people me-2"
-                  ></i>
+                  <i className="bi bi-people me-2"></i>
                   Students ({studentCount})
+                  {loadingStudents && (
+                    <span className="ms-1 spinner-border spinner-border-sm text-primary"></span>
+                  )}
                 </span>
               }
             >
               <div className="p-3">
-                <InfoCard
-                  title="Student List"
-                  className="bg-secondary
-bg-opacity-10"
-                >
-                  {studentCount ? (
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="mb-0">Students in {classroom.name}</h5>
+                  {canEdit && (
+                    <ButtonGlobal
+                      onClick={refreshStudents}
+                      className="btn btn-outline-primary btn-sm"
+                      disabled={loadingStudents}
+                    >
+                      <i className={`bi bi-arrow-clockwise ${loadingStudents ? 'spinner-border spinner-border-sm' : ''} me-2`} />
+                      Refresh
+                    </ButtonGlobal>
+                  )}
+                </div>
+
+                <InfoCard title="" className="bg-secondary bg-opacity-10">
+                  {loadingStudents ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status"></div>
+                      <p className="mt-2 text-muted">Loading students...</p>
+                    </div>
+                  ) : students.length > 0 ? (
                     <div className="table-responsive">
                       <table className="table table-striped table-hover mb-0">
-                        <thead>
+                        <thead className="table-light">
                           <tr>
-                            <th style={{ width: 80 }}>#</th>
-                            <th>Full Name</th>
+                            <th style={{ width: 60 }}>#</th>
+                            <th>Student Name</th>
+                            <th>Preferred Name</th>
+                            <th>Gender</th>
+                            <th>Date of Birth</th>
+                            <th>Enrollment Year</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {classroom.students.map((s, i) => (
-                            <tr key={i}>
-                              <td>{i + 1}</td>
-                              <td>{s}</td>
+                          {students.map((student, index) => (
+                            <tr key={student.id}>
+                              <td className="fw-medium">{index + 1}</td>
+                              <td>
+                                <div>
+                                  <div className="fw-semibold">{student.fullName}</div>
+                                  <small className="text-muted">ID: {student.enrollmentId}</small>
+                                </div>
+                              </td>
+                              <td>{student.preferredName}</td>
+                              <td>
+                                <Badge 
+                                  bg={
+                                    student.gender === 'Female' ? 'info' : 
+                                    student.gender === 'Male' ? 'primary' : 'secondary'
+                                  }
+                                  className="fs-7"
+                                >
+                                  {student.gender}
+                                </Badge>
+                              </td>
+                              <td>
+                                {student.dateOfBirth ? 
+                                  new Date(student.dateOfBirth).toLocaleDateString() : 
+                                  'N/A'
+                                }
+                              </td>
+                              <td>{student.enrollmentYear}</td>
+                              <td>
+                                <Badge 
+                                  bg={student.isActive ? 'success' : 'secondary'}
+                                  className="fs-7"
+                                >
+                                  {student.isActive ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      
+                      {/* Summary information */}
+                      <div className="mt-3 p-3 bg-light rounded">
+                        <div className="row text-center">
+                          <div className="col">
+                            <small className="text-muted">Total Students</small>
+                            <div className="fw-bold text-primary">{students.length}</div>
+                          </div>
+                          <div className="col">
+                            <small className="text-muted">Active</small>
+                            <div className="fw-bold text-success">
+                              {students.filter(s => s.isActive).length}
+                            </div>
+                          </div>
+                          <div className="col">
+                            <small className="text-muted">Female</small>
+                            <div className="fw-bold text-info">
+                              {students.filter(s => s.gender === 'Female').length}
+                            </div>
+                          </div>
+                          <div className="col">
+                            <small className="text-muted">Male</small>
+                            <div className="fw-bold text-primary">
+                              {students.filter(s => s.gender === 'Male').length}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <EmptyState
-                      title="No students yet"
-                      subtitle="Add or enroll students into this classroom."
+                      title="No students found"
+                      subtitle="There are no students currently enrolled in this classroom."
                       icon="bi bi-person-plus"
                     />
                   )}
@@ -1080,8 +1213,7 @@ bg-opacity-10"
               {loadingTeachers && (
                 <div className="mt-2">
                   <div
-                    className="spinner-border spinner-border-sm
-text-primary me-2"
+                    className="spinner-border spinner-border-sm text-primary me-2"
                     role="status"
                   ></div>
                   <small className="text-muted">

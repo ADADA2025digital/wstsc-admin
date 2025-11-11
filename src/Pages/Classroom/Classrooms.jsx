@@ -30,6 +30,10 @@ export default function ClassroomsList() {
   const [studentCounts, setStudentCounts] = useState({});
   const [loadingStudentCounts, setLoadingStudentCounts] = useState(false);
 
+  // Teacher counts state
+  const [teacherCounts, setTeacherCounts] = useState({});
+  const [loadingTeacherCounts, setLoadingTeacherCounts] = useState(false);
+
   const navigate = useNavigate();
 
   // Get current user info - FIXED: Properly handle nested role object
@@ -136,6 +140,57 @@ export default function ClassroomsList() {
     }
   };
 
+  // Fetch teacher counts for all classrooms
+  const fetchTeacherCounts = async () => {
+    try {
+      setLoadingTeacherCounts(true);
+      console.log("📡 Fetching teacher counts for all classrooms...");
+
+      const response = await api.get("/classroom-teachers", {
+        timeout: 10000,
+      });
+
+      console.log("📦 Teacher assignments API response:", response.data);
+
+      if (response.data.success) {
+        // Process the classroom-teachers data to count teachers per classroom
+        const counts = {};
+        
+        const allAssignments = response.data.data.assignments || [];
+        console.log("📋 ALL TEACHER ASSIGNMENTS:", allAssignments);
+
+        allAssignments.forEach((assignment) => {
+          // Handle different possible structures for class_id
+          const classId = assignment.class_id || assignment.classroom?.class_id;
+          
+          if (classId) {
+            if (!counts[classId]) {
+              counts[classId] = 0;
+            }
+            
+            // Only count current/active assignments if needed
+            const isActiveAssignment = assignment.is_current !== false && 
+                                     assignment.status !== "inactive";
+            
+            if (isActiveAssignment) {
+              counts[classId]++;
+            }
+          }
+        });
+
+        console.log("🎯 Teacher counts per classroom:", counts);
+        setTeacherCounts(counts);
+      } else {
+        console.warn("Failed to fetch teacher counts:", response.data.message);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching teacher counts:", err);
+      // Don't throw error here - we still want to show classrooms even if counts fail
+    } finally {
+      setLoadingTeacherCounts(false);
+    }
+  };
+
   const fetchClassrooms = async (isRefresh = false) => {
     try {
       console.log("🔄 Starting fetchClassrooms...");
@@ -147,10 +202,11 @@ export default function ClassroomsList() {
       }
       setError(null);
 
-      // Fetch classrooms and student counts in parallel
+      // Fetch classrooms, student counts, and teacher counts in parallel
       await Promise.all([
         fetchAllClassrooms(),
-        fetchStudentCounts()
+        fetchStudentCounts(),
+        fetchTeacherCounts()
       ]);
 
       setLastRefreshTime(new Date());
@@ -187,6 +243,7 @@ export default function ClassroomsList() {
             code: cls.class_id,
             status: cls.is_active ? "Active" : "Inactive",
             students: 0, // Initialize with 0, will be updated from studentCounts
+            teachers: 0, // Initialize with 0, will be updated from teacherCounts
             is_active: cls.is_active,
             created_at: cls.created_at,
             updated_at: cls.updated_at,
@@ -217,16 +274,17 @@ export default function ClassroomsList() {
     }
   };
 
-  // Update classrooms with student counts when studentCounts changes
+  // Update classrooms with student and teacher counts when counts change
   useEffect(() => {
-    if (classrooms.length > 0 && Object.keys(studentCounts).length > 0) {
+    if (classrooms.length > 0 && (Object.keys(studentCounts).length > 0 || Object.keys(teacherCounts).length > 0)) {
       const updatedClassrooms = classrooms.map(cls => ({
         ...cls,
-        students: studentCounts[cls.code] || 0
+        students: studentCounts[cls.code] || 0,
+        teachers: teacherCounts[cls.code] || 0
       }));
       setClassrooms(updatedClassrooms);
     }
-  }, [studentCounts]);
+  }, [studentCounts, teacherCounts]);
 
   const filtered = classrooms.filter((c) => {
     const q = query.trim().toLowerCase();
@@ -238,6 +296,10 @@ export default function ClassroomsList() {
     );
   });
 
+  // Calculate total students and teachers across all classrooms
+  const totalStudents = classrooms.reduce((sum, cls) => sum + (cls.students || 0), 0);
+  const totalTeachers = classrooms.reduce((sum, cls) => sum + (cls.teachers || 0), 0);
+
   console.log("🎨 Current UI state:", {
     userRole,
     userId,
@@ -246,6 +308,9 @@ export default function ClassroomsList() {
     classroomsCount: classrooms.length,
     filteredCount: filtered.length,
     studentCounts,
+    teacherCounts,
+    totalStudents,
+    totalTeachers
   });
 
   const handleView = (cls) => {
@@ -316,6 +381,7 @@ export default function ClassroomsList() {
           code: newClass.class_id,
           status: newClassroom.is_active ? "Active" : "Inactive",
           students: 0,
+          teachers: 0,
           is_active: newClassroom.is_active,
           created_at: newClass.created_at,
           updated_at: newClass.updated_at,
@@ -324,8 +390,9 @@ export default function ClassroomsList() {
         setClassrooms((prev) => [transformedClassroom, ...prev]);
         closeCreateModal();
         
-        // Refresh student counts to include the new classroom
+        // Refresh student and teacher counts to include the new classroom
         fetchStudentCounts();
+        fetchTeacherCounts();
       } else {
         throw new Error(response.data.message || "Failed to create classroom");
       }
@@ -364,8 +431,9 @@ export default function ClassroomsList() {
         console.log("Classroom deleted successfully:", response.data.message);
         cancelDelete();
         
-        // Refresh student counts after deletion
+        // Refresh student and teacher counts after deletion
         fetchStudentCounts();
+        fetchTeacherCounts();
       } else {
         throw new Error(response.data.message || "Failed to delete classroom");
       }
@@ -386,9 +454,6 @@ export default function ClassroomsList() {
     setError(null);
     fetchClassrooms();
   };
-
-  // Calculate total students across all classrooms
-  const totalStudents = classrooms.reduce((sum, cls) => sum + (cls.students || 0), 0);
 
   if (loading) {
     return (
@@ -542,6 +607,11 @@ export default function ClassroomsList() {
                   • Total Students: <strong>{totalStudents}</strong>
                 </span>
               )}
+              {totalTeachers > 0 && (
+                <span className="text-muted ms-2">
+                  • Total Teachers: <strong>{totalTeachers}</strong>
+                </span>
+              )}
             </p>
           </div>
           <div className="col-md-6 d-flex justify-content-end align-items-center gap-3">
@@ -553,20 +623,20 @@ export default function ClassroomsList() {
             <button
               onClick={handleRefresh}
               className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
-              disabled={refreshing || loadingStudentCounts}
+              disabled={refreshing || loadingStudentCounts || loadingTeacherCounts}
               style={{
                 width: "40px",
                 height: "40px",
-                opacity: (refreshing || loadingStudentCounts) ? 0.7 : 1,
+                opacity: (refreshing || loadingStudentCounts || loadingTeacherCounts) ? 0.7 : 1,
               }}
               title="Refresh classrooms"
             >
               <i
                 className={`bi bi-arrow-clockwise ${
-                  (refreshing || loadingStudentCounts) ? "spinner-border spinner-border-sm" : ""
+                  (refreshing || loadingStudentCounts || loadingTeacherCounts) ? "spinner-border spinner-border-sm" : ""
                 }`}
                 style={{
-                  animation: (refreshing || loadingStudentCounts) ? "spin 1s linear infinite" : "none",
+                  animation: (refreshing || loadingStudentCounts || loadingTeacherCounts) ? "spin 1s linear infinite" : "none",
                 }}
               />
             </button>
@@ -609,6 +679,10 @@ export default function ClassroomsList() {
                     <div>
                       <i className="bi bi-people me-1" /> Students:{" "}
                       <strong>{cls.students}</strong>
+                    </div>
+                    <div>
+                      <i className="bi bi-person-badge me-1" /> Teachers:{" "}
+                      <strong>{cls.teachers || 0}</strong>
                     </div>
                     {cls.created_at && (
                       <div

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Row, Col, Tab, Tabs } from "react-bootstrap";
+import { Row, Col, Tab, Tabs, Modal, Form } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
@@ -15,8 +15,11 @@ const EnrolmentDetails = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("parents");
   const [acceptLoading, setAcceptLoading] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const [alertInfo, setAlertInfo] = useState({ show: false, type: "", message: "" });
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     if (location.state?.studentData) {
@@ -62,54 +65,121 @@ const EnrolmentDetails = () => {
     navigate(`/enrolment/edit/${id}`, { state: { studentData } });
 
   // Accept Enrolment API Integration using your axios instance
-const handleAcceptEnrolment = async () => {
-  if (!id) {
-    showAlert("danger", "No enrolment ID found");
-    return;
-  }
-
-  // Removed the confirmation dialog
-
-  try {
-    setAcceptLoading(true);
-    setDebugInfo("Starting API call...");
-    
-    // Using your axios instance - much simpler!
-    const response = await api.post(`/admin/enrollments/${id}/approve`);
-
-    setDebugInfo("Enrolment accepted successfully!");
-
-    if (response.data.success) {
-      // Update local state to reflect the approved status
-      setStudentData(prevData => ({
-        ...prevData,
-        status: "approved",
-        // Update with API response data
-        ...response.data.data.enrollment
-      }));
-
-      // Show success message using Bootstrap alert
-      showAlert("success", "Enrolment accepted successfully!");
-    } else {
-      throw new Error(response.data.message || "Failed to accept enrolment");
+  const handleAcceptEnrolment = async () => {
+    if (!id) {
+      showAlert("danger", "No enrolment ID found");
+      return;
     }
-  } catch (err) {
-    console.error("Error accepting enrolment:", err);
-    setDebugInfo(`Error: ${err.message}`);
-    
-    // User-friendly error messages using Bootstrap alerts
-    if (err.response?.status === 401) {
-      // The interceptor will handle the redirect automatically
-      showAlert("danger", "Authentication failed. Your session may have expired. Please log in again.");
-    } else if (err.message.includes("Network Error") || err.message.includes("timeout")) {
-      showAlert("warning", "Network error. Please check your internet connection and try again.");
-    } else {
-      showAlert("danger", `Failed to accept enrolment: ${err.response?.data?.message || err.message}`);
+
+    try {
+      setAcceptLoading(true);
+      setDebugInfo("Starting API call...");
+      
+      // Using your axios instance - much simpler!
+      const response = await api.post(`/admin/enrollments/${id}/approve`);
+
+      setDebugInfo("Enrolment accepted successfully!");
+
+      if (response.data.success) {
+        // Update local state to reflect the approved status
+        setStudentData(prevData => ({
+          ...prevData,
+          status: "approved",
+          // Update with API response data
+          ...response.data.data.enrollment
+        }));
+
+        // Show success message using Bootstrap alert
+        showAlert("success", "Enrolment accepted successfully!");
+      } else {
+        throw new Error(response.data.message || "Failed to accept enrolment");
+      }
+    } catch (err) {
+      console.error("Error accepting enrolment:", err);
+      setDebugInfo(`Error: ${err.message}`);
+      
+      // User-friendly error messages using Bootstrap alerts
+      if (err.response?.status === 401) {
+        // The interceptor will handle the redirect automatically
+        showAlert("danger", "Authentication failed. Your session may have expired. Please log in again.");
+      } else if (err.message.includes("Network Error") || err.message.includes("timeout")) {
+        showAlert("warning", "Network error. Please check your internet connection and try again.");
+      } else {
+        showAlert("danger", `Failed to accept enrolment: ${err.response?.data?.message || err.message}`);
+      }
+    } finally {
+      setAcceptLoading(false);
     }
-  } finally {
-    setAcceptLoading(false);
-  }
-};
+  };
+
+  // Reject Enrolment API Integration
+  const handleRejectEnrolment = async () => {
+    if (!id) {
+      showAlert("danger", "No enrolment ID found");
+      return;
+    }
+
+    if (!rejectionReason.trim()) {
+      showAlert("warning", "Please provide a reason for rejection");
+      return;
+    }
+
+    try {
+      setRejectLoading(true);
+      setDebugInfo("Starting rejection API call...");
+      
+      const response = await api.post(`/admin/enrollments/${id}/reject`, {
+        rejection_reason: rejectionReason
+      });
+
+      setDebugInfo("Enrolment rejected successfully!");
+
+      if (response.data.success) {
+        // Update local state to reflect the rejected status
+        setStudentData(prevData => ({
+          ...prevData,
+          status: "rejected",
+          rejection_reason: rejectionReason,
+          // Update with API response data
+          ...response.data.data.enrollment
+        }));
+
+        // Close the modal and reset the reason
+        setShowRejectModal(false);
+        setRejectionReason("");
+
+        // Show success message using Bootstrap alert
+        showAlert("success", "Enrolment rejected successfully!");
+      } else {
+        throw new Error(response.data.message || "Failed to reject enrolment");
+      }
+    } catch (err) {
+      console.error("Error rejecting enrolment:", err);
+      setDebugInfo(`Error: ${err.message}`);
+      
+      // User-friendly error messages using Bootstrap alerts
+      if (err.response?.status === 401) {
+        showAlert("danger", "Authentication failed. Your session may have expired. Please log in again.");
+      } else if (err.message.includes("Network Error") || err.message.includes("timeout")) {
+        showAlert("warning", "Network error. Please check your internet connection and try again.");
+      } else {
+        showAlert("danger", `Failed to reject enrolment: ${err.response?.data?.message || err.message}`);
+      }
+    } finally {
+      setRejectLoading(false);
+    }
+  };
+
+  // Open reject confirmation modal
+  const openRejectModal = () => {
+    setShowRejectModal(true);
+  };
+
+  // Close reject modal
+  const closeRejectModal = () => {
+    setShowRejectModal(false);
+    setRejectionReason("");
+  };
 
   // Test API connection function using your axios instance
   const testAPIConnection = async () => {
@@ -224,6 +294,10 @@ const handleAcceptEnrolment = async () => {
   const firstEmergency = getEmergencyContact("first");
   const secondEmergency = getEmergencyContact("second");
 
+  // Determine which buttons to show based on status
+  const showAcceptButton = studentData.status !== "approved" && studentData.status !== "rejected";
+  const showRejectButton = studentData.status !== "rejected" && studentData.status !== "approved";
+
   return (
     <div className="container-fluid px-4 py-3">
       {/* Success/Error Alert */}
@@ -250,28 +324,93 @@ const handleAcceptEnrolment = async () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Student Enrolment Details</h4>
+          {/* Show status badge in header */}
+          <div className="d-flex align-items-center mt-1">
+            <span className="small text-muted me-2">Status:</span>
+            <span
+              className={`badge ${
+                studentData.status === "approved"
+                  ? "bg-success"
+                  : studentData.status === "pending"
+                  ? "bg-warning"
+                  : studentData.status === "rejected"
+                  ? "bg-danger"
+                  : "bg-secondary"
+              }`}
+            >
+              {studentData.status?.toUpperCase() || "UNKNOWN"}
+            </span>
+          </div>
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <ButtonGlobal
-            onClick={handleAcceptEnrolment}
-            className="btn btn-success"
-            disabled={acceptLoading || studentData.status === "approved"}
-          >
-            {acceptLoading ? (
-              <>
-                <div className="spinner-border spinner-border-sm me-2" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                Processing...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-check2-all me-2"></i>
-                {studentData.status === "approved" ? "Enrolment Accepted" : "Accept the Enrolment"}
-              </>
-            )}
-          </ButtonGlobal>
+          {/* Accept Button - Only show if not approved or rejected */}
+          {showAcceptButton && (
+            <ButtonGlobal
+              onClick={handleAcceptEnrolment}
+              className="btn btn-success"
+              disabled={acceptLoading}
+            >
+              {acceptLoading ? (
+                <>
+                  <div className="spinner-border spinner-border-sm me-2" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check2-all me-2"></i>
+                  Accept Enrolment
+                </>
+              )}
+            </ButtonGlobal>
+          )}
+          
+          {/* Reject Button - Only show if not rejected or approved */}
+          {showRejectButton && (
+            <ButtonGlobal
+              onClick={openRejectModal}
+              className="btn btn-outline-danger"
+              disabled={rejectLoading}
+            >
+              {rejectLoading ? (
+                <>
+                  <div className="spinner-border spinner-border-sm me-2" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-x-circle me-2"></i>
+                  Reject Enrolment
+                </>
+              )}
+            </ButtonGlobal>
+          )}
+          
+          {/* Status Display Buttons - Show when enrolment is processed */}
+          {studentData.status === "approved" && (
+            <ButtonGlobal
+              className="btn btn-success"
+              disabled
+            >
+              <i className="bi bi-check2-all me-2"></i>
+              Enrolment Accepted
+            </ButtonGlobal>
+          )}
+          
+          {studentData.status === "rejected" && (
+            <ButtonGlobal
+              className="btn btn-danger"
+              disabled
+            >
+              <i className="bi bi-x-circle me-2"></i>
+              Enrolment Rejected
+            </ButtonGlobal>
+          )}
+          
           <ButtonGlobal
             onClick={handleBack}
             className="btn btn-outline-secondary"
@@ -378,6 +517,16 @@ const handleAcceptEnrolment = async () => {
                 </span>
               </div>
             </div>
+            
+            {/* Show rejection reason if enrolment is rejected */}
+            {studentData.status === "rejected" && studentData.rejection_reason && (
+              <div className="col-md-12">
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold text-danger">Rejection Reason</span>
+                  <span className="fs-6 text-danger">{studentData.rejection_reason}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -910,6 +1059,60 @@ const handleAcceptEnrolment = async () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Reject Enrolment Modal */}
+      <Modal show={showRejectModal} onHide={closeRejectModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Reject Enrolment</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            Please provide a reason for rejecting this enrolment. This will be recorded and visible to the parents.
+          </p>
+          <Form.Group>
+            <Form.Label>Rejection Reason <span className="text-danger">*</span></Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={4}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter the reason for rejection..."
+              required
+            />
+            <Form.Text className="text-muted">
+              This reason will be sent to the parents and recorded in the system.
+            </Form.Text>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <ButtonGlobal
+            variant="secondary"
+            onClick={closeRejectModal}
+            disabled={rejectLoading}
+          >
+            Cancel
+          </ButtonGlobal>
+          <ButtonGlobal
+            variant="danger"
+            onClick={handleRejectEnrolment}
+            disabled={rejectLoading || !rejectionReason.trim()}
+          >
+            {rejectLoading ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                Rejecting...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-x-circle me-2"></i>
+                Reject Enrolment
+              </>
+            )}
+          </ButtonGlobal>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

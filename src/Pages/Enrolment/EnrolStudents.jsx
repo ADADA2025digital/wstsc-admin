@@ -45,22 +45,6 @@ const EnrolStudents = () => {
     }
   }, []);
 
-  // Check if user is parent or teacher
-  const isRestrictedUser = userRole === "parent" || userRole === "teacher";
-
-  // Filter students for parent - only show their own children
-  const filterStudentsForParent = (studentsData) => {
-    if (userRole !== "parent" || !userData) return studentsData;
-
-    return studentsData.filter((student) => {
-      // Check if parent_carer_1 or parent_carer_2 email matches logged-in parent's email
-      return (
-        student.parent_carer_1?.email === userData.email ||
-        student.parent_carer_2?.email === userData.email
-      );
-    });
-  };
-
   // Fetch enrollments from appropriate API based on user role
   const fetchStudents = async (isRefresh = false) => {
     try {
@@ -81,36 +65,50 @@ const EnrolStudents = () => {
       if (userRole === "admin") {
         // Admin uses the student-enrollment endpoint
         console.log("Admin: Using student-enrollment endpoint");
-        
+
         const firstResponse = await api.get("/student-enrollment");
         console.log("Admin API Response:", firstResponse.data);
 
         // Extract data based on the admin API structure
         if (firstResponse.data && firstResponse.data.students) {
           const studentsData = firstResponse.data.students;
-          
+
           if (studentsData.data && Array.isArray(studentsData.data)) {
             // Data is nested in students.data array
             allEnrollments = studentsData.data;
-            console.log("Admin enrollments data from students.data:", allEnrollments);
-            
+            console.log(
+              "Admin enrollments data from students.data:",
+              allEnrollments
+            );
+
             // Handle pagination for admin if needed
             if (studentsData.last_page && studentsData.last_page > 1) {
               lastPage = studentsData.last_page;
               console.log(`Admin has ${lastPage} pages to fetch`);
-              
+
               // Fetch remaining pages
               const pagePromises = [];
               for (let page = 2; page <= lastPage; page++) {
                 pagePromises.push(api.get(`/student-enrollment?page=${page}`));
               }
-              
+
               if (pagePromises.length > 0) {
                 const responses = await Promise.all(pagePromises);
                 responses.forEach((response, index) => {
-                  if (response.data && response.data.students && response.data.students.data) {
-                    allEnrollments = [...allEnrollments, ...response.data.students.data];
-                    console.log(`Added ${response.data.students.data.length} enrollments from admin page ${index + 2}`);
+                  if (
+                    response.data &&
+                    response.data.students &&
+                    response.data.students.data
+                  ) {
+                    allEnrollments = [
+                      ...allEnrollments,
+                      ...response.data.students.data,
+                    ];
+                    console.log(
+                      `Added ${
+                        response.data.students.data.length
+                      } enrollments from admin page ${index + 2}`
+                    );
                   }
                 });
               }
@@ -127,7 +125,6 @@ const EnrolStudents = () => {
         }
 
         console.log("Final admin enrollments:", allEnrollments);
-
       } else {
         // Parent/teacher uses the my-enrollments endpoint with pagination
         console.log("Parent/Teacher: Using my-enrollments endpoint");
@@ -136,12 +133,12 @@ const EnrolStudents = () => {
         const firstResponse = await api.get("/my-enrollments");
         console.log("First page API Response:", firstResponse.data);
 
-        // Extract data based on the new API structure
+        // Extract data based on the API structure
         let enrollmentsData = [];
         let paginationInfo = null;
 
         if (firstResponse.data && firstResponse.data.data) {
-          // New API structure
+          // API structure with data wrapper
           const responseData = firstResponse.data.data;
 
           if (
@@ -149,11 +146,24 @@ const EnrolStudents = () => {
             Array.isArray(responseData.enrollments)
           ) {
             enrollmentsData = responseData.enrollments;
+          } else if (Array.isArray(responseData)) {
+            // Direct array in data
+            enrollmentsData = responseData;
           }
 
           if (responseData.pagination) {
             paginationInfo = responseData.pagination;
             lastPage = responseData.pagination.last_page || 1;
+          }
+        } else if (
+          firstResponse.data &&
+          Array.isArray(firstResponse.data.enrollments)
+        ) {
+          // Alternative structure
+          enrollmentsData = firstResponse.data.enrollments;
+          if (firstResponse.data.pagination) {
+            paginationInfo = firstResponse.data.pagination;
+            lastPage = firstResponse.data.pagination.last_page || 1;
           }
         }
 
@@ -175,7 +185,10 @@ const EnrolStudents = () => {
           const responses = await Promise.all(pagePromises);
 
           responses.forEach((response, index) => {
-            console.log(`Processing page ${index + 2} response:`, response.data);
+            console.log(
+              `Processing page ${index + 2} response:`,
+              response.data
+            );
 
             let pageData = [];
             if (
@@ -184,6 +197,8 @@ const EnrolStudents = () => {
               response.data.data.enrollments
             ) {
               pageData = response.data.data.enrollments;
+            } else if (response.data && response.data.enrollments) {
+              pageData = response.data.enrollments;
             }
 
             if (pageData.length > 0) {
@@ -205,45 +220,80 @@ const EnrolStudents = () => {
         return;
       }
 
-      // Filter enrollments for parent role
-      const filteredEnrollments = userRole === "admin" 
-        ? allEnrollments 
-        : filterStudentsForParent(allEnrollments);
-
       // Format enrollments data for the table
-      const formattedStudents = filteredEnrollments.map((enrollment, index) => {
+      const formattedStudents = allEnrollments.map((enrollment, index) => {
         // Handle different API response structures
-        // For admin API, the enrollment object itself contains student data
-        // For parent API, student data is nested in enrollment.student
-        const student = userRole === "admin" ? enrollment : (enrollment.student || {});
-        
-        // Get parent data - check both parent_carers array and individual parent fields
-        const parentCarers = enrollment.parent_carers || [];
-        const parent1 = parentCarers[0] || enrollment.parent_carer_1 || {};
-        const parent2 = parentCarers[1] || enrollment.parent_carer_2 || {};
+        const student =
+          userRole === "admin" ? enrollment : enrollment.student || {};
 
-        // Debug parent data
-        console.log("Parent carers data for enrollment:", enrollment.enrollment_id, parentCarers);
-        console.log("Parent 1:", parent1);
-        console.log("Parent 2:", parent2);
+        let parentName = "N/A";
+        let contactEmail = "N/A";
+        let contactPhone = "N/A";
 
-        // Determine which parent to use for contact info
-        const primaryParent = parent1.first_name ? parent1 : parent2;
+        if (userRole === "admin") {
+          // Admin API structure - data is in parent_carers array
+          const parentCarers = enrollment.parent_carers || [];
+          console.log(
+            "Admin - Parent carers array:",
+            enrollment.enrollment_id,
+            parentCarers
+          );
 
-        // Get contact email - check both parents from parent_carers array
-        const contactEmail = parent1.email || parent2.email || "N/A";
+          if (parentCarers.length > 0) {
+            const primaryParent = parentCarers[0];
 
-        // Get contact phone - check both parents from parent_carers array
-        const contactPhone = parent1.mobile_phone || parent2.mobile_phone || parent1.phone_number || parent2.phone_number || "N/A";
+            parentName = primaryParent.first_name
+              ? `${primaryParent.first_name} ${
+                  primaryParent.last_name || ""
+                }`.trim()
+              : "N/A";
 
-        // Format parent name
-        const parentName = primaryParent.first_name
-          ? `${primaryParent.first_name} ${primaryParent.last_name || ''}`.trim()
-          : "N/A";
+            contactEmail = primaryParent.email || "N/A";
+            contactPhone = primaryParent.mobile_phone || "N/A";
+
+            // Fallback to second parent if needed
+            if (
+              parentCarers.length > 1 &&
+              (contactEmail === "N/A" || contactPhone === "N/A")
+            ) {
+              const secondaryParent = parentCarers[1];
+              if (contactEmail === "N/A" && secondaryParent.email) {
+                contactEmail = secondaryParent.email;
+              }
+              if (contactPhone === "N/A" && secondaryParent.mobile_phone) {
+                contactPhone = secondaryParent.mobile_phone;
+              }
+            }
+          }
+        } else {
+          // Parent API structure - data is in parent_carer_1 and parent_carer_2 objects
+          const parent1 = enrollment.parent_carer_1 || {};
+          const parent2 = enrollment.parent_carer_2 || {};
+
+          console.log("Parent - Parent data:", enrollment.enrollment_id, {
+            parent1,
+            parent2,
+          });
+
+          // Use parent_carer_1 as primary, fallback to parent_carer_2
+          const primaryParent = parent1.first_name ? parent1 : parent2;
+
+          parentName = primaryParent.first_name
+            ? `${primaryParent.first_name} ${
+                primaryParent.last_name || ""
+              }`.trim()
+            : "N/A";
+
+          contactEmail = parent1.email || parent2.email || "N/A";
+          contactPhone = parent1.mobile_phone || parent2.mobile_phone || "N/A";
+        }
 
         // Handle different ID fields based on API structure and role
-        const enrollmentId = enrollment.enrollment_id || enrollment.id || `enrollment-${index + 1}`;
-        
+        const enrollmentId =
+          enrollment.enrollment_id ||
+          enrollment.id ||
+          `enrollment-${index + 1}`;
+
         return {
           index: index + 1,
           id: enrollmentId,
@@ -252,16 +302,16 @@ const EnrolStudents = () => {
           }`.trim(),
           gender: student.gender || "",
           date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
-          enrollment_year: student.mainstream_enrollment_year || student.enrollment_year || "",
+          enrollment_year:
+            student.mainstream_enrollment_year || student.enrollment_year || "",
           overseas_student: student.overseas_student || "No",
           parent_name: parentName,
           contact_email: contactEmail,
           contact_phone: contactPhone,
           status: student.status || enrollment.status || "pending",
-          raw_data: enrollment, // Store the entire enrollment object
+          raw_data: enrollment,
         };
       });
-
       console.log("Total formatted students:", formattedStudents.length);
       console.log("Formatted students data:", formattedStudents);
       setStudents(formattedStudents);
@@ -307,7 +357,7 @@ const EnrolStudents = () => {
   }, [userRole, userData]);
 
   useEffect(() => {
-    if (!loading && students.length > 0 && !isRestrictedUser) {
+    if (!loading && students.length > 0) {
       console.log("Initializing DataTable with students:", students);
 
       // Destroy existing DataTable if it exists
@@ -428,7 +478,7 @@ const EnrolStudents = () => {
         }
       };
     }
-  }, [students, loading, navigate, isRestrictedUser]);
+  }, [students, loading, navigate]);
 
   const handleRefresh = () => {
     fetchStudents(true);
@@ -437,40 +487,6 @@ const EnrolStudents = () => {
   const handleAddStudent = () => {
     navigate("/students/add");
   };
-
-  // Show restricted access message for parents/teachers
-  if (isRestrictedUser) {
-    return (
-      <div className="container-fluid px-4 py-3">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h4 className="H4-heading fw-bold">Student Enrollment</h4>
-          </div>
-        </div>
-
-        <Card className="mt-4">
-          <Card.Body className="text-center py-5">
-            <div className="mb-4">
-              <i className="bi bi-info-circle display-4 text-primary"></i>
-            </div>
-            <p className="text-muted mb-4">
-              {userRole === "parent"
-                ? "You haven't submitted any enrollment applications yet. Start by submitting a new enrollment form for your child."
-                : "Teacher access to student enrollment is limited. Please contact administration for full access."}
-            </p>
-            {userRole === "parent" && (
-              <button
-                className="btn btn-outline-primary"
-                onClick={() => navigate("/enrol")}
-              >
-                Student Enrollment
-              </button>
-            )}
-          </Card.Body>
-        </Card>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -490,6 +506,11 @@ const EnrolStudents = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Enrolments</h4>
+          {userRole === "parent" && (
+            <p className="text-muted mb-0">
+              Your submitted enrollment applications
+            </p>
+          )}
         </div>
 
         <div className="d-flex align-items-center gap-3">
@@ -511,6 +532,13 @@ const EnrolStudents = () => {
                 className={`bi bi-arrow-clockwise ${refreshing ? "spin" : ""}`}
               />
             </ButtonGlobal>
+            {userRole === "parent" && (
+              <ButtonGlobal
+                onClick={() => navigate("/enrol")}
+                className="btn btn-primary"
+                text="New Enrollment"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -529,12 +557,31 @@ const EnrolStudents = () => {
         <div className="card mt-1 p-3 rounded-3 shadow">
           {students.length === 0 ? (
             <div className="text-center py-4">
-              <p className="text-muted">No enrollments found.</p>
-              <ButtonGlobal onClick={handleRefresh} text="Refresh" />
+              <p className="text-muted">
+                {userRole === "parent"
+                  ? "You haven't submitted any enrollment applications yet."
+                  : "No enrollments found."}
+              </p>
+              {userRole === "parent" && (
+                <ButtonGlobal
+                  onClick={() => navigate("/enrol")}
+                  text="Start New Enrollment"
+                  className="btn-primary"
+                />
+              )}
+              <ButtonGlobal
+                onClick={handleRefresh}
+                text="Refresh"
+                className="ms-2"
+              />
             </div>
           ) : (
             <div>
-              <p className="mb-3">Showing {students.length} enrollments</p>
+              <p className="mb-3">
+                {userRole === "parent"
+                  ? `Showing ${students.length} of your enrollment applications`
+                  : `Showing ${students.length} enrollments`}
+              </p>
               <table
                 id="studentTable"
                 className="table table-striped table-hover custom-data-table w-100"

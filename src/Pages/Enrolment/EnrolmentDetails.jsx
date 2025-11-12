@@ -16,42 +16,134 @@ const EnrolmentDetails = () => {
   const [activeTab, setActiveTab] = useState("parents");
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   
   // Rejection modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
 
+  // Get user role from localStorage on component mount
+  useEffect(() => {
+    const getUserRole = () => {
+      try {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          const parsedUserData = JSON.parse(userData);
+          const role = parsedUserData.role?.role_name || 'parent';
+          console.log("👤 User role detected:", role);
+          setUserRole(role);
+        } else {
+          console.warn("⚠️ No user data found in localStorage, defaulting to parent role");
+          setUserRole('parent');
+        }
+      } catch (error) {
+        console.error("❌ Error parsing user data from localStorage:", error);
+        setUserRole('parent');
+      }
+    };
+
+    getUserRole();
+  }, []);
+
+  // Normalize data structure to match component expectations
+  const normalizeStudentData = (rawData) => {
+    console.log("🔄 Normalizing data structure:", rawData);
+    
+    // If data already has the expected nested structure, return as-is
+    if (rawData.student && rawData.parent_carer_1) {
+      console.log("✅ Data already in expected structure");
+      return rawData;
+    }
+    
+    // If data is flat (from location state), convert to nested structure
+    const normalizedData = {
+      student: {
+        enrollment_id: rawData.enrollment_id,
+        family_name: rawData.family_name,
+        first_given_name: rawData.first_given_name,
+        preferred_first_name: rawData.preferred_first_name,
+        gender: rawData.gender,
+        date_of_birth: rawData.date_of_birth,
+        phone_number: rawData.phone_number,
+        mainstream_school_name: rawData.mainstream_school_name,
+        enrolment_date: rawData.enrolment_date,
+        mainstream_enrollment_year: rawData.mainstream_enrollment_year,
+        enrol_class_in_WSTSC: rawData.enrol_class_in_WSTSC,
+        classroom_info: rawData.classroom || {
+          class_id: rawData.enrol_class_in_WSTSC,
+          class_name: rawData.classroom?.class_name || "Not assigned"
+        },
+        status: rawData.status,
+        submitted_by: rawData.submitter?.name || "System",
+        submitted_at: rawData.submitted_at,
+        approved_by: rawData.approved_by || rawData.approver?.name,
+        approved_at: rawData.approved_at,
+        rejected_by: rawData.rejected_by || rawData.rejecter?.name,
+        rejected_at: rawData.rejected_at,
+        rejection_reason: rawData.rejection_reason
+      },
+      // Use first parent from parent_carers array
+      parent_carer_1: rawData.parent_carers?.[0] || null,
+      medical_details: rawData.medical_details || null,
+      // Use first emergency contact from array
+      first_emergency_contact: rawData.emergency_contacts?.[0] || null,
+      personal_declaration: rawData.personal_declaration || null
+    };
+    
+    console.log("🎯 Normalized data:", normalizedData);
+    return normalizedData;
+  };
+
   useEffect(() => {
     console.log("useEffect triggered - Checking for student data");
 
     if (location.state?.studentData) {
       console.log("📥 Using student data from location state:", location.state.studentData);
-      setStudentData(location.state.studentData);
+      const normalizedData = normalizeStudentData(location.state.studentData);
+      setStudentData(normalizedData);
       setLoading(false);
     } else {
       console.log("🔄 No student data in location state, fetching from API");
       fetchStudentDetails();
     }
-  }, [id, location.state]);
+  }, [id, location.state, userRole]);
 
   const fetchStudentDetails = async () => {
+    // Wait for userRole to be set
+    if (!userRole) {
+      console.log("⏳ Waiting for user role to be determined...");
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      console.log(`🔍 Fetching student details for ID: ${id}`);
+      console.log(`🔍 Fetching student details for ID: ${id} as ${userRole}`);
 
-      // Updated API endpoint to match your reference
-      const response = await api.get(`/admin/enrollments/${id}`);
+      let endpoint;
+      
+      // Determine API endpoint based on user role
+      if (userRole === 'admin') {
+        endpoint = `/admin/enrollments/${id}`;
+        console.log("🎯 Using admin endpoint:", endpoint);
+      } else {
+        // For parent, teacher, or any other role
+        endpoint = `/my-enrollments/${id}`;
+        console.log("🎯 Using parent/teacher endpoint:", endpoint);
+      }
+
+      const response = await api.get(endpoint);
       console.log("✅ API Response:", response);
       console.log("📊 Response Data:", response.data);
       
       if (response.data.success) {
         // Map the API response to match your expected structure
-        const apiData = response.data.data.enrollment;
-        console.log("🎯 Mapped Student Data:", apiData);
+        const apiData = response.data.data.enrollment || response.data.data;
+        console.log("🎯 Raw API Data:", apiData);
         
-        setStudentData(apiData);
+        const normalizedData = normalizeStudentData(apiData);
+        setStudentData(normalizedData);
       } else {
         throw new Error(response.data.message || "Failed to fetch student details");
       }
@@ -93,11 +185,20 @@ const EnrolmentDetails = () => {
       setAcceptLoading(true);
       console.log("🔄 Starting accept enrolment API call...");
 
-      // Make the POST request to approve the enrolment - updated endpoint
-      const response = await api.post(`/admin/enrollments/${id}/approve`);
+      // Determine endpoint based on user role for approval as well
+      let endpoint;
+      if (userRole === 'admin') {
+        endpoint = `/admin/enrollments/${id}/approve`;
+      } else {
+        endpoint = `/my-enrollments/${id}/approve`;
+      }
+
+      console.log("🎯 Using approval endpoint:", endpoint);
+
+      const response = await api.post(endpoint);
 
       console.log("✅ Accept enrolment API response:", response);
-      console.log("📊 Response data:", response.data.data);
+      console.log("📊 Response data:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment accepted successfully!");
@@ -106,22 +207,11 @@ const EnrolmentDetails = () => {
         setStudentData((prevData) => {
           const updatedData = {
             ...prevData,
-            // Update student status and other fields from response
             student: {
               ...prevData.student,
               status: "approved",
-              // Include any additional fields from the response
-              ...(response.data.data.enrollment && {
-                class_name: response.data.data.enrollment.class_name,
-                // Add other fields as needed from the response
-              })
-            },
-            // Update the main enrollment status
-            status: "approved",
-            // Store additional approval information if needed
-            approval_info: {
-              approved_by: response.data.data.enrollment.approved_by,
-              approved_at: response.data.data.enrollment.approved_at
+              approved_by: response.data.data?.approved_by || "Admin User",
+              approved_at: response.data.data?.approved_at || new Date().toISOString()
             }
           };
           console.log("🔄 Updated student data:", updatedData);
@@ -134,12 +224,12 @@ const EnrolmentDetails = () => {
     } catch (err) {
       console.error("❌ Error accepting enrolment:", err);
       
-      // Enhanced error handling
       const errorMessage = err.response?.data?.message || 
                           err.message || 
                           "Failed to accept enrolment. Please try again.";
       
-      // Log detailed error for debugging
+      setError(errorMessage);
+      
       if (err.response) {
         console.error("Error response data:", err.response.data);
         console.error("Error response status:", err.response.status);
@@ -180,13 +270,23 @@ const EnrolmentDetails = () => {
       setRejectionError("");
       console.log("🔄 Starting reject enrolment API call...");
 
+      // Determine endpoint based on user role for rejection as well
+      let endpoint;
+      if (userRole === 'admin') {
+        endpoint = `/admin/enrollments/${id}/reject`;
+      } else {
+        endpoint = `/my-enrollments/${id}/reject`;
+      }
+
+      console.log("🎯 Using rejection endpoint:", endpoint);
+
       // Make the POST request to reject the enrolment
-      const response = await api.post(`/admin/enrollments/${id}/reject`, {
+      const response = await api.post(endpoint, {
         rejection_reason: rejectionReason.trim()
       });
 
       console.log("✅ Reject enrolment API response:", response);
-      console.log("📊 Response data:", response.data.data);
+      console.log("📊 Response data:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment rejected successfully!");
@@ -195,18 +295,12 @@ const EnrolmentDetails = () => {
         setStudentData((prevData) => {
           const updatedData = {
             ...prevData,
-            // Update student status and other fields from response
             student: {
               ...prevData.student,
               status: "rejected",
-            },
-            // Update the main enrollment status
-            status: "rejected",
-            // Store rejection information
-            rejection_info: {
-              rejected_by: response.data.data.enrollment.rejected_by,
-              rejected_at: response.data.data.enrollment.rejected_at,
-              rejection_reason: response.data.data.enrollment.rejection_reason
+              rejected_by: response.data.data?.rejected_by || "Admin User",
+              rejected_at: response.data.data?.rejected_at || new Date().toISOString(),
+              rejection_reason: rejectionReason.trim()
             }
           };
           console.log("🔄 Updated student data after rejection:", updatedData);
@@ -222,14 +316,12 @@ const EnrolmentDetails = () => {
     } catch (err) {
       console.error("❌ Error rejecting enrolment:", err);
       
-      // Enhanced error handling
       const errorMessage = err.response?.data?.message || 
                           err.message || 
                           "Failed to reject enrolment. Please try again.";
       
       setRejectionError(errorMessage);
       
-      // Log detailed error for debugging
       if (err.response) {
         console.error("Error response data:", err.response.data);
         console.error("Error response status:", err.response.status);
@@ -238,6 +330,20 @@ const EnrolmentDetails = () => {
       setRejectLoading(false);
     }
   };
+
+  // Show loading while determining user role
+  if (!userRole) {
+    return (
+      <div className="container-fluid px-4 py-3">
+        <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status"></div>
+            <p className="mt-3 text-muted">Loading user information...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Loading state
   if (loading) {
@@ -275,7 +381,7 @@ const EnrolmentDetails = () => {
   }
 
   // No data state
-  if (!studentData) {
+  if (!studentData || !studentData.student) {
     return (
       <div className="container-fluid px-4 py-3">
         <div className="alert alert-warning mb-4" role="alert">
@@ -295,20 +401,21 @@ const EnrolmentDetails = () => {
     );
   }
 
-  // Destructure data from the API response structure
+  // Destructure data from the normalized structure
   const { 
     student, 
     parent_carer_1, 
     medical_details, 
     first_emergency_contact, 
-    personal_declaration,
-    approval_info,
-    rejection_info
+    personal_declaration
   } = studentData;
 
   const isApproved = student?.status === "approved";
   const isRejected = student?.status === "rejected";
   const isPending = student?.status === "pending" || !student?.status;
+
+  // Check if user has permission to approve/reject (only admin)
+  const canApproveReject = userRole === 'admin';
 
   return (
     <div className="container-fluid px-4 py-3">
@@ -317,21 +424,22 @@ const EnrolmentDetails = () => {
         <div>
           <h4 className="fw-bold mb-1">Enrolment Details</h4>
           <p className="text-muted mb-0">Enrolment ID: {id}</p>
-          {approval_info && (
+          <p className="text-muted small mb-0">Viewing as: <span className="text-capitalize">{userRole}</span></p>
+          {student?.approved_by && student?.approved_at && (
             <p className="text-muted small mb-0">
-              Approved by {approval_info.approved_by} on {formatDateToMMDDYYYY(approval_info.approved_at)}
+              Approved by {student.approved_by} on {formatDateToMMDDYYYY(student.approved_at)}
             </p>
           )}
-          {rejection_info && (
+          {student?.rejected_by && student?.rejected_at && (
             <p className="text-danger small mb-0">
-              Rejected by {rejection_info.rejected_by} on {formatDateToMMDDYYYY(rejection_info.rejected_at)}
-              {rejection_info.rejection_reason && ` - Reason: ${rejection_info.rejection_reason}`}
+              Rejected by {student.rejected_by} on {formatDateToMMDDYYYY(student.rejected_at)}
+              {student.rejection_reason && ` - Reason: ${student.rejection_reason}`}
             </p>
           )}
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          {isPending && (
+          {canApproveReject && isPending && (
             <>
               <ButtonGlobal
                 onClick={handleAcceptEnrolment}
@@ -393,7 +501,7 @@ const EnrolmentDetails = () => {
               <i className="bi bi-person-badge me-2"></i>
               Student Information
             </h5>
-            <span className="badge bg-info">ID: {id}</span>
+            <span className="badge bg-info">ID: {student.enrollment_id || id}</span>
           </div>
         </div>
         <div className="card-body p-4">
@@ -449,7 +557,7 @@ const EnrolmentDetails = () => {
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">WSTSC Class</span>
                 <span className="fs-6">
-                  {student?.classroom_info?.class_name || student?.enrol_class_in_WSTSC || student?.class_name || "—"}
+                  {student?.classroom_info?.class_name || student?.enrol_class_in_WSTSC || "—"}
                 </span>
               </div>
             </div>
@@ -731,7 +839,7 @@ const EnrolmentDetails = () => {
                           <Col md={6}>
                             <div className="bg-white rounded p-3">
                               <span className="small">Second Parent/Carer Name</span>
-                              <p className="mb-0 fw-medium">{personal_declaration.second_parent_carer_name}</p>
+                              <p className="mb-0 fw-medium">{personal_declaration.second_parent_carer_name || "—"}</p>
                               {personal_declaration.second_parent_carer_name_date && (
                                 <small className="text-muted">
                                   Date: {formatDateToMMDDYYYY(personal_declaration.second_parent_carer_name_date)}

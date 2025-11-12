@@ -61,7 +61,7 @@ const EnrolStudents = () => {
     });
   };
 
-  // Fetch enrollments from API with pagination support
+  // Fetch enrollments from appropriate API based on user role
   const fetchStudents = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -72,75 +72,131 @@ const EnrolStudents = () => {
       setError(null);
 
       console.log("Fetching enrollments from API...");
+      console.log("User role:", userRole);
 
       let allEnrollments = [];
       let currentPage = 1;
       let lastPage = 1;
 
-      // Fetch first page to get pagination info
-      const firstResponse = await api.get("/my-enrollments");
-      console.log("First page API Response:", firstResponse.data);
+      if (userRole === "admin") {
+        // Admin uses the student-enrollment endpoint
+        console.log("Admin: Using student-enrollment endpoint");
+        
+        const firstResponse = await api.get("/student-enrollment");
+        console.log("Admin API Response:", firstResponse.data);
 
-      // Extract data based on the new API structure
-      let enrollmentsData = [];
-      let paginationInfo = null;
-
-      if (firstResponse.data && firstResponse.data.data) {
-        // New API structure
-        const responseData = firstResponse.data.data;
-
-        if (
-          responseData.enrollments &&
-          Array.isArray(responseData.enrollments)
-        ) {
-          enrollmentsData = responseData.enrollments;
+        // Extract data based on the admin API structure
+        if (firstResponse.data && firstResponse.data.students) {
+          const studentsData = firstResponse.data.students;
+          
+          if (studentsData.data && Array.isArray(studentsData.data)) {
+            // Data is nested in students.data array
+            allEnrollments = studentsData.data;
+            console.log("Admin enrollments data from students.data:", allEnrollments);
+            
+            // Handle pagination for admin if needed
+            if (studentsData.last_page && studentsData.last_page > 1) {
+              lastPage = studentsData.last_page;
+              console.log(`Admin has ${lastPage} pages to fetch`);
+              
+              // Fetch remaining pages
+              const pagePromises = [];
+              for (let page = 2; page <= lastPage; page++) {
+                pagePromises.push(api.get(`/student-enrollment?page=${page}`));
+              }
+              
+              if (pagePromises.length > 0) {
+                const responses = await Promise.all(pagePromises);
+                responses.forEach((response, index) => {
+                  if (response.data && response.data.students && response.data.students.data) {
+                    allEnrollments = [...allEnrollments, ...response.data.students.data];
+                    console.log(`Added ${response.data.students.data.length} enrollments from admin page ${index + 2}`);
+                  }
+                });
+              }
+            }
+          } else if (Array.isArray(studentsData)) {
+            // Direct array response
+            allEnrollments = studentsData;
+            console.log("Admin enrollments data direct array:", allEnrollments);
+          }
+        } else if (firstResponse.data && Array.isArray(firstResponse.data)) {
+          // Direct array response at root level
+          allEnrollments = firstResponse.data;
+          console.log("Admin enrollments data root array:", allEnrollments);
         }
 
-        if (responseData.pagination) {
-          paginationInfo = responseData.pagination;
-          lastPage = responseData.pagination.last_page || 1;
-        }
-      }
+        console.log("Final admin enrollments:", allEnrollments);
 
-      console.log("First page enrollments data:", enrollmentsData);
-      console.log("Pagination info:", paginationInfo);
-      console.log("Total pages:", lastPage);
+      } else {
+        // Parent/teacher uses the my-enrollments endpoint with pagination
+        console.log("Parent/Teacher: Using my-enrollments endpoint");
 
-      allEnrollments = [...enrollmentsData];
+        // Fetch first page to get pagination info
+        const firstResponse = await api.get("/my-enrollments");
+        console.log("First page API Response:", firstResponse.data);
 
-      // Fetch remaining pages if any
-      if (lastPage > 1) {
-        console.log(`Fetching additional ${lastPage - 1} pages...`);
+        // Extract data based on the new API structure
+        let enrollmentsData = [];
+        let paginationInfo = null;
 
-        const pagePromises = [];
-        for (let page = 2; page <= lastPage; page++) {
-          pagePromises.push(api.get(`/my-enrollments?page=${page}`));
-        }
+        if (firstResponse.data && firstResponse.data.data) {
+          // New API structure
+          const responseData = firstResponse.data.data;
 
-        const responses = await Promise.all(pagePromises);
-
-        responses.forEach((response, index) => {
-          console.log(`Processing page ${index + 2} response:`, response.data);
-
-          let pageData = [];
           if (
-            response.data &&
-            response.data.data &&
-            response.data.data.enrollments
+            responseData.enrollments &&
+            Array.isArray(responseData.enrollments)
           ) {
-            pageData = response.data.data.enrollments;
+            enrollmentsData = responseData.enrollments;
           }
 
-          if (pageData.length > 0) {
-            allEnrollments = [...allEnrollments, ...pageData];
-            console.log(
-              `Added ${pageData.length} enrollments from page ${index + 2}`
-            );
+          if (responseData.pagination) {
+            paginationInfo = responseData.pagination;
+            lastPage = responseData.pagination.last_page || 1;
           }
-        });
+        }
+
+        console.log("First page enrollments data:", enrollmentsData);
+        console.log("Pagination info:", paginationInfo);
+        console.log("Total pages:", lastPage);
+
+        allEnrollments = [...enrollmentsData];
+
+        // Fetch remaining pages if any
+        if (lastPage > 1) {
+          console.log(`Fetching additional ${lastPage - 1} pages...`);
+
+          const pagePromises = [];
+          for (let page = 2; page <= lastPage; page++) {
+            pagePromises.push(api.get(`/my-enrollments?page=${page}`));
+          }
+
+          const responses = await Promise.all(pagePromises);
+
+          responses.forEach((response, index) => {
+            console.log(`Processing page ${index + 2} response:`, response.data);
+
+            let pageData = [];
+            if (
+              response.data &&
+              response.data.data &&
+              response.data.data.enrollments
+            ) {
+              pageData = response.data.data.enrollments;
+            }
+
+            if (pageData.length > 0) {
+              allEnrollments = [...allEnrollments, ...pageData];
+              console.log(
+                `Added ${pageData.length} enrollments from page ${index + 2}`
+              );
+            }
+          });
+        }
       }
 
-      console.log("All enrollments data after pagination:", allEnrollments);
+      console.log("All enrollments data after processing:", allEnrollments);
       console.log("Total enrollments fetched:", allEnrollments.length);
 
       if (allEnrollments.length === 0) {
@@ -150,52 +206,64 @@ const EnrolStudents = () => {
       }
 
       // Filter enrollments for parent role
-      const filteredEnrollments = filterStudentsForParent(allEnrollments);
+      const filteredEnrollments = userRole === "admin" 
+        ? allEnrollments 
+        : filterStudentsForParent(allEnrollments);
 
       // Format enrollments data for the table
       const formattedStudents = filteredEnrollments.map((enrollment, index) => {
-        const student = enrollment.student || {};
-        const parent1 = enrollment.parent_carer_1 || {};
-        const parent2 = enrollment.parent_carer_2 || {};
+        // Handle different API response structures
+        // For admin API, the enrollment object itself contains student data
+        // For parent API, student data is nested in enrollment.student
+        const student = userRole === "admin" ? enrollment : (enrollment.student || {});
+        
+        // Get parent data - check both parent_carers array and individual parent fields
+        const parentCarers = enrollment.parent_carers || [];
+        const parent1 = parentCarers[0] || enrollment.parent_carer_1 || {};
+        const parent2 = parentCarers[1] || enrollment.parent_carer_2 || {};
+
+        // Debug parent data
+        console.log("Parent carers data for enrollment:", enrollment.enrollment_id, parentCarers);
+        console.log("Parent 1:", parent1);
+        console.log("Parent 2:", parent2);
 
         // Determine which parent to use for contact info
         const primaryParent = parent1.first_name ? parent1 : parent2;
 
-        // Get contact email - check both parents
+        // Get contact email - check both parents from parent_carers array
         const contactEmail = parent1.email || parent2.email || "N/A";
 
-        // Get contact phone - check both parents
-        const contactPhone =
-          parent1.mobile_phone || parent2.mobile_phone || "N/A";
+        // Get contact phone - check both parents from parent_carers array
+        const contactPhone = parent1.mobile_phone || parent2.mobile_phone || parent1.phone_number || parent2.phone_number || "N/A";
 
         // Format parent name
         const parentName = primaryParent.first_name
-          ? `${primaryParent.first_name} ${primaryParent.last_name}`
+          ? `${primaryParent.first_name} ${primaryParent.last_name || ''}`.trim()
           : "N/A";
 
+        // Handle different ID fields based on API structure and role
+        const enrollmentId = enrollment.enrollment_id || enrollment.id || `enrollment-${index + 1}`;
+        
         return {
           index: index + 1,
-          id: student.enrollment_id || `enrollment-${index + 1}`,
-          student_id: `STU${(student.enrollment_id || index + 1)
-            .toString()
-            .padStart(4, "0")}`,
-          full_name: `${student.first_given_name || ""} ${
-            student.family_name || ""
+          id: enrollmentId,
+          full_name: `${student.first_given_name || student.first_name || ""} ${
+            student.family_name || student.last_name || ""
           }`.trim(),
-          preferred_name: student.preferred_first_name || "",
           gender: student.gender || "",
           date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
-          enrollment_year: student.mainstream_enrollment_year || "",
+          enrollment_year: student.mainstream_enrollment_year || student.enrollment_year || "",
           overseas_student: student.overseas_student || "No",
           parent_name: parentName,
           contact_email: contactEmail,
           contact_phone: contactPhone,
-          status: student.status || "pending",
+          status: student.status || enrollment.status || "pending",
           raw_data: enrollment, // Store the entire enrollment object
         };
       });
 
       console.log("Total formatted students:", formattedStudents.length);
+      console.log("Formatted students data:", formattedStudents);
       setStudents(formattedStudents);
       setLastRefreshTime(new Date());
     } catch (err) {
@@ -233,7 +301,9 @@ const EnrolStudents = () => {
   };
 
   useEffect(() => {
-    fetchStudents();
+    if (userRole) {
+      fetchStudents();
+    }
   }, [userRole, userData]);
 
   useEffect(() => {
@@ -258,17 +328,8 @@ const EnrolStudents = () => {
             width: "50px",
           },
           {
-            title: "Student ID",
-            data: "student_id",
-            className: "text-center",
-          },
-          {
             title: "Full Name",
             data: "full_name",
-          },
-          {
-            title: "Preferred Name",
-            data: "preferred_name",
           },
           {
             title: "Gender",
@@ -292,6 +353,10 @@ const EnrolStudents = () => {
           {
             title: "Contact Email",
             data: "contact_email",
+          },
+          {
+            title: "Contact Phone",
+            data: "contact_phone",
           },
           {
             title: "Status",

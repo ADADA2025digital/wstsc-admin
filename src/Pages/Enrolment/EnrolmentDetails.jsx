@@ -35,8 +35,8 @@ const EnrolmentDetails = () => {
       setError(null);
       console.log(`🔍 Fetching student details for ID: ${id}`);
 
-      // Updated API endpoint based on your reference
-      const response = await api.get(`/my-enrollments/${id}`);
+      // Updated API endpoint to match your reference
+      const response = await api.get(`/admin/enrollments/${id}`);
       console.log("✅ API Response:", response);
       console.log("📊 Response Data:", response.data);
       
@@ -97,38 +97,65 @@ const EnrolmentDetails = () => {
       setAcceptLoading(true);
       console.log("🔄 Starting accept enrolment API call...");
 
-      // Updated API endpoint for approval
-      const response = await api.post(`/my-enrollments/${id}/approve`);
+      // Make the POST request to approve the enrolment - updated endpoint
+      const response = await api.post(`/admin/enrollments/${id}/approve`);
 
       console.log("✅ Accept enrolment API response:", response);
+      console.log("📊 Response data:", response.data.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment accepted successfully!");
 
-        // Update local state to reflect the approved status
+        // Update local state with the complete API response data
         setStudentData((prevData) => {
           const updatedData = {
             ...prevData,
+            // Update student status and other fields from response
             student: {
               ...prevData.student,
               status: "approved",
-              // Update with API response data if available
-              ...response.data.data.enrollment?.student
+              // Include any additional fields from the response
+              ...(response.data.data.enrollment && {
+                class_name: response.data.data.enrollment.class_name,
+                // Add other fields as needed from the response
+              })
+            },
+            // Update the main enrollment status
+            status: "approved",
+            // Store additional approval information if needed
+            approval_info: {
+              approved_by: response.data.data.enrollment.approved_by,
+              approved_at: response.data.data.enrollment.approved_at
             }
           };
           console.log("🔄 Updated student data:", updatedData);
           return updatedData;
         });
 
-        alert("Enrolment accepted successfully!");
+        // Show success message from API response
+        alert(response.data.message || "Enrolment accepted successfully!");
+        
+        // Optional: Refresh the data to get the latest from server
+        // fetchStudentDetails();
+        
       } else {
         throw new Error(response.data.message || "Failed to accept enrolment");
       }
     } catch (err) {
       console.error("❌ Error accepting enrolment:", err);
-      alert(
-        `Failed to accept enrolment: ${err.response?.data?.message || err.message}`
-      );
+      
+      // Enhanced error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          "Failed to accept enrolment. Please try again.";
+      
+      alert(`Error: ${errorMessage}`);
+      
+      // Log detailed error for debugging
+      if (err.response) {
+        console.error("Error response data:", err.response.data);
+        console.error("Error response status:", err.response.status);
+      }
     } finally {
       setAcceptLoading(false);
     }
@@ -196,7 +223,8 @@ const EnrolmentDetails = () => {
     parent_carer_1, 
     medical_details, 
     first_emergency_contact, 
-    personal_declaration 
+    personal_declaration,
+    approval_info
   } = studentData;
 
   return (
@@ -206,12 +234,23 @@ const EnrolmentDetails = () => {
         <div>
           <h4 className="fw-bold mb-1">Enrolment Details</h4>
           <p className="text-muted mb-0">Enrolment ID: {id}</p>
+          {approval_info && (
+            <p className="text-muted small mb-0">
+              Approved by {approval_info.approved_by} on {formatDateToMMDDYYYY(approval_info.approved_at)}
+            </p>
+          )}
         </div>
 
         <div className="d-flex align-items-center gap-2">
           <ButtonGlobal
             onClick={handleAcceptEnrolment}
-            className="btn btn-success"
+            className={`btn ${
+              student?.status === "approved" 
+                ? "btn-success" 
+                : acceptLoading 
+                ? "btn-secondary" 
+                : "btn-primary"
+            }`}
             disabled={acceptLoading || student?.status === "approved"}
           >
             {acceptLoading ? (
@@ -224,7 +263,7 @@ const EnrolmentDetails = () => {
             ) : (
               <>
                 <i className="bi bi-check2-all me-2"></i>
-                {student?.status === "approved" ? "Enrolment Accepted" : "Accept the Enrolment"}
+                {student?.status === "approved" ? "Enrolment Accepted" : "Accept Enrolment"}
               </>
             )}
           </ButtonGlobal>
@@ -299,7 +338,7 @@ const EnrolmentDetails = () => {
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">WSTSC Class</span>
                 <span className="fs-6">
-                  {student?.classroom_info?.class_name || student?.enrol_class_in_WSTSC || "—"}
+                  {student?.classroom_info?.class_name || student?.enrol_class_in_WSTSC || student?.class_name || "—"}
                 </span>
               </div>
             </div>
@@ -317,7 +356,7 @@ const EnrolmentDetails = () => {
                       : "bg-secondary"
                   }`}
                 >
-                  {student?.status || "—"}
+                  {student?.status ? student.status.toUpperCase() : "—"}
                 </span>
               </div>
             </div>

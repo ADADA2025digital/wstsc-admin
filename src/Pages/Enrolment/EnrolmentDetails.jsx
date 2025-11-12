@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Row, Col, Tab, Tabs } from "react-bootstrap";
+import { Row, Col, Tab, Tabs, Modal, Button } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
@@ -15,6 +15,12 @@ const EnrolmentDetails = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("parents");
   const [acceptLoading, setAcceptLoading] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+  
+  // Rejection modal states
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionError, setRejectionError] = useState("");
 
   useEffect(() => {
     console.log("useEffect triggered - Checking for student data");
@@ -143,6 +149,96 @@ const EnrolmentDetails = () => {
     }
   };
 
+  const handleOpenRejectModal = () => {
+    setRejectionReason("");
+    setRejectionError("");
+    setShowRejectModal(true);
+  };
+
+  const handleCloseRejectModal = () => {
+    setShowRejectModal(false);
+    setRejectionReason("");
+    setRejectionError("");
+  };
+
+  const handleRejectEnrolment = async () => {
+    if (!rejectionReason.trim()) {
+      setRejectionError("Please provide a reason for rejection");
+      return;
+    }
+
+    if (!id) {
+      console.error("❌ No enrolment ID found for rejection");
+      return;
+    }
+
+    console.log("❌ Attempting to reject enrolment ID:", id);
+    console.log("Rejection reason:", rejectionReason);
+
+    try {
+      setRejectLoading(true);
+      setRejectionError("");
+      console.log("🔄 Starting reject enrolment API call...");
+
+      // Make the POST request to reject the enrolment
+      const response = await api.post(`/admin/enrollments/${id}/reject`, {
+        rejection_reason: rejectionReason.trim()
+      });
+
+      console.log("✅ Reject enrolment API response:", response);
+      console.log("📊 Response data:", response.data.data);
+
+      if (response.data.success) {
+        console.log("🎉 Enrolment rejected successfully!");
+
+        // Update local state with the complete API response data
+        setStudentData((prevData) => {
+          const updatedData = {
+            ...prevData,
+            // Update student status and other fields from response
+            student: {
+              ...prevData.student,
+              status: "rejected",
+            },
+            // Update the main enrollment status
+            status: "rejected",
+            // Store rejection information
+            rejection_info: {
+              rejected_by: response.data.data.enrollment.rejected_by,
+              rejected_at: response.data.data.enrollment.rejected_at,
+              rejection_reason: response.data.data.enrollment.rejection_reason
+            }
+          };
+          console.log("🔄 Updated student data after rejection:", updatedData);
+          return updatedData;
+        });
+
+        // Close the modal
+        handleCloseRejectModal();
+        
+      } else {
+        throw new Error(response.data.message || "Failed to reject enrolment");
+      }
+    } catch (err) {
+      console.error("❌ Error rejecting enrolment:", err);
+      
+      // Enhanced error handling
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          "Failed to reject enrolment. Please try again.";
+      
+      setRejectionError(errorMessage);
+      
+      // Log detailed error for debugging
+      if (err.response) {
+        console.error("Error response data:", err.response.data);
+        console.error("Error response status:", err.response.status);
+      }
+    } finally {
+      setRejectLoading(false);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -206,8 +302,13 @@ const EnrolmentDetails = () => {
     medical_details, 
     first_emergency_contact, 
     personal_declaration,
-    approval_info
+    approval_info,
+    rejection_info
   } = studentData;
+
+  const isApproved = student?.status === "approved";
+  const isRejected = student?.status === "rejected";
+  const isPending = student?.status === "pending" || !student?.status;
 
   return (
     <div className="container-fluid px-4 py-3">
@@ -221,34 +322,62 @@ const EnrolmentDetails = () => {
               Approved by {approval_info.approved_by} on {formatDateToMMDDYYYY(approval_info.approved_at)}
             </p>
           )}
+          {rejection_info && (
+            <p className="text-danger small mb-0">
+              Rejected by {rejection_info.rejected_by} on {formatDateToMMDDYYYY(rejection_info.rejected_at)}
+              {rejection_info.rejection_reason && ` - Reason: ${rejection_info.rejection_reason}`}
+            </p>
+          )}
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <ButtonGlobal
-            onClick={handleAcceptEnrolment}
-            className={`btn ${
-              student?.status === "approved" 
-                ? "btn-success" 
-                : acceptLoading 
-                ? "btn-secondary" 
-                : "btn-primary"
-            }`}
-            disabled={acceptLoading || student?.status === "approved"}
-          >
-            {acceptLoading ? (
-              <>
-                <div className="spinner-border spinner-border-sm me-2" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                Processing...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-check2-all me-2"></i>
-                {student?.status === "approved" ? "Enrolment Accepted" : "Accept Enrolment"}
-              </>
-            )}
-          </ButtonGlobal>
+          {isPending && (
+            <>
+              <ButtonGlobal
+                onClick={handleAcceptEnrolment}
+                className="btn btn-primary"
+                disabled={acceptLoading}
+              >
+                {acceptLoading ? (
+                  <>
+                    <div className="spinner-border spinner-border-sm me-2" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-check2-all me-2"></i>
+                    Accept Enrolment
+                  </>
+                )}
+              </ButtonGlobal>
+              
+              <ButtonGlobal
+                onClick={handleOpenRejectModal}
+                className="btn btn-outline-danger"
+                disabled={rejectLoading}
+              >
+                <i className="bi bi-x-circle me-2" />
+                Reject Enrolment
+              </ButtonGlobal>
+            </>
+          )}
+          
+          {isApproved && (
+            <ButtonGlobal className="btn btn-success" disabled>
+              <i className="bi bi-check2-all me-2"></i>
+              Enrolment Accepted
+            </ButtonGlobal>
+          )}
+          
+          {isRejected && (
+            <ButtonGlobal className="btn btn-danger" disabled>
+              <i className="bi bi-x-circle me-2" />
+              Enrolment Rejected
+            </ButtonGlobal>
+          )}
+          
           <ButtonGlobal onClick={handleBack} className="btn btn-outline-secondary">
             <i className="bi bi-arrow-left me-2" />
             Back to List
@@ -641,6 +770,86 @@ const EnrolmentDetails = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Rejection Confirmation Modal */}
+      <Modal
+        show={showRejectModal}
+        onHide={handleCloseRejectModal}
+        size="md"
+        centered
+        backdrop="static"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i className="bi bi-x-circle me-2 text-danger"></i>
+            Reject Enrolment
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="text-center mb-3">
+            <div className="mb-3">
+              <i className="bi bi-exclamation-triangle text-warning fs-1"></i>
+            </div>
+            <h5 className="mb-3">
+              Are you sure you want to reject this enrolment?
+            </h5>
+            <p className="text-muted">
+              You are about to reject the enrolment for{" "}
+              <strong>{student?.first_given_name} {student?.family_name}</strong>. 
+              This action will change the enrolment status to rejected.
+            </p>
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="rejectionReason" className="form-label fw-semibold">
+              Reason for Rejection <span className="text-danger">*</span>
+            </label>
+            <textarea
+              id="rejectionReason"
+              className={`form-control ${rejectionError ? 'is-invalid' : ''}`}
+              rows="3"
+              placeholder="Please provide a reason for rejecting this enrolment..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+            {rejectionError && (
+              <div className="invalid-feedback">{rejectionError}</div>
+            )}
+            <div className="form-text">
+              This reason will be recorded and visible in the enrolment history.
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="d-flex justify-content-between">
+          <Button
+            variant="secondary"
+            onClick={handleCloseRejectModal}
+            disabled={rejectLoading}
+          >
+            Cancel
+          </Button>
+          <ButtonGlobal
+            onClick={handleRejectEnrolment}
+            className="btn btn-danger"
+            disabled={rejectLoading}
+          >
+            {rejectLoading ? (
+              <>
+                <div
+                  className="spinner-border spinner-border-sm me-2"
+                  role="status"
+                ></div>
+                Rejecting...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-x-circle me-2" />
+                Reject Enrolment
+              </>
+            )}
+          </ButtonGlobal>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

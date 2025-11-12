@@ -60,7 +60,7 @@ const EnrolStudents = () => {
     });
   };
 
-  // Fetch students from API
+  // Fetch students from API with pagination support
   const fetchStudents = async (isRefresh = false) => {
     // If user is parent/teacher, don't fetch all students
     if (isRestrictedUser) {
@@ -79,49 +79,107 @@ const EnrolStudents = () => {
 
       console.log("Fetching students from API...");
 
-      const response = await api.get("/student-enrollment");
-      console.log("API Response:", response.data);
+      let allStudents = [];
+      let currentPage = 1;
+      let lastPage = 1;
 
-      // Extract data from the response structure - CORRECTED CODE
+      // Fetch first page to get pagination info
+      const firstResponse = await api.get("/student-enrollment");
+      console.log("First page API Response:", firstResponse.data);
+
+      // Extract pagination info and first page data
       let studentsData = [];
-
       if (
-        response.data &&
-        response.data.students &&
-        response.data.students.data &&
-        Array.isArray(response.data.students.data)
+        firstResponse.data &&
+        firstResponse.data.students &&
+        firstResponse.data.students.data &&
+        Array.isArray(firstResponse.data.students.data)
       ) {
-        studentsData = response.data.students.data;
+        studentsData = firstResponse.data.students.data;
+        lastPage = firstResponse.data.students.last_page || 1;
+        allStudents = [...studentsData];
       } else if (
-        response.data &&
-        response.data.students &&
-        Array.isArray(response.data.students)
+        firstResponse.data &&
+        firstResponse.data.students &&
+        Array.isArray(firstResponse.data.students)
       ) {
-        studentsData = response.data.students;
+        studentsData = firstResponse.data.students;
+        allStudents = [...studentsData];
       } else if (
-        response.data &&
-        response.data.data &&
-        Array.isArray(response.data.data)
+        firstResponse.data &&
+        firstResponse.data.data &&
+        Array.isArray(firstResponse.data.data)
       ) {
-        studentsData = response.data.data;
-      } else if (Array.isArray(response.data)) {
-        studentsData = response.data;
+        studentsData = firstResponse.data.data;
+        allStudents = [...studentsData];
+      } else if (Array.isArray(firstResponse.data)) {
+        studentsData = firstResponse.data;
+        allStudents = [...studentsData];
       } else {
-        console.warn("Unexpected API response structure:", response.data);
+        console.warn("Unexpected API response structure:", firstResponse.data);
         setError("Unexpected data format received from server");
         return;
       }
 
-      console.log("Extracted students data:", studentsData);
+      console.log("First page students data:", studentsData);
+      console.log("Total pages:", lastPage);
 
-      if (studentsData.length === 0) {
+      // Fetch remaining pages if any
+      if (lastPage > 1) {
+        console.log(`Fetching additional ${lastPage - 1} pages...`);
+        
+        const pagePromises = [];
+        for (let page = 2; page <= lastPage; page++) {
+          pagePromises.push(api.get(`/student-enrollment?page=${page}`));
+        }
+
+        const responses = await Promise.all(pagePromises);
+        
+        responses.forEach((response, index) => {
+          console.log(`Processing page ${index + 2} response:`, response.data);
+          
+          let pageData = [];
+          if (
+            response.data &&
+            response.data.students &&
+            response.data.students.data &&
+            Array.isArray(response.data.students.data)
+          ) {
+            pageData = response.data.students.data;
+          } else if (
+            response.data &&
+            response.data.students &&
+            Array.isArray(response.data.students)
+          ) {
+            pageData = response.data.students;
+          } else if (
+            response.data &&
+            response.data.data &&
+            Array.isArray(response.data.data)
+          ) {
+            pageData = response.data.data;
+          } else if (Array.isArray(response.data)) {
+            pageData = response.data;
+          }
+
+          if (pageData.length > 0) {
+            allStudents = [...allStudents, ...pageData];
+            console.log(`Added ${pageData.length} students from page ${index + 2}`);
+          }
+        });
+      }
+
+      console.log("All students data after pagination:", allStudents);
+      console.log("Total students fetched:", allStudents.length);
+
+      if (allStudents.length === 0) {
         setStudents([]);
         setLastRefreshTime(new Date());
         return;
       }
 
       // Filter students for parent role
-      const filteredStudents = filterStudentsForParent(studentsData);
+      const filteredStudents = filterStudentsForParent(allStudents);
 
       // Format students data for the table
       const formattedStudents = filteredStudents.map((student, index) => {
@@ -158,7 +216,7 @@ const EnrolStudents = () => {
         };
       });
 
-      console.log("Formatted students:", formattedStudents);
+      console.log("Total formatted students:", formattedStudents.length);
       setStudents(formattedStudents);
       setLastRefreshTime(new Date());
     } catch (err) {

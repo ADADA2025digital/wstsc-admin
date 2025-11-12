@@ -29,6 +29,7 @@ const StudentsList = () => {
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [detailedStudentsData, setDetailedStudentsData] = useState({});
   const navigate = useNavigate();
 
   // Get user data from localStorage on component mount
@@ -60,6 +61,23 @@ const StudentsList = () => {
     });
   };
 
+  // Fetch detailed student information
+  const fetchStudentDetails = async (studentId) => {
+    try {
+      console.log(`Fetching details for student ${studentId}...`);
+      const response = await api.get(`/class-students/student/${studentId}/details`);
+      
+      if (response.data && response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data?.message || "Failed to fetch student details");
+      }
+    } catch (err) {
+      console.error(`Error fetching details for student ${studentId}:`, err);
+      return null;
+    }
+  };
+
   // Fetch students from API
   const fetchStudents = async (isRefresh = false) => {
     try {
@@ -83,8 +101,8 @@ const StudentsList = () => {
 
         console.log("Raw class students data:", classStudents);
 
-        // Transform the API response to match your expected student structure
-        const studentsData = classStudents.map((cs) => {
+        // First, create basic student data
+        const basicStudentsData = classStudents.map((cs) => {
           const student = cs.student || {};
           const classroom = cs.classroom || {};
 
@@ -101,27 +119,51 @@ const StudentsList = () => {
             mainstream_enrollment_year: cs.enr_year || "",
             status: cs.is_active ? "Active" : "Inactive",
             classroom: classroom.class_name || "N/A",
-            parent_carers: student.parent_carers || [], // This might need separate API call
-            // Add other fields that might be needed
+            parent_carers: student.parent_carers || [],
             raw_class_student: cs,
           };
         });
 
-        console.log("Transformed students data:", studentsData);
+        console.log("Basic students data:", basicStudentsData);
 
         // Filter students for parent role
-        const filteredStudents = filterStudentsForParent(studentsData);
+        const filteredStudents = filterStudentsForParent(basicStudentsData);
+
+        // Fetch detailed information for each student
+        console.log("Fetching detailed student information...");
+        const detailedStudents = await Promise.all(
+          filteredStudents.map(async (student) => {
+            const studentDetails = await fetchStudentDetails(student.id);
+            
+            if (studentDetails) {
+              // Merge basic data with detailed data
+              return {
+                ...student,
+                // Override with detailed information if available
+                gender: studentDetails.student?.gender || student.gender,
+                date_of_birth: studentDetails.student?.date_of_birth || student.date_of_birth,
+                status: studentDetails.student?.status === "approved" ? "Active" : 
+                       studentDetails.student?.status === "pending" ? "Pending" : 
+                       studentDetails.student?.status === "rejected" ? "Inactive" : student.status,
+                // Add parent information if available in detailed response
+                parent_carers: studentDetails.parent_carers || student.parent_carers,
+                // Store the complete detailed data
+                detailed_data: studentDetails,
+              };
+            }
+            
+            return student;
+          })
+        );
+
+        console.log("Detailed students data:", detailedStudents);
 
         // Format students data for the table
-        const formattedStudents = filteredStudents.map((student, index) => {
+        const formattedStudents = detailedStudents.map((student, index) => {
           const firstParent =
             student.parent_carers && student.parent_carers.length > 0
               ? student.parent_carers[0]
               : {};
-
-          // For this API structure, contact details come from parent_carers
-          const contactEmail = firstParent.email || "N/A";
-          const contactPhone = firstParent.mobile_phone || "N/A";
 
           return {
             index: index + 1,
@@ -139,9 +181,8 @@ const StudentsList = () => {
             parent_name: firstParent.first_name
               ? `${firstParent.first_name} ${firstParent.last_name}`
               : "N/A",
-            contact_email: contactEmail,
-            contact_phone: contactPhone,
             raw_data: student,
+            detailed_data: student.detailed_data,
           };
         });
 
@@ -246,10 +287,6 @@ const StudentsList = () => {
             data: "parent_name",
           },
           {
-            title: "Contact Email",
-            data: "contact_email",
-          },
-          {
             title: "Actions",
             className: "text-center",
             width: "100px",
@@ -289,7 +326,10 @@ const StudentsList = () => {
         const student = students.find((s) => s.id === studentId);
         if (student) {
           navigate(`/students/${studentId}`, {
-            state: { studentData: student.raw_data },
+            state: { 
+              studentData: student.raw_data,
+              detailedData: student.detailed_data 
+            },
           });
         }
       });
@@ -304,6 +344,11 @@ const StudentsList = () => {
 
   const handleRefresh = () => {
     fetchStudents(true);
+  };
+
+  const handleAddStudent = () => {
+    // Navigate to add student page
+    navigate("/students/add");
   };
 
   // Show restricted access message for parents/teachers
@@ -340,14 +385,14 @@ const StudentsList = () => {
                             Status:{" "}
                             <span
                               className={`badge ${
-                                student.raw_data.status === "Active"
+                                student.status === "Active"
                                   ? "bg-success"
-                                  : student.raw_data.status === "Pending"
+                                  : student.status === "Pending"
                                   ? "bg-warning"
                                   : "bg-secondary"
                               }`}
                             >
-                              {student.raw_data.status}
+                              {student.status}
                             </span>
                           </p>
                           <Button
@@ -355,7 +400,10 @@ const StudentsList = () => {
                             size="sm"
                             onClick={() =>
                               navigate(`/students/${student.id}`, {
-                                state: { studentData: student.raw_data },
+                                state: { 
+                                  studentData: student.raw_data,
+                                  detailedData: student.detailed_data 
+                                },
                               })
                             }
                           >
@@ -459,7 +507,7 @@ const StudentsList = () => {
             </div>
           )}
         </div>
-      )}
+      )}  
     </div>
   );
 };

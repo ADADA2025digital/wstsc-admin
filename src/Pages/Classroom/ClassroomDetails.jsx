@@ -918,23 +918,24 @@ export default function ClassroomDetails() {
                           key={teacher.assignmentId || index}
                           className="list-group-item d-flex justify-content-between align-items-center"
                         >
-                          <div>
-                            <h6 className="mb-1 fw-semibold">{teacher.name}</h6>
-                            <p
-                              className="mb-1 text-muted small"
-                            >
-                              {teacher.email}
-                            </p>
-                            <p className="mb-0 text-muted small">
-                              Assignment:{" "}
-                              {new Date(
-                                teacher.assignmentDate
-                              ).toLocaleDateString()}
-                              {teacher.endDate &&
-                                ` - ${new Date(
-                                  teacher.endDate
-                                ).toLocaleDateString()}`}
-                            </p>
+                          <div className="d-flex align-items-center">
+                            <i className="bi bi-person-circle me-3 text-primary fs-5"></i>
+                            <div>
+                              <h6 className="mb-0 fw-semibold">{teacher.name}</h6>
+                              <p className="mb-1 text-muted small">
+                                {teacher.email}
+                              </p>
+                              <p className="mb-0 text-muted small">
+                                Assignment:{" "}
+                                {new Date(
+                                  teacher.assignmentDate
+                                ).toLocaleDateString()}
+                                {teacher.endDate &&
+                                  ` - ${new Date(
+                                    teacher.endDate
+                                  ).toLocaleDateString()}`}
+                              </p>
+                            </div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
                             <Badge
@@ -977,7 +978,7 @@ export default function ClassroomDetails() {
               </div>
             </Tab>
 
-            {/* Students Tab */}
+            {/* Students Tab - Updated to match Teachers tab UI */}
             <Tab
               eventKey="students"
               title={
@@ -1012,88 +1013,50 @@ export default function ClassroomDetails() {
                       <p className="mt-2 text-muted">Loading students...</p>
                     </div>
                   ) : students.length > 0 ? (
-                    <div className="table-responsive">
-                      <table className="table table-striped table-hover mb-0">
-                        <thead className="table-light">
-                          <tr>
-                            <th style={{ width: 60 }}>#</th>
-                            <th>Student Name</th>
-                            <th>Preferred Name</th>
-                            <th>Gender</th>
-                            <th>Date of Birth</th>
-                            <th>Enrollment Year</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {students.map((student, index) => (
-                            <tr key={student.id}>
-                              <td className="fw-medium">{index + 1}</td>
-                              <td>
-                                <div>
-                                  <div className="fw-semibold">{student.fullName}</div>
-                                  <small className="text-muted">ID: {student.enrollmentId}</small>
-                                </div>
-                              </td>
-                              <td>{student.preferredName}</td>
-                              <td>
-                                <Badge 
-                                  bg={
-                                    student.gender === 'Female' ? 'info' : 
-                                    student.gender === 'Male' ? 'primary' : 'secondary'
-                                  }
-                                  className="fs-7"
-                                >
-                                  {student.gender}
-                                </Badge>
-                              </td>
-                              <td>
-                                {student.dateOfBirth ? 
+                    <div className="list-group list-group-flush">
+                      {students.map((student, index) => (
+                        <div
+                          key={student.id}
+                          className="list-group-item d-flex justify-content-between align-items-center"
+                        >
+                          <div className="d-flex align-items-center">
+                            <i className="bi bi-person-circle me-3 text-success fs-5"></i>
+                            <div>
+                              <h6 className="mb-0 fw-semibold">{student.fullName}</h6>
+                              <p className="mb-1 text-muted small">
+                                {student.preferredName && `Preferred: ${student.preferredName}`}
+                                {student.preferredName && student.enrollmentId && ' • '}
+                                {student.enrollmentId && `ID: ${student.enrollmentId}`}
+                              </p>
+                              <p className="mb-0 text-muted small">
+                                DOB: {student.dateOfBirth ? 
                                   new Date(student.dateOfBirth).toLocaleDateString() : 
                                   'N/A'
                                 }
-                              </td>
-                              <td>{student.enrollmentYear}</td>
-                              <td>
-                                <Badge 
-                                  bg={student.isActive ? 'success' : 'secondary'}
-                                  className="fs-7"
-                                >
-                                  {student.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      
-                      {/* Summary information */}
-                      <div className="mt-3 p-3 bg-light rounded">
-                        <div className="row text-center">
-                          <div className="col">
-                            <small className="text-muted">Total Students</small>
-                            <div className="fw-bold text-primary">{students.length}</div>
-                          </div>
-                          <div className="col">
-                            <small className="text-muted">Active</small>
-                            <div className="fw-bold text-success">
-                              {students.filter(s => s.isActive).length}
+                                {student.enrollmentYear && ` • Enrollment: ${student.enrollmentYear}`}
+                              </p>
                             </div>
                           </div>
-                          <div className="col">
-                            <small className="text-muted">Female</small>
-                            <div className="fw-bold text-info">
-                              {students.filter(s => s.gender === 'Female').length}
-                            </div>
-                          </div>
-                          <div className="col">
-                            <small className="text-muted">Male</small>
-                            <div className="fw-bold text-primary">
-                              {students.filter(s => s.gender === 'Male').length}
-                            </div>
+                          <div className="d-flex align-items-center gap-2">
+                            <Badge 
+                              bg={
+                                student.gender === 'Female' ? 'info' : 
+                                student.gender === 'Male' ? 'primary' : 'secondary'
+                              }
+                              className="fs-7"
+                            >
+                              {student.gender}
+                            </Badge>
+                            <Badge 
+                              bg={student.isActive ? 'success' : 'secondary'}
+                              className="fs-7"
+                            >
+                              {student.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
                           </div>
                         </div>
-                      </div>
+                      ))}
+                    
                     </div>
                   ) : (
                     <EmptyState

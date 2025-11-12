@@ -77,21 +77,11 @@ const EnrolmentDetails = () => {
   const handleAcceptEnrolment = async () => {
     if (!id) {
       console.error("❌ No enrolment ID found for acceptance");
-      alert("No enrolment ID found");
       return;
     }
 
     console.log("✅ Attempting to accept enrolment ID:", id);
     console.log("Current student status:", studentData?.student?.status);
-
-    const isConfirmed = window.confirm(
-      "Are you sure you want to accept this enrolment? This action cannot be undone."
-    );
-
-    if (!isConfirmed) {
-      console.log("❌ Enrolment acceptance cancelled by user");
-      return;
-    }
 
     try {
       setAcceptLoading(true);
@@ -131,12 +121,6 @@ const EnrolmentDetails = () => {
           console.log("🔄 Updated student data:", updatedData);
           return updatedData;
         });
-
-        // Show success message from API response
-        alert(response.data.message || "Enrolment accepted successfully!");
-        
-        // Optional: Refresh the data to get the latest from server
-        // fetchStudentDetails();
         
       } else {
         throw new Error(response.data.message || "Failed to accept enrolment");
@@ -148,8 +132,6 @@ const EnrolmentDetails = () => {
       const errorMessage = err.response?.data?.message || 
                           err.message || 
                           "Failed to accept enrolment. Please try again.";
-      
-      alert(`Error: ${errorMessage}`);
       
       // Log detailed error for debugging
       if (err.response) {

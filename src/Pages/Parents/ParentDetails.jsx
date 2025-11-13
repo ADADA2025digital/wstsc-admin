@@ -21,7 +21,9 @@ const ParentDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [parentData, setParentData] = useState(null);
+  const [childrenData, setChildrenData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [childrenLoading, setChildrenLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -31,6 +33,8 @@ const ParentDetails = () => {
       const transformedData = transformParentData(location.state.parentData);
       setParentData(transformedData);
       setLoading(false);
+      // Fetch children data after parent data is set
+      fetchChildrenData(location.state.parentData.user_id);
     } else {
       fetchParentDetails();
     }
@@ -55,6 +59,9 @@ const ParentDetails = () => {
         const transformedData = transformParentData(apiData);
         setParentData(transformedData);
         console.log("✅ Fetched and transformed parent data:", transformedData);
+        
+        // Fetch children data after parent data is set
+        fetchChildrenData(apiData.user_id || parentId);
       } else {
         setError(response.data.message || "Failed to fetch parent details");
       }
@@ -63,6 +70,64 @@ const ParentDetails = () => {
       setError("Failed to fetch parent details: " + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch children data from the student-details API
+  const fetchChildrenData = async (parentId) => {
+    if (!parentId) return;
+    
+    try {
+      setChildrenLoading(true);
+      console.log(`Fetching children data for parent ${parentId}...`);
+      
+      const response = await api.get(`/admin/parent/${parentId}/student-details`);
+      
+      if (response.data.success) {
+        const students = response.data.data.students || [];
+        console.log("✅ Fetched children data:", students);
+        
+        // Transform the children data to match our table structure
+        const transformedChildren = students.map(student => {
+          const studentInfo = student.student_info;
+          const currentClass = student.current_classes?.[0] || {};
+          
+          return {
+            id: studentInfo.enrollment_id,
+            enrollment_id: studentInfo.enrollment_id,
+            first_name: studentInfo.first_given_name,
+            last_name: studentInfo.family_name,
+            full_name: `${studentInfo.first_given_name} ${studentInfo.family_name}`,
+            preferred_name: studentInfo.preferred_first_name,
+            gender: studentInfo.gender,
+            date_of_birth: studentInfo.date_of_birth,
+            status: studentInfo.status,
+            phone_number: studentInfo.phone_number,
+            mainstream_school_name: studentInfo.mainstream_school_name,
+            enrolment_date: studentInfo.enrolment_date,
+            mainstream_enrollment_year: studentInfo.mainstream_enrollment_year,
+            class_id: currentClass.class_id,
+            class_name: currentClass.class_name,
+            is_active: currentClass.is_active,
+            teachers: currentClass.teachers || [],
+            parent_carers: student.parents_carers || [],
+            medical_details: student.medical_details || {},
+            emergency_contacts: student.emergency_contacts || [],
+            summary: student.summary || {}
+          };
+        });
+        
+        setChildrenData(transformedChildren);
+      } else {
+        console.warn("No children data found or API returned unsuccessful");
+        setChildrenData([]);
+      }
+    } catch (err) {
+      console.error("Error fetching children data:", err);
+      // Don't set error state for children data - just log it
+      setChildrenData([]);
+    } finally {
+      setChildrenLoading(false);
     }
   };
 
@@ -77,6 +142,7 @@ const ParentDetails = () => {
     
     return {
       id: apiData.id,
+      user_id: apiData.user_id || apiData.id,
       person_id: apiData.id, // Use parent ID as person ID for the API call
       first_name: apiData.first_name || "",
       last_name: apiData.last_name || "",
@@ -492,31 +558,73 @@ const ParentDetails = () => {
             </Tab>
 
             {/* Children Information Tab */}
-            <Tab eventKey="children" title="Children Information">
+            <Tab eventKey="children" title={
+              <div className="d-flex align-items-center">
+                Children Information
+              </div>
+            }>
               <div className="p-3">
                 <Row className="g-3">
                   <Col md={12}>
                     <InfoCard title="Associated Children" className="bg-light">
-                      {parentData.children && parentData.children.length > 0 ? (
+                      {childrenLoading ? (
+                        <div className="text-center py-4">
+                          <Spinner animation="border" variant="primary" />
+                          <p className="mt-2 text-muted">Loading children information...</p>
+                        </div>
+                      ) : childrenData.length > 0 ? (
                         <div className="table-responsive">
                           <table className="table table-hover">
                             <thead>
                               <tr>
                                 <th>Name</th>
-                                <th>Grade</th>
-                                <th>Class</th>
+                                <th>Date of Birth</th>
+                                <th>Gender</th>
+                                <th>Mainstream School</th>
+                                <th>Class at WSTSC</th>
+                                <th>Enrollment Year</th>
                                 <th>Status</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {parentData.children.map((child) => (
-                                <tr key={child.id}>
-                                  <td>{child.full_name}</td>
-                                  <td>{child.grade || "—"}</td>
-                                  <td>{child.class || "—"}</td>
+                              {childrenData.map((child) => (
+                                <tr key={child.enrollment_id}>
                                   <td>
-                                    <Badge bg={child.is_active ? "success" : "secondary"}>
-                                      {child.is_active ? "Active" : "Inactive"}
+                                    <div>
+                                      <strong>{child.full_name}</strong>
+                                      {child.preferred_name && (
+                                        <div className="small text-muted">
+                                          Preferred: {child.preferred_name}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td>{formatDateToMMDDYYYY(child.date_of_birth)}</td>
+                                  <td>
+                                    <Badge bg="info" className="text-capitalize">
+                                      {child.gender}
+                                    </Badge>
+                                  </td>
+                                  <td>{child.mainstream_school_name || "—"}</td>
+                                  <td>
+                                    {child.class_name ? (
+                                      <Badge bg="secondary">
+                                        {child.class_name}
+                                      </Badge>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </td>
+                                  <td>{child.mainstream_enrollment_year || "—"}</td>
+                                  <td>
+                                    <Badge 
+                                      bg={
+                                        child.status === 'approved' ? 'success' : 
+                                        child.status === 'pending' ? 'warning' : 'secondary'
+                                      }
+                                      className="text-capitalize"
+                                    >
+                                      {child.status}
                                     </Badge>
                                   </td>
                                 </tr>
@@ -528,6 +636,13 @@ const ParentDetails = () => {
                         <div className="text-center py-4 text-muted">
                           <i className="bi bi-people fs-1 mb-3"></i>
                           <p>No children associated with this parent</p>
+                          <button 
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => fetchChildrenData(parentData.user_id)}
+                          >
+                            <i className="bi bi-arrow-clockwise me-2"></i>
+                            Refresh Children Data
+                          </button>
                         </div>
                       )}
                     </InfoCard>

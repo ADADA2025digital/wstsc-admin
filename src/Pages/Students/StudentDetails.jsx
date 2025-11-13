@@ -12,6 +12,7 @@ import {
   Alert,
   Spinner
 } from "react-bootstrap";
+import api from "../../config/axiosConfig";
 
 const StudentDetails = () => {
   const { id } = useParams();
@@ -25,67 +26,171 @@ const StudentDetails = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updateMessage, setUpdateMessage] = useState({ type: '', text: '' });
 
+  // Debug logs for initial props
+  console.log("🔍 StudentDetails Component Mounted:", {
+    id,
+    hasStudentData: !!studentData,
+    studentDataFromLocation: studentData,
+    locationState: location.state
+  });
+
+  // Data transformation function
+  const transformStudentData = (data) => {
+    console.log("🔄 Transforming student data structure...", data);
+    
+    // If data comes from detailed_data endpoint (nested structure)
+    if (data.detailed_data) {
+      const detailed = data.detailed_data;
+      console.log("📦 Found detailed_data, extracting...", detailed);
+      
+      return {
+        student: {
+          id: data.id,
+          enrollment_id: data.student_id,
+          name: `${data.first_given_name || ''} ${data.family_name || ''}`.trim(),
+          preferred_name: data.preferred_first_name || '',
+          gender: data.gender,
+          date_of_birth: data.date_of_birth,
+          status: data.status,
+          // Merge with any student data from detailed_data
+          ...(detailed.student || {})
+        },
+        parents_carers: detailed.parents_carers || [],
+        emergency_contacts: detailed.emergency_contacts || [],
+        classes: detailed.current_classes || [],
+        summary: {
+          total_classes: detailed.current_classes?.length || 0,
+          parent_count: detailed.parents_carers?.length || 0,
+          emergency_contact_count: detailed.emergency_contacts?.length || 0
+        }
+      };
+    }
+    
+    // If data is from parent_carers list (direct structure)
+    if (data.student_id || data.enrollment_id) {
+      console.log("📦 Using direct student data structure");
+      return {
+        student: {
+          id: data.id,
+          enrollment_id: data.student_id || data.enrollment_id,
+          name: `${data.first_given_name || data.first_name || ''} ${data.family_name || data.last_name || ''}`.trim(),
+          preferred_name: data.preferred_first_name || data.preferred_name || '',
+          gender: data.gender,
+          date_of_birth: data.date_of_birth,
+          status: data.status,
+          ...data
+        },
+        parents_carers: data.parents_carers || data.parent_carers || [],
+        emergency_contacts: data.emergency_contacts || [],
+        classes: data.classes || data.current_classes || [],
+        summary: {
+          total_classes: data.classes?.length || data.current_classes?.length || 0,
+          parent_count: data.parents_carers?.length || data.parent_carers?.length || 0,
+          emergency_contact_count: data.emergency_contacts?.length || 0
+        }
+      };
+    }
+    
+    // If data is already in the expected format
+    console.log("📦 Data already in expected format");
+    return data;
+  };
+
   // If no student data was passed, fetch it using the ID
   useEffect(() => {
+    console.log("🔄 useEffect triggered:", {
+      hasStudentData: !!studentData,
+      id,
+      loading
+    });
+
     if (!studentData && id) {
+      console.log("📡 Fetching student data from API...");
       fetchStudentData();
     } else if (studentData) {
-      setCurrentStudent(studentData);
+      console.log("✅ Using student data from location state");
+      
+      // Transform the data to match expected format
+      const transformedData = transformStudentData(studentData);
+      console.log("📦 Transformed student data:", transformedData);
+      
+      setCurrentStudent(transformedData);
+      setLoading(false);
+    } else {
+      console.log("❌ No student data and no ID available");
+      setError("No student data available");
       setLoading(false);
     }
   }, [id, studentData]);
 
   const fetchStudentData = async () => {
     try {
+      console.log("🚀 Starting API call to fetch student data for ID:", id);
       setLoading(true);
       setError(null);
       
-      // Replace with your actual API endpoint
-      const response = await fetch(`https://urbanviewre.com/wstsc_backend/public/api/class-students/student/${id}`, {
-        headers: {
-          'Authorization': 'Bearer 22|LzjQUJVwoCbICQGBpypkoiLHF7YQsgnUgT7zvPMmdeb100a6',
-          'Accept': 'application/json',
-        }
+      const response = await api.get(`/class-students/student/${id}`);
+      console.log("📥 API Response received:", {
+        success: response.data.success,
+        data: response.data.data,
+        fullResponse: response.data
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch student data');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setCurrentStudent(result.data);
+      if (response.data.success) {
+        console.log("✅ Student data fetched successfully");
+        
+        // Transform the data to match expected format
+        const transformedData = transformStudentData(response.data.data);
+        console.log("🔄 Transformed data:", transformedData);
+        
+        setCurrentStudent(transformedData);
       } else {
-        throw new Error(result.message || 'Failed to fetch student data');
+        console.error("❌ API returned success: false", response.data);
+        throw new Error(response.data.message || 'Failed to fetch student data');
       }
     } catch (error) {
-      console.error("Error fetching student data:", error);
+      console.error("💥 Error fetching student data:", {
+        error,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setError('Failed to load student data. Please try again.');
     } finally {
+      console.log("🏁 API call completed, setting loading to false");
       setLoading(false);
     }
   };
 
-  // Safe data access functions
+  // Safe data access functions with debug logs
   const getStudentData = () => {
-    return currentStudent?.student || {};
+    const student = currentStudent?.student || {};
+    console.log("👤 getStudentData:", student);
+    return student;
   };
 
   const getParentsData = () => {
-    return currentStudent?.parents_carers || [];
+    const parents = currentStudent?.parents_carers || [];
+    console.log("👪 getParentsData:", parents);
+    return parents;
   };
 
   const getEmergencyContacts = () => {
-    return currentStudent?.emergency_contacts || [];
+    const contacts = currentStudent?.emergency_contacts || [];
+    console.log("🚨 getEmergencyContacts:", contacts);
+    return contacts;
   };
 
   const getClasses = () => {
-    return currentStudent?.classes || [];
+    const classes = currentStudent?.classes || [];
+    console.log("🏫 getClasses:", classes);
+    return classes;
   };
 
   const getSummary = () => {
-    return currentStudent?.summary || {};
+    const summary = currentStudent?.summary || {};
+    console.log("📊 getSummary:", summary);
+    return summary;
   };
 
   const getStatusVariant = (status) => {
@@ -121,25 +226,34 @@ const StudentDetails = () => {
   // Handle status change via toggle
   const handleStatusChange = async (newStatus) => {
     try {
+      console.log("🔄 Changing student status to:", newStatus);
       setUpdatingStatus(true);
       setUpdateMessage({ type: '', text: '' });
 
-      // Simulate API call - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update local state
-      setCurrentStudent(prev => ({
-        ...prev,
-        student: {
-          ...prev?.student,
-          status: newStatus
-        }
-      }));
-
-      setUpdateMessage({ 
-        type: 'success', 
-        text: `Student status updated to ${newStatus} successfully!` 
+      const response = await api.put(`/students/${id}/status`, {
+        status: newStatus
       });
+
+      console.log("📥 Status update response:", response.data);
+
+      if (response.data.success) {
+        // Update local state
+        setCurrentStudent(prev => ({
+          ...prev,
+          student: {
+            ...prev?.student,
+            status: newStatus
+          }
+        }));
+
+        console.log("✅ Student status updated successfully");
+        setUpdateMessage({ 
+          type: 'success', 
+          text: `Student status updated to ${newStatus} successfully!` 
+        });
+      } else {
+        throw new Error(response.data.message || 'Failed to update student status');
+      }
 
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -147,10 +261,14 @@ const StudentDetails = () => {
       }, 3000);
 
     } catch (error) {
-      console.error("Error updating student status:", error);
+      console.error("💥 Error updating student status:", {
+        error,
+        message: error.message,
+        response: error.response?.data
+      });
       setUpdateMessage({ 
         type: 'danger', 
-        text: 'Failed to update student status. Please try again.' 
+        text: error.response?.data?.message || 'Failed to update student status. Please try again.' 
       });
     } finally {
       setUpdatingStatus(false);
@@ -160,11 +278,24 @@ const StudentDetails = () => {
   // Handle quick status toggle
   const handleQuickStatusToggle = () => {
     const student = getStudentData();
+    console.log("🔀 Quick status toggle:", {
+      currentStatus: student.status,
+      newStatus: student.status === "approved" ? "inactive" : "approved"
+    });
     const newStatus = student.status === "approved" ? "inactive" : "approved";
     handleStatusChange(newStatus);
   };
 
+  // Debug current state before render
+  console.log("🎯 Current Component State:", {
+    loading,
+    error,
+    currentStudent,
+    hasStudentData: !!currentStudent
+  });
+
   if (loading) {
+    console.log("⏳ Rendering loading state...");
     return (
       <Container fluid className="px-4 py-3">
         <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
@@ -176,6 +307,7 @@ const StudentDetails = () => {
   }
 
   if (error || !currentStudent) {
+    console.log("❌ Rendering error state:", { error, hasCurrentStudent: !!currentStudent });
     return (
       <Container fluid className="px-4 py-3">
         <div className="d-flex justify-content-between align-items-center mb-4">
@@ -211,6 +343,14 @@ const StudentDetails = () => {
   const emergency_contacts = getEmergencyContacts();
   const classes = getClasses();
   const summary = getSummary();
+
+  console.log("🎨 Rendering student details with data:", {
+    student,
+    parentsCount: parents_carers.length,
+    emergencyContactsCount: emergency_contacts.length,
+    classesCount: classes.length,
+    summary
+  });
 
   return (
     <Container fluid className="px-4 py-3">
@@ -257,7 +397,7 @@ const StudentDetails = () => {
                         {student.status}
                       </Badge>
                     }
-                    checked={student.status === "approved"}
+                    checked={student.status === "approved" || student.status === "Active"}
                     onChange={handleQuickStatusToggle}
                     disabled={updatingStatus}
                   />
@@ -489,7 +629,7 @@ const StudentDetails = () => {
                   <i className="bi bi-calendar me-2"></i>
                   View Attendance
                 </Button>
-                {student.status === "approved" && (
+                {(student.status === "approved" || student.status === "Active") && (
                   <Button 
                     variant="outline-warning"
                     onClick={() => handleStatusChange("inactive")}
@@ -508,7 +648,7 @@ const StudentDetails = () => {
                     )}
                   </Button>
                 )}
-                {student.status === "inactive" && (
+                {(student.status === "inactive" || student.status === "Inactive") && (
                   <Button 
                     variant="outline-success"
                     onClick={() => handleStatusChange("approved")}

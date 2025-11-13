@@ -363,13 +363,14 @@ const Login = () => {
                   )}
                 </button>
               </form>
-              <p className="sign-up-label m-0 text-muted">
-                Don't have an account?
-                <Link to="/register" className="sign-up-link ms-1 text-decoration-underline fw-bold">
-                  Register
-                </Link>
-              </p>
-              <div className="buttons-container w-100 d-flex flex-column justify-content-start gap-3 mt-3">
+<p className="sign-up-label m-0 text-muted">
+  Having trouble logging in? Contact <br />
+  <a href="mailto:info@wstsc.org.au" className="sign-up-link text-decoration-underline fw-bold">
+    info@wstsc.org.au
+  </a>
+</p>
+
+              {/* <div className="buttons-container w-100 d-flex flex-column justify-content-start gap-3 mt-3">
                 <div className="apple-login-button">
                   <svg
                     stroke="currentColor"
@@ -423,7 +424,7 @@ const Login = () => {
                   </svg>
                   <span>Sign up with Google</span>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

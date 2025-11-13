@@ -488,6 +488,10 @@ const EnrolStudents = () => {
     navigate("/students/add");
   };
 
+  const handleEnrolStudent = () => {
+    navigate("/enrol");
+  };
+
   if (loading) {
     return (
       <div
@@ -520,21 +524,25 @@ const EnrolStudents = () => {
             </p>
           )}
           <div className="d-flex align-items-center gap-2">
-            <ButtonGlobal
-              onClick={handleRefresh}
-              className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
-              disabled={refreshing}
-              style={{
-                opacity: refreshing ? 0.7 : 1,
-              }}
-            >
-              <i
-                className={`bi bi-arrow-clockwise ${refreshing ? "spin" : ""}`}
-              />
-            </ButtonGlobal>
-            {userRole === "parent" && (
+            {students.length > 0 && (
               <ButtonGlobal
-                onClick={() => navigate("/enrol")}
+                onClick={handleRefresh}
+                className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                disabled={refreshing}
+                style={{
+                  opacity: refreshing ? 0.7 : 1,
+                }}
+              >
+                <i
+                  className={`bi bi-arrow-clockwise ${
+                    refreshing ? "spin" : ""
+                  }`}
+                />
+              </ButtonGlobal>
+            )}
+            {userRole === "parent" && students.length > 0 && (
+              <ButtonGlobal
+                onClick={handleEnrolStudent}
                 className="btn btn-primary"
                 text="New Enrollment"
               />
@@ -556,24 +564,34 @@ const EnrolStudents = () => {
       {!error && (
         <div className="card mt-1 p-3 rounded-3 shadow">
           {students.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted">
+            <div className="text-center py-5">
+              <div className="mb-4">
+                <i
+                  className="bi bi-folder-x"
+                  style={{ fontSize: "3rem", color: "#6c757d" }}
+                ></i>
+              </div>
+              <h5 className="text-muted mb-3">No Enrolments Found</h5>
+              <p className="text-muted mb-4">
                 {userRole === "parent"
                   ? "You haven't submitted any enrollment applications yet."
-                  : "No enrollments found."}
+                  : "No student enrollments found in the system."}
               </p>
-              {userRole === "parent" && (
-                <ButtonGlobal
-                  onClick={() => navigate("/enrol")}
-                  text="Start New Enrollment"
-                  className="btn-primary"
-                />
-              )}
-              <ButtonGlobal
-                onClick={handleRefresh}
-                text="Refresh"
-                className="ms-2"
-              />
+              <div className="d-flex justify-content-center gap-3">
+                <Button
+                  onClick={handleEnrolStudent}
+                  className="btn-primary px-4 py-2"
+                >
+                  <i className="bi bi-plus-circle me-1"></i> Enrol Student
+                </Button>
+                <Button
+                  onClick={handleRefresh}
+                  variant="outline-secondary"
+                  className="px-4 py-2"
+                >
+                  <i className="bi bi-arrow-clockwise"></i> Refresh
+                </Button>
+              </div>
             </div>
           ) : (
             <div>

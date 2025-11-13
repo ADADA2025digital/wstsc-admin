@@ -42,11 +42,11 @@ const Login = () => {
       // Auto-fill both email and password if remember me is enabled
       setFormData({
         email: savedEmail || "",
-        password: savedPassword || ""
+        password: savedPassword || "",
       });
     } else if (savedEmail) {
       // If only email is saved but remember me is not checked, still prefill email
-      setFormData(prev => ({ ...prev, email: savedEmail || "" }));
+      setFormData((prev) => ({ ...prev, email: savedEmail || "" }));
     }
 
     // Set up activity tracking for automatic cleanup
@@ -60,8 +60,15 @@ const Login = () => {
       clearTimeout(window.inactivityTimer);
     }
 
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
     const resetTimer = () => {
       clearTimeout(window.inactivityTimer);
       // Set timer for 5 days (5 * 24 * 60 * 60 * 1000 milliseconds)
@@ -77,13 +84,13 @@ const Login = () => {
     resetTimer();
 
     // Add event listeners for user activity
-    events.forEach(event => {
+    events.forEach((event) => {
       document.addEventListener(event, resetTimer, false);
     });
 
     // Cleanup function to remove event listeners
     return () => {
-      events.forEach(event => {
+      events.forEach((event) => {
         document.removeEventListener(event, resetTimer, false);
       });
     };
@@ -95,11 +102,11 @@ const Login = () => {
     Cookies.remove("rememberEmail");
     Cookies.remove("rememberPassword");
     setRememberMe(false);
-    
+
     // Also clear the form if user is currently viewing the login page
     setFormData({
       email: "",
-      password: ""
+      password: "",
     });
   };
 
@@ -173,16 +180,16 @@ const Login = () => {
 
         // Handle remember me
         if (rememberMe) {
-          const cookieOptions = { 
+          const cookieOptions = {
             expires: 30, // 30 days for manual expiration
-            secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-            sameSite: 'strict' // CSRF protection
+            secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+            sameSite: "strict", // CSRF protection
           };
-          
+
           Cookies.set("rememberMe", "true", cookieOptions);
           Cookies.set("rememberEmail", formData.email, cookieOptions);
           Cookies.set("rememberPassword", formData.password, cookieOptions);
-          
+
           // Reset inactivity timer on successful login with remember me
           resetInactivityTimer();
         } else {
@@ -263,7 +270,7 @@ const Login = () => {
                 Welcome Back, Login
               </h3>
               <p className="sub-title mb-1">Welcome Back!</p>
-            
+
               <form
                 className="form w-100 d-flex flex-column gap-3 mb-3"
                 onSubmit={handleSubmit}
@@ -281,7 +288,9 @@ const Login = () => {
                   required
                 />
                 {validationErrors.email && (
-                  <div className="text-danger small">{validationErrors.email}</div>
+                  <div className="text-danger small">
+                    {validationErrors.email}
+                  </div>
                 )}
 
                 <div className="input-group">
@@ -308,7 +317,7 @@ const Login = () => {
                       border: "1px solid #dee2e6",
                       padding: "12px 15px",
                       borderTopRightRadius: "20px",
-                      borderBottomRightRadius: "20px"
+                      borderBottomRightRadius: "20px",
                     }}
                   >
                     {showPassword ? (
@@ -319,7 +328,9 @@ const Login = () => {
                   </span>
                 </div>
                 {validationErrors.password && (
-                  <div className="text-danger small">{validationErrors.password}</div>
+                  <div className="text-danger small">
+                    {validationErrors.password}
+                  </div>
                 )}
 
                 {/* Remember me */}
@@ -339,14 +350,16 @@ const Login = () => {
                     Remember me (auto-clear after 5 days inactivity)
                   </label>
                 </div>
-                
+
                 <button
                   className="border-0 text-white form-btn"
                   type="submit"
                   disabled={loading || !isFormValid()}
                   style={{
-                    backgroundColor: loading || !isFormValid() ? '#6c757d' : '#0d6efd',
-                    cursor: loading || !isFormValid() ? 'not-allowed' : 'pointer'
+                    backgroundColor:
+                      loading || !isFormValid() ? "#6c757d" : "#0d6efd",
+                    cursor:
+                      loading || !isFormValid() ? "not-allowed" : "pointer",
                   }}
                 >
                   {loading ? (
@@ -363,12 +376,15 @@ const Login = () => {
                   )}
                 </button>
               </form>
-<p className="sign-up-label m-0 text-muted">
-  Having trouble logging in? Contact <br />
-  <a href="mailto:info@wstsc.org.au" className="sign-up-link text-decoration-underline fw-bold">
-    info@wstsc.org.au
-  </a>
-</p>
+              <p className="sign-up-label m-0 text-muted">
+                Having trouble logging in? Contact <br />
+                <a
+                  href="mailto:info@wstsc.org.au"
+                  className="sign-up-link text-decoration-underline fw-bold"
+                >
+                  info@wstsc.org.au
+                </a>
+              </p>
 
               {/* <div className="buttons-container w-100 d-flex flex-column justify-content-start gap-3 mt-3">
                 <div className="apple-login-button">

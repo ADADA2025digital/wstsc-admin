@@ -34,6 +34,10 @@ export default function ClassroomsList() {
   const [teacherCounts, setTeacherCounts] = useState({});
   const [loadingTeacherCounts, setLoadingTeacherCounts] = useState(false);
 
+  // Parent enrollments state
+  const [parentEnrollments, setParentEnrollments] = useState([]);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+
   const navigate = useNavigate();
 
   // Get current user info - FIXED: Properly handle nested role object
@@ -98,6 +102,82 @@ export default function ClassroomsList() {
     console.log("🚀 ClassroomsList component mounted");
     fetchClassrooms();
   }, []);
+
+  // Fetch parent enrollments
+  const fetchParentEnrollments = async () => {
+    try {
+      setLoadingEnrollments(true);
+      console.log("📡 Fetching parent enrollments...");
+
+      const response = await api.get("/my-enrollments", {
+        timeout: 10000,
+      });
+
+      console.log("📦 Parent enrollments API response:", response.data);
+
+      if (response.data.success) {
+        const enrollments = response.data.data.enrollments || [];
+        console.log("🎯 Parent enrollments:", enrollments);
+        setParentEnrollments(enrollments);
+        
+        // Extract unique classrooms from enrollments
+        const assignedClassrooms = extractClassroomsFromEnrollments(enrollments);
+        return assignedClassrooms;
+      } else {
+        console.warn("Failed to fetch parent enrollments:", response.data.message);
+        return [];
+      }
+    } catch (err) {
+      console.error("❌ Error fetching parent enrollments:", err);
+      setError("Failed to load your child's enrollments. Please try again.");
+      return [];
+    } finally {
+      setLoadingEnrollments(false);
+    }
+  };
+
+  // Extract classrooms from enrollment data
+  const extractClassroomsFromEnrollments = (enrollments) => {
+    const classroomsMap = new Map();
+    
+    enrollments.forEach(enrollment => {
+      const student = enrollment.student;
+      if (student && student.enrol_class_in_WSTSC) {
+        const classCode = student.enrol_class_in_WSTSC;
+        const classroomName = student.enrol_class_in_WSTSC; // Using class code as name
+        
+        if (!classroomsMap.has(classCode)) {
+          classroomsMap.set(classCode, {
+            id: classCode, // Using class code as ID since we don't have classroom ID
+            name: classroomName,
+            code: classCode,
+            status: student.status === "approved" ? "Active" : "Pending",
+            students: 0, // Will be calculated below
+            teachers: 0, // Will be updated if teacher data is available
+            is_active: student.status === "approved",
+            studentInfo: [],
+            enrollmentStatus: student.status
+          });
+        }
+        
+        // Add student info to the classroom
+        const classroom = classroomsMap.get(classCode);
+        classroom.studentInfo.push({
+          name: `${student.first_given_name} ${student.family_name}`,
+          preferredName: student.preferred_first_name,
+          enrollmentId: student.enrollment_id,
+          status: student.status
+        });
+        
+        // Count only approved students
+        if (student.status === "approved") {
+          classroom.students += 1;
+        }
+      }
+    });
+
+    return Array.from(classroomsMap.values());
+  };
 
   // Fetch student counts for all classrooms
   const fetchStudentCounts = async () => {
@@ -202,12 +282,22 @@ export default function ClassroomsList() {
       }
       setError(null);
 
-      // Fetch classrooms, student counts, and teacher counts in parallel
-      await Promise.all([
-        fetchAllClassrooms(),
-        fetchStudentCounts(),
-        fetchTeacherCounts()
-      ]);
+      // If user is parent, fetch their enrollments instead of all classrooms
+      if (isParent) {
+        console.log("👨‍👧 User is parent, fetching enrollments...");
+        const assignedClassrooms = await fetchParentEnrollments();
+        setClassrooms(assignedClassrooms);
+        
+        // Also fetch teacher counts for the assigned classrooms
+        await fetchTeacherCounts();
+      } else {
+        // For non-parent users, fetch all classrooms as before
+        await Promise.all([
+          fetchAllClassrooms(),
+          fetchStudentCounts(),
+          fetchTeacherCounts()
+        ]);
+      }
 
       setLastRefreshTime(new Date());
       console.log("✅ fetchClassrooms completed successfully");
@@ -279,8 +369,8 @@ export default function ClassroomsList() {
     if (classrooms.length > 0 && (Object.keys(studentCounts).length > 0 || Object.keys(teacherCounts).length > 0)) {
       const updatedClassrooms = classrooms.map(cls => ({
         ...cls,
-        students: studentCounts[cls.code] || 0,
-        teachers: teacherCounts[cls.code] || 0
+        students: studentCounts[cls.code] || cls.students || 0,
+        teachers: teacherCounts[cls.code] || cls.teachers || 0
       }));
       setClassrooms(updatedClassrooms);
     }
@@ -307,17 +397,43 @@ export default function ClassroomsList() {
     isParent,
     classroomsCount: classrooms.length,
     filteredCount: filtered.length,
+    parentEnrollments: parentEnrollments.length,
     studentCounts,
     teacherCounts,
     totalStudents,
     totalTeachers
   });
 
+  // FIXED: Handle view for both parent and admin - navigate to same path
   const handleView = (cls) => {
-    console.log("👁️ Navigating to classroom with c_id:", cls.id);
-    navigate(`/classrooms/${cls.id}`, {
-      state: { classroom: cls },
-    });
+    console.log("👁️ Navigating to classroom:", cls);
+    
+    // For parent users, we need to find the actual classroom ID from the classrooms list
+    // since parent uses class code as ID but admin uses c_id
+    if (isParent) {
+      // Try to find the actual classroom by code to get the proper ID
+      // This assumes you have a way to map class codes to classroom IDs
+      // If not, you might need to adjust your backend or data structure
+      console.log("👨‍👧 Parent viewing classroom with code:", cls.code);
+      
+      // Navigate with the classroom code as ID for now
+      // You might need to adjust this based on your actual classroom ID structure
+      navigate(`/classrooms/${cls.code}`, {
+        state: { 
+          classroom: cls,
+          userRole: userRole // Pass user role to the classroom detail page
+        },
+      });
+    } else {
+      // For admin/teacher users, use the regular ID
+      console.log("👨‍💼 Admin/Teacher viewing classroom with id:", cls.id);
+      navigate(`/classrooms/${cls.id}`, {
+        state: { 
+          classroom: cls,
+          userRole: userRole // Pass user role to the classroom detail page
+        },
+      });
+    }
   };
 
   // Refresh function
@@ -466,7 +582,9 @@ export default function ClassroomsList() {
             <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
-            <p className="mt-3 text-muted">Loading classrooms...</p>
+            <p className="mt-3 text-muted">
+              {isParent ? "Loading your child's classrooms..." : "Loading classrooms..."}
+            </p>
           </div>
         </div>
       </div>
@@ -504,95 +622,271 @@ export default function ClassroomsList() {
     );
   }
 
-  // Special view for parents - show enrollment message instead of classrooms
+  // Special view for parents - show assigned classrooms from enrollments
   if (isParent) {
+    const hasApprovedEnrollments = parentEnrollments.some(
+      enrollment => enrollment.student.status === "approved"
+    );
+
+    if (!hasApprovedEnrollments && classrooms.length === 0) {
+      return (
+        <div className="container-fluid px-4 py-3">
+          <div className="row align-items-center mb-4">
+            <div className="col-md-4">
+              <h4 className="H4-heading fw-bold m-0">
+                Classrooms
+                <small className="text-muted ms-2 fs-6">(Child's Classrooms)</small>
+              </h4>
+            </div>
+          </div>
+
+          <div className="card p-5 rounded-3 shadow text-center">
+            <div className="card-body py-5">
+              <div className="mb-4">
+                <i
+                  className="bi bi-people text-muted"
+                  style={{ fontSize: "4rem" }}
+                ></i>
+              </div>
+              <h5 className="card-title mb-3">No Classrooms Available</h5>
+              <p className="card-text text-muted mb-4">
+                {parentEnrollments.length > 0 
+                  ? "Your enrollment applications are pending approval. Once approved, your child's classrooms will appear here."
+                  : "Please enroll your students to view their classrooms. Once your children are enrolled in classes, you'll be able to see their classroom information, schedules, and progress here."}
+              </p>
+              <div className="d-flex justify-content-center gap-3">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate("/enrol")}
+                >
+                  <i className="bi bi-person-plus me-2"></i>
+                  {parentEnrollments.length > 0 ? "View Enrollments" : "Enroll Students"}
+                </button>
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  <i className={`bi bi-arrow-clockwise me-2 ${refreshing ? "spinner-border spinner-border-sm" : ""}`}></i>
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Parent has approved enrollments - show assigned classrooms
     return (
       <div className="container-fluid px-4 py-3">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h4 className="H4-heading fw-bold m-0">
-            Classrooms
-            <small className="text-muted ms-2 fs-6">(Child's Classrooms)</small>
-          </h4>
-        </div>
+        <div className="row align-items-center mb-4">
+          <div className="col-md-4">
+            <h4 className="H4-heading fw-bold m-0">
+              Classrooms
+              <small className="text-muted ms-2 fs-6">(Your Child's Classrooms)</small>
+            </h4>
+          </div>
+          
+          <div className="col-md-8">
+            <div className="d-flex gap-3 align-items-center">
+              <div className="input-group flex-grow-1">
+                <span className="input-group-text">
+                  <i className="bi bi-search" />
+                </span>
+                <input
+                  className="form-control"
+                  placeholder="Search classrooms..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
 
-        <div className="card p-5 rounded-3 shadow text-center">
-          <div className="card-body py-5">
-            <div className="mb-4">
-              <i
-                className="bi bi-people text-muted"
-                style={{ fontSize: "4rem" }}
-              ></i>
-            </div>
-            <h5 className="card-title mb-3">No Classrooms Available</h5>
-            <p className="card-text text-muted mb-4">
-              Please enroll your students to view their classrooms. Once your
-              children are enrolled in classes, you'll be able to see their
-              classroom information, schedules, and progress here.
-            </p>
-            <div className="d-flex justify-content-center gap-3">
               <button
-                className="btn btn-primary"
-                onClick={() => navigate("/enrol")}
-              >
-                <i className="bi bi-person-plus me-2"></i>
-                Enroll Students
-              </button>
-              <button
-                className="btn btn-outline-secondary"
+                className="btn btn-outline-secondary flex-shrink-0"
                 onClick={handleRefresh}
+                disabled={refreshing}
+                style={{ minWidth: "100px" }}
               >
-                <i className="bi bi-arrow-clockwise me-2"></i>
+                <i className={`bi bi-arrow-clockwise me-2 ${refreshing ? "spinner-border spinner-border-sm" : ""}`}></i>
                 Refresh
               </button>
             </div>
+          </div>
+        </div>
+
+        <div className="card p-4 rounded-3 shadow">
+          <div className="row mb-3">
+            <div className="col-md-6">
+              <p className="mb-0">
+                Showing {filtered.length} of {classrooms.length} assigned classrooms
+              </p>
+            </div>
+            <div className="col-md-6 d-flex justify-content-end align-items-center gap-3">
+              {lastRefreshTime && (
+                <p className="mb-0 text-muted small">
+                  Last updated: {lastRefreshTime.toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Cards grid for parent's assigned classrooms */}
+          <div className="row g-3">
+            {filtered.map((cls) => (
+              <div className="col-12 col-sm-6 col-md-4 col-lg-3" key={cls.id}>
+                <div className="card h-100 border shadow-sm">
+                  <div className="card-body d-flex flex-column">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      {/* Name */}
+                      <div className="flex-grow-1 me-2">
+                        <h6
+                          className="card-title mb-1 text-truncate"
+                          title={cls.name}
+                        >
+                          {cls.name}
+                        </h6>
+                      </div>
+
+                      {/* Status badge */}
+                      <span
+                        className={`badge ${
+                          cls.is_active ? "bg-success" : "bg-warning"
+                        }`}
+                        title="Status"
+                      >
+                        {cls.is_active ? "Active" : "Pending"}
+                      </span>
+                    </div>
+
+                    <div className="text-muted small mb-3">
+                      <div>
+                        <i className="bi bi-hash me-1" /> Code:{" "}
+                        <strong>{cls.code}</strong>
+                      </div>
+                      <div>
+                        <i className="bi bi-people me-1" /> Your Children:{" "}
+                        <strong>{cls.students}</strong>
+                      </div>
+                      {cls.teachers > 0 && (
+                        <div>
+                          <i className="bi bi-person-badge me-1" /> Teachers:{" "}
+                          <strong>{cls.teachers}</strong>
+                        </div>
+                      )}
+                      {cls.studentInfo && cls.studentInfo.length > 0 && (
+                        <div className="mt-2 p-2 bg-light rounded">
+                          <small>
+                            <i className="bi bi-person me-1"></i>
+                            Your {cls.studentInfo.length > 1 ? 'Children' : 'Child'}:{" "}
+                            {cls.studentInfo.map((student, index) => (
+                              <span key={student.enrollmentId}>
+                                {student.preferredName || student.name}
+                                {student.status !== 'approved' && (
+                                  <span className="badge bg-warning ms-1">Pending</span>
+                                )}
+                                {index < cls.studentInfo.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </small>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* REMOVED: Actions section for parent users - No View button */}
+                    {/* Parent users can only see classroom information, no actions */}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {filtered.length === 0 && !loading && (
+              <div className="col-12">
+                <div className="text-center text-muted py-5">
+                  <i className="bi bi-door-closed" style={{ fontSize: "2rem" }} />
+                  <p className="mb-0 mt-2">
+                    {query
+                      ? "No classrooms match your search."
+                      : "No assigned classrooms found."}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
+  // Non-parent user view (admin, teacher, etc.)
   return (
     <div className="container-fluid px-4 py-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="H4-heading fw-bold m-0">
-          Classrooms
-          {userRole && (
-            <small className="text-muted ms-2 fs-6">
-              (
-              {userRole === "teacher"
-                ? "Available Classrooms"
-                : userRole === "parent"
-                ? "Child's Classrooms"
-                : "All Classrooms"}
-              )
-            </small>
-          )}
-        </h4>
+      <div className="row align-items-center mb-4">
+        <div className="col-md-4">
+          <h4 className="H4-heading fw-bold m-0">
+            Classrooms
+            {userRole && (
+              <small className="text-muted ms-2 fs-6">
+                (
+                {userRole === "teacher"
+                  ? "Available Classrooms"
+                  : userRole === "parent"
+                  ? "Child's Classrooms"
+                  : "All Classrooms"}
+                )
+              </small>
+            )}
+          </h4>
+        </div>
+        
+        <div className="col-md-8">
+          <div className="d-flex gap-3 align-items-center">
+            <div className="input-group flex-grow-1">
+              <span className="input-group-text">
+                <i className="bi bi-search" />
+              </span>
+              <input
+                className="form-control"
+                placeholder="Search by name, code, status"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
 
-        <div className="d-flex gap-3 w-50">
-          <div className="input-group">
-            <span className="input-group-text">
-              <i className="bi bi-search" />
-            </span>
-            <input
-              className="form-control"
-              placeholder="Search by name, code, status"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
+            {/* Only show create button for non-teacher/non-parent users */}
+            {canCreateClassroom && (
+              <button
+                className="btn custom-btn flex-shrink-0"
+                onClick={openCreateModal}
+                title="Add Classroom"
+                style={{ minWidth: "150px" }}
+              >
+                <i className="bi bi-plus-lg me-2" />
+                New Classroom
+              </button>
+            )}
 
-          {/* Only show create button for non-teacher/non-parent users */}
-          {canCreateClassroom && (
             <button
-              className="btn custom-btn w-50"
-              onClick={openCreateModal}
-              title="Add Classroom"
+              onClick={handleRefresh}
+              className="btn btn-outline-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+              disabled={refreshing || loadingStudentCounts || loadingTeacherCounts}
+              style={{
+                width: "40px",
+                height: "40px",
+                opacity: (refreshing || loadingStudentCounts || loadingTeacherCounts) ? 0.7 : 1,
+              }}
+              title="Refresh classrooms"
             >
-              <i className="bi bi-plus-lg me-2" />
-              New Classroom
+              <i
+                className={`bi bi-arrow-clockwise ${
+                  (refreshing || loadingStudentCounts || loadingTeacherCounts) ? "spinner-border spinner-border-sm" : ""
+                }`}
+                style={{
+                  animation: (refreshing || loadingStudentCounts || loadingTeacherCounts) ? "spin 1s linear infinite" : "none",
+                }}
+              />
             </button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -620,26 +914,6 @@ export default function ClassroomsList() {
                 Last updated: {lastRefreshTime.toLocaleTimeString()}
               </p>
             )}
-            <button
-              onClick={handleRefresh}
-              className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
-              disabled={refreshing || loadingStudentCounts || loadingTeacherCounts}
-              style={{
-                width: "40px",
-                height: "40px",
-                opacity: (refreshing || loadingStudentCounts || loadingTeacherCounts) ? 0.7 : 1,
-              }}
-              title="Refresh classrooms"
-            >
-              <i
-                className={`bi bi-arrow-clockwise ${
-                  (refreshing || loadingStudentCounts || loadingTeacherCounts) ? "spinner-border spinner-border-sm" : ""
-                }`}
-                style={{
-                  animation: (refreshing || loadingStudentCounts || loadingTeacherCounts) ? "spin 1s linear infinite" : "none",
-                }}
-              />
-            </button>
           </div>
         </div>
 
@@ -697,7 +971,7 @@ export default function ClassroomsList() {
                     )}
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions - Only show for non-parent users */}
                   <div className="mt-auto d-flex justify-content-end gap-1">
                     <button
                       className="btn btn-sm btn-outline-primary"
@@ -751,6 +1025,7 @@ export default function ClassroomsList() {
         </div>
       </div>
 
+      {/* Rest of the modals remain the same */}
       {/* Create Classroom Modal - Only show for admin users */}
       {canCreateClassroom && showCreateModal && (
         <div

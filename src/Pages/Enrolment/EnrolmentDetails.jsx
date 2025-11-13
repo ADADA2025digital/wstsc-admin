@@ -420,78 +420,85 @@ const EnrolmentDetails = () => {
   return (
     <div className="container-fluid px-4 py-3">
       {/* Header Section */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h4 className="fw-bold mb-1">Enrolment Details</h4>
-          <p className="text-muted mb-0">Enrolment ID: {id}</p>
-          <p className="text-muted small mb-0">Viewing as: <span className="text-capitalize">{userRole}</span></p>
-          {student?.approved_by && student?.approved_at && (
-            <p className="text-muted small mb-0">
-              Approved by {student.approved_by} on {formatDateToMMDDYYYY(student.approved_at)}
-            </p>
-          )}
-          {student?.rejected_by && student?.rejected_at && (
-            <p className="text-danger small mb-0">
-              Rejected by {student.rejected_by} on {formatDateToMMDDYYYY(student.rejected_at)}
-              {student.rejection_reason && ` - Reason: ${student.rejection_reason}`}
-            </p>
-          )}
-        </div>
+<div className="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 className="fw-bold mb-1">Enrolment Details</h4>
+    <p className="text-muted mb-0">Enrolment ID: {id}</p>
+    
+    {/* Only show approval/rejection info for admin users */}
+    {canApproveReject && (
+      <>
+        {student?.approved_by && student?.approved_at && (
+          <p className="text-muted small mb-0">
+            Approved by {student.approved_by} on {formatDateToMMDDYYYY(student.approved_at)}
+          </p>
+        )}
+        {student?.rejected_by && student?.rejected_at && (
+          <p className="text-danger small mb-0">
+            Rejected by {student.rejected_by} on {formatDateToMMDDYYYY(student.rejected_at)}
+            {student.rejection_reason && ` - Reason: ${student.rejection_reason}`}
+          </p>
+        )}
+      </>
+    )}
+  </div>
 
-        <div className="d-flex align-items-center gap-2">
-          {canApproveReject && isPending && (
+  <div className="d-flex align-items-center gap-2">
+    {/* Only show action buttons for admin users */}
+    {canApproveReject && isPending && (
+      <>
+        <ButtonGlobal
+          onClick={handleAcceptEnrolment}
+          className="btn btn-primary"
+          disabled={acceptLoading}
+        >
+          {acceptLoading ? (
             <>
-              <ButtonGlobal
-                onClick={handleAcceptEnrolment}
-                className="btn btn-primary"
-                disabled={acceptLoading}
-              >
-                {acceptLoading ? (
-                  <>
-                    <div className="spinner-border spinner-border-sm me-2" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-check2-all me-2"></i>
-                    Accept Enrolment
-                  </>
-                )}
-              </ButtonGlobal>
-              
-              <ButtonGlobal
-                onClick={handleOpenRejectModal}
-                className="btn btn-outline-danger"
-                disabled={rejectLoading}
-              >
-                <i className="bi bi-x-circle me-2" />
-                Reject Enrolment
-              </ButtonGlobal>
+              <div className="spinner-border spinner-border-sm me-2" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Processing...
+            </>
+          ) : (
+            <>
+              <i className="bi bi-check2-all me-2"></i>
+              Accept Enrolment
             </>
           )}
-          
-          {isApproved && (
-            <ButtonGlobal className="btn btn-success" disabled>
-              <i className="bi bi-check2-all me-2"></i>
-              Enrolment Accepted
-            </ButtonGlobal>
-          )}
-          
-          {isRejected && (
-            <ButtonGlobal className="btn btn-danger" disabled>
-              <i className="bi bi-x-circle me-2" />
-              Enrolment Rejected
-            </ButtonGlobal>
-          )}
-          
-          <ButtonGlobal onClick={handleBack} className="btn btn-outline-secondary">
-            <i className="bi bi-arrow-left me-2" />
-            Back to List
-          </ButtonGlobal>
-        </div>
-      </div>
+        </ButtonGlobal>
+        
+        <ButtonGlobal
+          onClick={handleOpenRejectModal}
+          className="btn btn-outline-danger"
+          disabled={rejectLoading}
+        >
+          <i className="bi bi-x-circle me-2" />
+          Reject Enrolment
+        </ButtonGlobal>
+      </>
+    )}
+    
+    {/* Only show status badges for admin users */}
+    {canApproveReject && isApproved && (
+      <ButtonGlobal className="btn btn-success" disabled>
+        <i className="bi bi-check2-all me-2"></i>
+        Enrolment Accepted
+      </ButtonGlobal>
+    )}
+    
+    {canApproveReject && isRejected && (
+      <ButtonGlobal className="btn btn-danger" disabled>
+        <i className="bi bi-x-circle me-2" />
+        Enrolment Rejected
+      </ButtonGlobal>
+    )}
+    
+    <ButtonGlobal onClick={handleBack} className="btn btn-outline-secondary">
+      <i className="bi bi-arrow-left me-2" />
+      Back to List
+    </ButtonGlobal>
+  </div>
+</div>
 
       {/* Student Summary Card */}
       <div className="card mb-4 border-0 shadow-sm bg-secondary bg-opacity-10">
@@ -879,85 +886,87 @@ const EnrolmentDetails = () => {
         </div>
       </div>
 
-      {/* Rejection Confirmation Modal */}
-      <Modal
-        show={showRejectModal}
-        onHide={handleCloseRejectModal}
-        size="md"
-        centered
-        backdrop="static"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <i className="bi bi-x-circle me-2 text-danger"></i>
-            Reject Enrolment
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="text-center mb-3">
-            <div className="mb-3">
-              <i className="bi bi-exclamation-triangle text-warning fs-1"></i>
+      {/* Rejection Confirmation Modal - Only show for admin users */}
+      {canApproveReject && (
+        <Modal
+          show={showRejectModal}
+          onHide={handleCloseRejectModal}
+          size="md"
+          centered
+          backdrop="static"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="bi bi-x-circle me-2 text-danger"></i>
+              Reject Enrolment
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="text-center mb-3">
+              <div className="mb-3">
+                <i className="bi bi-exclamation-triangle text-warning fs-1"></i>
+              </div>
+              <h5 className="mb-3">
+                Are you sure you want to reject this enrolment?
+              </h5>
+              <p className="text-muted">
+                You are about to reject the enrolment for{" "}
+                <strong>{student?.first_given_name} {student?.family_name}</strong>. 
+                This action will change the enrolment status to rejected.
+              </p>
             </div>
-            <h5 className="mb-3">
-              Are you sure you want to reject this enrolment?
-            </h5>
-            <p className="text-muted">
-              You are about to reject the enrolment for{" "}
-              <strong>{student?.first_given_name} {student?.family_name}</strong>. 
-              This action will change the enrolment status to rejected.
-            </p>
-          </div>
 
-          <div className="mb-3">
-            <label htmlFor="rejectionReason" className="form-label fw-semibold">
-              Reason for Rejection <span className="text-danger">*</span>
-            </label>
-            <textarea
-              id="rejectionReason"
-              className={`form-control ${rejectionError ? 'is-invalid' : ''}`}
-              rows="3"
-              placeholder="Please provide a reason for rejecting this enrolment..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-            />
-            {rejectionError && (
-              <div className="invalid-feedback">{rejectionError}</div>
-            )}
-            <div className="form-text">
-              This reason will be recorded and visible in the enrolment history.
+            <div className="mb-3">
+              <label htmlFor="rejectionReason" className="form-label fw-semibold">
+                Reason for Rejection <span className="text-danger">*</span>
+              </label>
+              <textarea
+                id="rejectionReason"
+                className={`form-control ${rejectionError ? 'is-invalid' : ''}`}
+                rows="3"
+                placeholder="Please provide a reason for rejecting this enrolment..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+              />
+              {rejectionError && (
+                <div className="invalid-feedback">{rejectionError}</div>
+              )}
+              <div className="form-text">
+                This reason will be recorded and visible in the enrolment history.
+              </div>
             </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer className="d-flex justify-content-between">
-          <Button
-            variant="secondary"
-            onClick={handleCloseRejectModal}
-            disabled={rejectLoading}
-          >
-            Cancel
-          </Button>
-          <ButtonGlobal
-            onClick={handleRejectEnrolment}
-            className="btn btn-danger"
-            disabled={rejectLoading}
-          >
-            {rejectLoading ? (
-              <>
-                <div
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                ></div>
-                Rejecting...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-x-circle me-2" />
-                Reject Enrolment
-              </>
-            )}
-          </ButtonGlobal>
-        </Modal.Footer>
-      </Modal>
+          </Modal.Body>
+          <Modal.Footer className="d-flex justify-content-between">
+            <Button
+              variant="secondary"
+              onClick={handleCloseRejectModal}
+              disabled={rejectLoading}
+            >
+              Cancel
+            </Button>
+            <ButtonGlobal
+              onClick={handleRejectEnrolment}
+              className="btn btn-danger"
+              disabled={rejectLoading}
+            >
+              {rejectLoading ? (
+                <>
+                  <div
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  ></div>
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-x-circle me-2" />
+                  Reject Enrolment
+                </>
+              )}
+            </ButtonGlobal>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 };

@@ -19,6 +19,35 @@ export default function ParentTable() {
   const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
 
+  // Function to fetch children for a specific parent
+  const fetchChildrenForParent = async (parentId) => {
+    try {
+      console.log(`Fetching children for parent ${parentId}...`);
+      const response = await api.get(
+        `/admin/parent/${parentId}/student-details`
+      );
+
+      if (response.data.success) {
+        const students = response.data.data.students || [];
+        const childrenNames = students.map((student) => {
+          const studentInfo = student.student_info;
+          return `${studentInfo.first_given_name} ${studentInfo.family_name}`;
+        });
+
+        console.log(
+          `Found ${childrenNames.length} children for parent ${parentId}:`,
+          childrenNames
+        );
+        return childrenNames;
+      }
+      return [];
+    } catch (error) {
+      console.error(`Error fetching children for parent ${parentId}:`, error);
+      // Don't throw error here, just return empty array
+      return [];
+    }
+  };
+
   // Fetch parents from backend
   const fetchParents = async () => {
     try {
@@ -47,74 +76,80 @@ export default function ParentTable() {
         console.log("Processed parents data:", parentsData);
 
         // Transform API data to match table structure
-        const formattedParents = parentsData.map((parent, index) => {
-          // Safely extract properties with fallbacks
-          const personData = parent.person || parent;
-          const userId = parent.user_id || parent.id;
-          const personId = personData.person_id || personData.id || userId;
+        const formattedParents = await Promise.all(
+          parentsData.map(async (parent, index) => {
+            // Safely extract properties with fallbacks
+            const personData = parent.person || parent;
+            const userId = parent.user_id || parent.id;
+            const personId = personData.person_id || personData.id || userId;
 
-          // Build full name safely
-          const firstName = personData.first_name || "";
-          const lastName = personData.last_name || "";
-          const middleName = personData.middle_name || "";
-          const fullName =
-            [firstName, middleName, lastName]
-              .filter((name) => name && name.trim() !== "")
-              .join(" ")
-              .trim() || "Unknown Name";
+            // Build full name safely
+            const firstName = personData.first_name || "";
+            const lastName = personData.last_name || "";
+            const middleName = personData.middle_name || "";
+            const fullName =
+              [firstName, middleName, lastName]
+                .filter((name) => name && name.trim() !== "")
+                .join(" ")
+                .trim() || "Unknown Name";
 
-          // Handle address data
-          let addressText = "Address not available";
-          if (personData.address) {
-            const addr = personData.address;
-            addressText = [
-              addr.address_line1,
-              addr.address_line2,
-              addr.city,
-              addr.state,
-              addr.country,
-            ]
-              .filter((part) => part && part.trim() !== "")
-              .join(", ");
-          } else if (personData.primaryAddress) {
-            const addr = personData.primaryAddress;
-            addressText = [
-              addr.address_line1,
-              addr.address_line2,
-              addr.city,
-              addr.state,
-              addr.country,
-            ]
-              .filter((part) => part && part.trim() !== "")
-              .join(", ");
-          }
+            // Handle address data
+            let addressText = "Address not available";
+            if (personData.address) {
+              const addr = personData.address;
+              addressText = [
+                addr.address_line1,
+                addr.address_line2,
+                addr.city,
+                addr.state,
+                addr.country,
+              ]
+                .filter((part) => part && part.trim() !== "")
+                .join(", ");
+            } else if (personData.primaryAddress) {
+              const addr = personData.primaryAddress;
+              addressText = [
+                addr.address_line1,
+                addr.address_line2,
+                addr.city,
+                addr.state,
+                addr.country,
+              ]
+                .filter((part) => part && part.trim() !== "")
+                .join(", ");
+            }
 
-          return {
-            index: index + 1,
-            id: personId,
-            user_id: userId,
-            first_name: firstName,
-            last_name: lastName,
-            middle_name: middleName,
-            full_name: fullName,
-            gender: personData.gender || "Not specified",
-            date_of_birth: personData.date_of_birth,
-            nationality: personData.nationality || "Not specified",
-            email: personData.email || parent.email,
-            phone: personData.phone || "Not provided",
-            alternate_phone: personData.alternate_phone,
-            marital_status: personData.marital_status || "Not specified",
-            occupation: personData.occupation || "Parent",
-            address: addressText,
-            status: personData.is_active ? "Active" : "Inactive",
-            grade:
-              parent.children?.map((child) => child.name).join(", ") ||
-              parent.students?.map((student) => student.name).join(", ") ||
-              "No children assigned",
-            // Store original data for updates
-            originalData: parent,
-          };
-        });
+            // Fetch children names for this parent
+            const childrenNames = await fetchChildrenForParent(userId);
+
+            return {
+              index: index + 1,
+              id: personId,
+              user_id: userId,
+              first_name: firstName,
+              last_name: lastName,
+              middle_name: middleName,
+              full_name: fullName,
+              gender: personData.gender || "Not specified",
+              date_of_birth: personData.date_of_birth,
+              nationality: personData.nationality || "Not specified",
+              email: personData.email || parent.email,
+              phone: personData.phone || "Not provided",
+              alternate_phone: personData.alternate_phone,
+              marital_status: personData.marital_status || "Not specified",
+              occupation: personData.occupation || "Parent",
+              address: addressText,
+              status: personData.is_active ? "Active" : "Inactive",
+              grade:
+                childrenNames.length > 0
+                  ? childrenNames.join(", ")
+                  : "No children assigned",
+              children_count: childrenNames.length,
+              // Store original data for updates
+              originalData: parent,
+            };
+          })
+        );
 
         console.log("Formatted parents:", formattedParents);
         setParents(formattedParents);
@@ -168,9 +203,12 @@ export default function ParentTable() {
 
   const updateParentStatus = async (parentId, newStatus) => {
     try {
-      const response = await api.patch(`/admin/persons/${parentId}/toggle-status`, {
-        is_active: newStatus === "Active",
-      });
+      const response = await api.patch(
+        `/admin/persons/${parentId}/toggle-status`,
+        {
+          is_active: newStatus === "Active",
+        }
+      );
 
       if (!response.data.success) {
         throw new Error("Failed to update status");
@@ -203,6 +241,33 @@ export default function ParentTable() {
     }
   };
 
+  // Function to refresh children data for a specific parent
+  const refreshChildrenData = async (parentId) => {
+    try {
+      const childrenNames = await fetchChildrenForParent(parentId);
+
+      // Update the specific parent with new children data
+      const updatedParents = parents.map((parent) =>
+        parent.user_id === parentId
+          ? {
+              ...parent,
+              grade:
+                childrenNames.length > 0
+                  ? childrenNames.join(", ")
+                  : "No children assigned",
+              children_count: childrenNames.length,
+            }
+          : parent
+      );
+
+      setParents(updatedParents);
+      return childrenNames;
+    } catch (error) {
+      console.error(`Error refreshing children for parent ${parentId}:`, error);
+      return [];
+    }
+  };
+
   // Custom render function for Status column
   const renderStatusToggle = (data, type, row) => {
     if (type === "display") {
@@ -224,9 +289,23 @@ export default function ParentTable() {
               ${row.status}
             </label>
           </div>
-          <div id="spinner-${row.id}" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
+          <div id="spinner-${
+            row.id
+          }" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
             <span class="visually-hidden">Loading...</span>
           </div>
+        </div>
+      `;
+    }
+    return data;
+  };
+
+  // Custom render function for Children column with refresh button
+  const renderChildrenColumn = (data, type, row) => {
+    if (type === "display") {
+      return `
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="children-text">${data}</span>
         </div>
       `;
     }
@@ -285,9 +364,8 @@ export default function ParentTable() {
             title: "Children",
             data: "grade",
             className: "text-center text-nowrap",
-            render: function (data, type, row) {
-              return data || "No children assigned";
-            },
+            orderable: false,
+            render: renderChildrenColumn,
           },
           {
             title: "Actions",
@@ -329,47 +407,100 @@ export default function ParentTable() {
       });
 
       // Handle status toggle events
-      $("#parentsTable tbody").on("change", ".status-toggle-input", async function () {
-        const parentId = $(this).data("parent-id");
-        const isChecked = $(this).is(":checked");
-        const newStatus = isChecked ? "Active" : "Inactive";
-        const $label = $(this).siblings("label");
-        const $spinner = $(`#spinner-${parentId}`);
-        
-        // Show loading state
-        $(this).prop("disabled", true);
-        $spinner.removeClass("d-none");
-        const originalText = $label.text();
-        $label.text("Updating...");
-        
-        try {
-          const success = await handleStatusChange(parentId, newStatus);
-          if (success) {
-            $label.text(newStatus);
-            $label.removeClass("text-success text-danger")
-                  .addClass(newStatus === "Active" ? "text-success" : "text-danger");
-            
-            // Update row styling
-            const $row = $(this).closest("tr");
-            if (newStatus === "Inactive") {
-              $row.addClass("table-secondary");
+      $("#parentsTable tbody").on(
+        "change",
+        ".status-toggle-input",
+        async function () {
+          const parentId = $(this).data("parent-id");
+          const isChecked = $(this).is(":checked");
+          const newStatus = isChecked ? "Active" : "Inactive";
+          const $label = $(this).siblings("label");
+          const $spinner = $(`#spinner-${parentId}`);
+
+          // Show loading state
+          $(this).prop("disabled", true);
+          $spinner.removeClass("d-none");
+          const originalText = $label.text();
+          $label.text("Updating...");
+
+          try {
+            const success = await handleStatusChange(parentId, newStatus);
+            if (success) {
+              $label.text(newStatus);
+              $label
+                .removeClass("text-success text-danger")
+                .addClass(
+                  newStatus === "Active" ? "text-success" : "text-danger"
+                );
+
+              // Update row styling
+              const $row = $(this).closest("tr");
+              if (newStatus === "Inactive") {
+                $row.addClass("table-secondary");
+              } else {
+                $row.removeClass("table-secondary");
+              }
             } else {
-              $row.removeClass("table-secondary");
+              // Revert on error
+              $(this).prop("checked", !isChecked);
+              $label.text(originalText);
             }
-          } else {
-            // Revert on error
+          } catch (error) {
+            console.error("Error updating status:", error);
             $(this).prop("checked", !isChecked);
             $label.text(originalText);
+          } finally {
+            $(this).prop("disabled", false);
+            $spinner.addClass("d-none");
           }
-        } catch (error) {
-          console.error("Error updating status:", error);
-          $(this).prop("checked", !isChecked);
-          $label.text(originalText);
-        } finally {
-          $(this).prop("disabled", false);
-          $spinner.addClass("d-none");
         }
-      });
+      );
+
+      // Handle refresh children button click
+      $("#parentsTable tbody").on(
+        "click",
+        ".refresh-children-btn",
+        async function () {
+          const parentId = $(this).data("parent-id");
+          const $btn = $(this);
+          const $icon = $btn.find("i");
+          const $childrenText = $btn.siblings(".children-text");
+
+          // Show loading state
+          $btn.prop("disabled", true);
+          $icon
+            .removeClass("bi-arrow-clockwise")
+            .addClass("spinner-border spinner-border-sm");
+
+          try {
+            const childrenNames = await refreshChildrenData(parentId);
+            $childrenText.text(
+              childrenNames.length > 0
+                ? childrenNames.join(", ")
+                : "No children assigned"
+            );
+
+            // Show success feedback
+            $btn.removeClass("btn-outline-secondary").addClass("btn-success");
+            setTimeout(() => {
+              $btn.removeClass("btn-success").addClass("btn-outline-secondary");
+            }, 1000);
+          } catch (error) {
+            console.error("Error refreshing children:", error);
+            // Show error feedback
+            $btn.removeClass("btn-outline-secondary").addClass("btn-danger");
+            setTimeout(() => {
+              $btn.removeClass("btn-danger").addClass("btn-outline-secondary");
+            }, 1000);
+          } finally {
+            // Restore button state
+            $btn.prop("disabled", false);
+            $icon
+              .removeClass("spinner-border spinner-border-sm")
+              .addClass("bi-arrow-clockwise");
+          }
+        }
+      );
 
       // VIEW: view parent details
       $("#parentsTable tbody").on("click", ".view-btn", function () {
@@ -379,7 +510,6 @@ export default function ParentTable() {
           handleViewParent(parent);
         }
       });
-
     } catch (error) {
       console.error("Error initializing DataTable:", error);
       setError(
@@ -410,9 +540,10 @@ export default function ParentTable() {
   useEffect(() => {
     // Add Bootstrap Icons if not already present
     if (!document.querySelector('link[href*="bootstrap-icons"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css';
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href =
+        "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css";
       document.head.appendChild(link);
     }
 
@@ -524,7 +655,7 @@ export default function ParentTable() {
             disabled={loading}
           >
             <i className="bi bi-arrow-clockwise me-1"></i>
-            Refresh
+            Refresh All
           </button>
         </div>
 

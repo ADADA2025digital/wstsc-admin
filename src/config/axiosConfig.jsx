@@ -2,7 +2,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const api = axios.create({
-  baseURL: "https://urbanviewre.com/wstsc_backend/public/api",
+  baseURL: "https://wstsc.org.au/backend/api",
   headers: {
     "Content-Type": "application/json",
     "Accept": "application/json",

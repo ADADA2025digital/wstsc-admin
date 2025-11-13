@@ -158,12 +158,40 @@ const StudentsList = () => {
 
         console.log("Detailed students data:", detailedStudents);
 
-        // Format students data for the table
+        // Format students data for the table - FIXED PARENT NAME EXTRACTION
         const formattedStudents = detailedStudents.map((student, index) => {
-          const firstParent =
-            student.parent_carers && student.parent_carers.length > 0
-              ? student.parent_carers[0]
-              : {};
+          // Get parent carers from detailed_data if available, otherwise use parent_carers
+          const parentCarers = student.detailed_data?.parents_carers || 
+                             student.detailed_data?.parent_carers || 
+                             student.parent_carers || 
+                             [];
+
+          console.log(`Student ${student.id} parentCarers:`, parentCarers);
+
+          const firstParent = parentCarers.length > 0 ? parentCarers[0] : {};
+
+          // Comprehensive parent name extraction
+          let parentName = "N/A";
+          
+          if (firstParent) {
+            // Try different possible name field combinations
+            if (firstParent.first_name && firstParent.last_name) {
+              parentName = `${firstParent.first_name} ${firstParent.last_name}`;
+            } else if (firstParent.full_name) {
+              parentName = firstParent.full_name;
+            } else if (firstParent.name) {
+              parentName = firstParent.name;
+            } else if (firstParent.first_name) {
+              parentName = firstParent.first_name;
+            } else if (firstParent.last_name) {
+              parentName = firstParent.last_name;
+            }
+            
+            // If we found a parent but couldn't extract name, mark as "Parent"
+            if (parentName === "N/A" && Object.keys(firstParent).length > 0) {
+              parentName = "Parent";
+            }
+          }
 
           return {
             index: index + 1,
@@ -178,9 +206,7 @@ const StudentsList = () => {
             enrollment_year: student.mainstream_enrollment_year || "",
             status: student.status || "Unknown",
             classroom: student.classroom || "N/A",
-            parent_name: firstParent.first_name
-              ? `${firstParent.first_name} ${firstParent.last_name}`
-              : "N/A",
+            parent_name: parentName,
             raw_data: student,
             detailed_data: student.detailed_data,
           };
@@ -375,44 +401,58 @@ const StudentsList = () => {
               <div className="mt-4">
                 <h5>Your Children</h5>
                 <div className="row justify-content-center">
-                  {students.map((student) => (
-                    <div key={student.id} className="col-md-6 col-lg-4 mb-3">
-                      <Card>
-                        <Card.Body>
-                          <h6>{student.full_name}</h6>
-                          <p className="mb-1">Class: {student.classroom}</p>
-                          <p className="mb-1">
-                            Status:{" "}
-                            <span
-                              className={`badge ${
-                                student.status === "Active"
-                                  ? "bg-success"
-                                  : student.status === "Pending"
-                                  ? "bg-warning"
-                                  : "bg-secondary"
-                              }`}
+                  {students.map((student) => {
+                    // Get parent name for parent view as well
+                    const parentCarers = student.detailed_data?.parents_carers || 
+                                       student.detailed_data?.parent_carers || 
+                                       student.parent_carers || [];
+                    const firstParent = parentCarers.length > 0 ? parentCarers[0] : {};
+                    let parentName = "N/A";
+                    
+                    if (firstParent.first_name && firstParent.last_name) {
+                      parentName = `${firstParent.first_name} ${firstParent.last_name}`;
+                    }
+
+                    return (
+                      <div key={student.id} className="col-md-6 col-lg-4 mb-3">
+                        <Card>
+                          <Card.Body>
+                            <h6>{student.full_name}</h6>
+                            <p className="mb-1">Class: {student.classroom}</p>
+                            <p className="mb-1">Parent: {parentName}</p>
+                            <p className="mb-1">
+                              Status:{" "}
+                              <span
+                                className={`badge ${
+                                  student.status === "Active"
+                                    ? "bg-success"
+                                    : student.status === "Pending"
+                                    ? "bg-warning"
+                                    : "bg-secondary"
+                                }`}
+                              >
+                                {student.status}
+                              </span>
+                            </p>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() =>
+                                navigate(`/students/${student.id}`, {
+                                  state: { 
+                                    studentData: student.raw_data,
+                                    detailedData: student.detailed_data 
+                                  },
+                                })
+                              }
                             >
-                              {student.status}
-                            </span>
-                          </p>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() =>
-                              navigate(`/students/${student.id}`, {
-                                state: { 
-                                  studentData: student.raw_data,
-                                  detailedData: student.detailed_data 
-                                },
-                              })
-                            }
-                          >
-                            View Details
-                          </Button>
-                        </Card.Body>
-                      </Card>
-                    </div>
-                  ))}
+                              View Details
+                            </Button>
+                          </Card.Body>
+                        </Card>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

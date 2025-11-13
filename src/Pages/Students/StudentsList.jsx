@@ -13,6 +13,9 @@ import {
   Figure,
   Card,
   Button,
+  Row,
+  Col,
+  Badge,
 } from "react-bootstrap";
 
 import ButtonGlobal from "../../Components/Button";
@@ -49,28 +52,20 @@ const StudentsList = () => {
   // Check if user is parent or teacher
   const isRestrictedUser = userRole === "parent" || userRole === "teacher";
 
-  // Filter students for parent - only show their own children
-  const filterStudentsForParent = (studentsData) => {
-    if (userRole !== "parent" || !userData) return studentsData;
-
-    return studentsData.filter((student) => {
-      // Check if any parent carer matches the logged-in parent's email
-      return student.parent_carers?.some(
-        (parent) => parent.email === userData.email
-      );
-    });
-  };
-
-  // Fetch detailed student information
+  // Fetch detailed student information (for admin role)
   const fetchStudentDetails = async (studentId) => {
     try {
       console.log(`Fetching details for student ${studentId}...`);
-      const response = await api.get(`/class-students/student/${studentId}/details`);
-      
+      const response = await api.get(
+        `/class-students/student/${studentId}/details`
+      );
+
       if (response.data && response.data.success) {
         return response.data.data;
       } else {
-        throw new Error(response.data?.message || "Failed to fetch student details");
+        throw new Error(
+          response.data?.message || "Failed to fetch student details"
+        );
       }
     } catch (err) {
       console.error(`Error fetching details for student ${studentId}:`, err);
@@ -78,7 +73,7 @@ const StudentsList = () => {
     }
   };
 
-  // Fetch students from API
+  // Fetch students based on user role
   const fetchStudents = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -89,135 +84,259 @@ const StudentsList = () => {
       setError(null);
 
       console.log("Fetching students from API...");
+      console.log("User Role:", userRole);
 
-      // Make API call to get all students
-      const response = await api.get("/class-students");
+      let response;
 
-      console.log("API Response:", response.data);
+      if (userRole === "parent") {
+        // Use my-enrollments API for parent role
+        console.log("Using my-enrollments API for parent");
+        response = await api.get("/my-enrollments");
 
-      if (response.data && response.data.success) {
-        // Extract class_students array from the response
-        const classStudents = response.data.data?.class_students || [];
+        console.log("Parent API Response:", response.data);
 
-        console.log("Raw class students data:", classStudents);
+        if (response.data && response.data.success) {
+          // Check if enrollments array exists in response
+          const enrollments = response.data.data?.enrollments || [];
 
-        // First, create basic student data
-        const basicStudentsData = classStudents.map((cs) => {
-          const student = cs.student || {};
-          const classroom = cs.classroom || {};
+          console.log("Enrollments found:", enrollments.length);
 
-          return {
-            id: student.enrollment_id || cs.student_id,
-            student_id: `STU${String(
-              student.enrollment_id || cs.student_id
-            ).padStart(4, "0")}`,
-            first_given_name: student.first_given_name || "",
-            family_name: student.family_name || "",
-            preferred_first_name: student.preferred_first_name || "",
-            gender: student.gender || "Unknown",
-            date_of_birth: student.date_of_birth || "",
-            mainstream_enrollment_year: cs.enr_year || "",
-            status: cs.is_active ? "Active" : "Inactive",
-            classroom: classroom.class_name || "N/A",
-            parent_carers: student.parent_carers || [],
-            raw_class_student: cs,
-          };
-        });
+          if (enrollments.length > 0) {
+            // Filter only approved enrollments and map to student format
+            const approvedStudents = enrollments
+              .filter((enrollment) => {
+                const student = enrollment.student || {};
+                console.log(
+                  `Student ${student.enrollment_id} status:`,
+                  student.status
+                );
+                return student.status === "approved";
+              })
+              .map((enrollment, index) => {
+                const student = enrollment.student || {};
+                const classroomInfo = student.classroom_info || {};
 
-        console.log("Basic students data:", basicStudentsData);
+                console.log(`Processing approved student:`, student);
 
-        // Filter students for parent role
-        const filteredStudents = filterStudentsForParent(basicStudentsData);
+                // Format student data for parent view
+                return {
+                  id: student.enrollment_id,
+                  student_id: `STU${String(student.enrollment_id).padStart(
+                    4,
+                    "0"
+                  )}`,
+                  first_given_name: student.first_given_name || "",
+                  family_name: student.family_name || "",
+                  preferred_first_name: student.preferred_first_name || "",
+                  gender: student.gender || "Unknown",
+                  date_of_birth: student.date_of_birth || "",
+                  mainstream_enrollment_year:
+                    student.mainstream_enrollment_year || "",
+                  status: "Active", // Only approved students for parent
+                  classroom:
+                    classroomInfo.class_name ||
+                    student.enrol_class_in_WSTSC ||
+                    "N/A",
+                  parent_carers: enrollment.parent_carer_1
+                    ? [enrollment.parent_carer_1]
+                    : [],
+                  raw_data: enrollment,
+                  detailed_data: enrollment,
+                };
+              });
 
-        // Fetch detailed information for each student
-        console.log("Fetching detailed student information...");
-        const detailedStudents = await Promise.all(
-          filteredStudents.map(async (student) => {
-            const studentDetails = await fetchStudentDetails(student.id);
-            
-            if (studentDetails) {
-              // Merge basic data with detailed data
+            console.log("Approved students:", approvedStudents);
+
+            // Create the formatted array for table
+            const formattedStudents = approvedStudents.map((student, index) => {
+              const parentCarer =
+                student.parent_carers.length > 0
+                  ? student.parent_carers[0]
+                  : {};
+              let parentName = "N/A";
+
+              if (parentCarer.first_name && parentCarer.last_name) {
+                parentName = `${parentCarer.first_name} ${parentCarer.last_name}`;
+              } else if (parentCarer.full_name) {
+                parentName = parentCarer.full_name;
+              } else if (parentCarer.name) {
+                parentName = parentCarer.name;
+              }
+
               return {
-                ...student,
-                // Override with detailed information if available
-                gender: studentDetails.student?.gender || student.gender,
-                date_of_birth: studentDetails.student?.date_of_birth || student.date_of_birth,
-                status: studentDetails.student?.status === "approved" ? "Active" : 
-                       studentDetails.student?.status === "pending" ? "Pending" : 
-                       studentDetails.student?.status === "rejected" ? "Inactive" : student.status,
-                // Add parent information if available in detailed response
-                parent_carers: studentDetails.parent_carers || student.parent_carers,
-                // Store the complete detailed data
-                detailed_data: studentDetails,
+                index: index + 1,
+                id: student.id,
+                student_id: student.student_id,
+                full_name: `${student.first_given_name || ""} ${
+                  student.family_name || ""
+                }`.trim(),
+                preferred_name: student.preferred_first_name || "",
+                gender: student.gender || "",
+                date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
+                enrollment_year: student.mainstream_enrollment_year || "",
+                status: student.status,
+                classroom: student.classroom,
+                parent_name: parentName,
+                raw_data: student.raw_data,
+                detailed_data: student.detailed_data,
               };
-            }
-            
-            return student;
-          })
-        );
+            });
 
-        console.log("Detailed students data:", detailedStudents);
-
-        // Format students data for the table - FIXED PARENT NAME EXTRACTION
-        const formattedStudents = detailedStudents.map((student, index) => {
-          // Get parent carers from detailed_data if available, otherwise use parent_carers
-          const parentCarers = student.detailed_data?.parents_carers || 
-                             student.detailed_data?.parent_carers || 
-                             student.parent_carers || 
-                             [];
-
-          console.log(`Student ${student.id} parentCarers:`, parentCarers);
-
-          const firstParent = parentCarers.length > 0 ? parentCarers[0] : {};
-
-          // Comprehensive parent name extraction
-          let parentName = "N/A";
-          
-          if (firstParent) {
-            // Try different possible name field combinations
-            if (firstParent.first_name && firstParent.last_name) {
-              parentName = `${firstParent.first_name} ${firstParent.last_name}`;
-            } else if (firstParent.full_name) {
-              parentName = firstParent.full_name;
-            } else if (firstParent.name) {
-              parentName = firstParent.name;
-            } else if (firstParent.first_name) {
-              parentName = firstParent.first_name;
-            } else if (firstParent.last_name) {
-              parentName = firstParent.last_name;
-            }
-            
-            // If we found a parent but couldn't extract name, mark as "Parent"
-            if (parentName === "N/A" && Object.keys(firstParent).length > 0) {
-              parentName = "Parent";
-            }
+            console.log("Formatted parent students:", formattedStudents);
+            setStudents(formattedStudents);
+          } else {
+            // No enrollments found or no approved enrollments
+            console.log("No enrollments found or no approved enrollments");
+            setStudents([]);
           }
-
-          return {
-            index: index + 1,
-            id: student.id,
-            student_id: student.student_id,
-            full_name: `${student.first_given_name || ""} ${
-              student.family_name || ""
-            }`.trim(),
-            preferred_name: student.preferred_first_name || "",
-            gender: student.gender || "",
-            date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
-            enrollment_year: student.mainstream_enrollment_year || "",
-            status: student.status || "Unknown",
-            classroom: student.classroom || "N/A",
-            parent_name: parentName,
-            raw_data: student,
-            detailed_data: student.detailed_data,
-          };
-        });
-
-        console.log("Formatted students:", formattedStudents);
-        setStudents(formattedStudents);
-        setLastRefreshTime(new Date());
+        } else {
+          throw new Error(
+            response.data?.message || "Failed to fetch enrollment data"
+          );
+        }
       } else {
-        throw new Error(response.data?.message || "Failed to fetch students");
+        // Use class-students API for admin and other roles
+        console.log("Using class-students API for admin/other roles");
+        response = await api.get("/class-students");
+
+        if (response.data && response.data.success) {
+          // Extract class_students array from the response
+          const classStudents = response.data.data?.class_students || [];
+
+          console.log("Raw class students data:", classStudents);
+
+          // Create basic student data
+          const basicStudentsData = classStudents.map((cs, index) => {
+            const student = cs.student || {};
+            const classroom = cs.classroom || {};
+
+            return {
+              id: student.enrollment_id || cs.student_id,
+              student_id: `STU${String(
+                student.enrollment_id || cs.student_id
+              ).padStart(4, "0")}`,
+              first_given_name: student.first_given_name || "",
+              family_name: student.family_name || "",
+              preferred_first_name: student.preferred_first_name || "",
+              gender: student.gender || "Unknown",
+              date_of_birth: student.date_of_birth || "",
+              mainstream_enrollment_year: cs.enr_year || "",
+              status: cs.is_active ? "Active" : "Inactive",
+              classroom: classroom.class_name || "N/A",
+              parent_carers: student.parent_carers || [],
+              raw_class_student: cs,
+            };
+          });
+
+          console.log("Basic students data:", basicStudentsData);
+
+          // Fetch detailed information for each student
+          console.log("Fetching detailed student information...");
+          const detailedStudents = await Promise.all(
+            basicStudentsData.map(async (student) => {
+              try {
+                const studentDetails = await fetchStudentDetails(student.id);
+
+                if (studentDetails) {
+                  // Merge basic data with detailed data
+                  return {
+                    ...student,
+                    // Override with detailed information if available
+                    gender: studentDetails.student?.gender || student.gender,
+                    date_of_birth:
+                      studentDetails.student?.date_of_birth ||
+                      student.date_of_birth,
+                    status:
+                      studentDetails.student?.status === "approved"
+                        ? "Active"
+                        : studentDetails.student?.status === "pending"
+                        ? "Pending"
+                        : studentDetails.student?.status === "rejected"
+                        ? "Inactive"
+                        : student.status,
+                    // Add parent information if available in detailed response
+                    parent_carers:
+                      studentDetails.parent_carers || student.parent_carers,
+                    // Store the complete detailed data
+                    detailed_data: studentDetails,
+                  };
+                }
+              } catch (err) {
+                console.error(
+                  `Error fetching details for student ${student.id}:`,
+                  err
+                );
+              }
+
+              return student;
+            })
+          );
+
+          console.log("Detailed students data:", detailedStudents);
+
+          // Format students data for the table
+          const formattedStudents = detailedStudents.map((student, index) => {
+            // Get parent carers from detailed_data if available, otherwise use parent_carers
+            const parentCarers =
+              student.detailed_data?.parents_carers ||
+              student.detailed_data?.parent_carers ||
+              student.parent_carers ||
+              [];
+
+            console.log(`Student ${student.id} parentCarers:`, parentCarers);
+
+            const firstParent = parentCarers.length > 0 ? parentCarers[0] : {};
+
+            // Comprehensive parent name extraction
+            let parentName = "N/A";
+
+            if (firstParent) {
+              // Try different possible name field combinations
+              if (firstParent.first_name && firstParent.last_name) {
+                parentName = `${firstParent.first_name} ${firstParent.last_name}`;
+              } else if (firstParent.full_name) {
+                parentName = firstParent.full_name;
+              } else if (firstParent.name) {
+                parentName = firstParent.name;
+              } else if (firstParent.first_name) {
+                parentName = firstParent.first_name;
+              } else if (firstParent.last_name) {
+                parentName = firstParent.last_name;
+              }
+
+              // If we found a parent but couldn't extract name, mark as "Parent"
+              if (parentName === "N/A" && Object.keys(firstParent).length > 0) {
+                parentName = "Parent";
+              }
+            }
+
+            return {
+              index: index + 1,
+              id: student.id,
+              student_id: student.student_id,
+              full_name: `${student.first_given_name || ""} ${
+                student.family_name || ""
+              }`.trim(),
+              preferred_name: student.preferred_first_name || "",
+              gender: student.gender || "",
+              date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
+              enrollment_year: student.mainstream_enrollment_year || "",
+              status: student.status || "Unknown",
+              classroom: student.classroom || "N/A",
+              parent_name: parentName,
+              raw_data: student,
+              detailed_data: student.detailed_data,
+            };
+          });
+
+          console.log("Formatted students:", formattedStudents);
+          setStudents(formattedStudents);
+        } else {
+          throw new Error(response.data?.message || "Failed to fetch students");
+        }
       }
+
+      setLastRefreshTime(new Date());
     } catch (err) {
       console.error("Fetch error:", err);
 
@@ -239,7 +358,9 @@ const StudentsList = () => {
   };
 
   useEffect(() => {
-    fetchStudents();
+    if (userRole) {
+      fetchStudents();
+    }
   }, [userRole, userData]);
 
   useEffect(() => {
@@ -345,16 +466,16 @@ const StudentsList = () => {
         },
       });
 
-      // View student details - FIXED EVENT LISTENER
+      // View student details
       $("#studentTable").on("click", ".view-btn", function () {
         const studentId = $(this).data("student-id");
         console.log("View button clicked for student:", studentId);
         const student = students.find((s) => s.id === studentId);
         if (student) {
           navigate(`/students/${studentId}`, {
-            state: { 
+            state: {
               studentData: student.raw_data,
-              detailedData: student.detailed_data 
+              detailedData: student.detailed_data,
             },
           });
         }
@@ -372,96 +493,234 @@ const StudentsList = () => {
     fetchStudents(true);
   };
 
-  const handleAddStudent = () => {
-    // Navigate to add student page
-    navigate("/students/add");
+  // Get gender icon
+  const getGenderIcon = (gender) => {
+    switch (gender?.toLowerCase()) {
+      case "male":
+        return "bi-gender-male text-primary";
+      case "female":
+        return "bi-gender-female text-pink";
+      default:
+        return "bi-gender-ambiguous text-secondary";
+    }
+  };
+
+  // Get status variant for badge
+  const getStatusVariant = (status) => {
+    switch (status) {
+      case "Active":
+        return "success";
+      case "Pending":
+        return "warning";
+      case "Inactive":
+        return "secondary";
+      default:
+        return "info";
+    }
   };
 
   // Show restricted access message for parents/teachers
   if (isRestrictedUser) {
     return (
       <div className="container-fluid px-4 py-3">
+        {/* Header Section */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h4 className="H4-heading fw-bold">Students</h4>
+            <h4 className="H4-heading fw-bold text-dark">Students</h4>
+            <p className="text-muted mb-0">
+              Manage and view student information
+            </p>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            {lastRefreshTime && (
+              <small className="text-muted">
+                Last updated: {lastRefreshTime.toLocaleTimeString()}
+              </small>
+            )}
+            <button
+              onClick={handleRefresh}
+              className={`btn btn-outline-secondary btn-sm d-flex align-items-center ${
+                refreshing ? "opacity-75" : ""
+              }`}
+              disabled={refreshing}
+            >
+              <i
+                className={`bi bi-arrow-clockwise me-1 ${
+                  refreshing ? "spin" : ""
+                }`}
+              ></i>
+              Refresh
+            </button>
           </div>
         </div>
 
-        <Card className="mt-4">
-          <Card.Body className="text-center py-5">
-            <div className="mb-4">
-              <i className="bi bi-people display-4 text-primary"></i>
+        {/* Main Content */}
+        <Card className="border shadow-sm">
+          <Card.Body className="p-4">
+            {/* Welcome Section */}
+            <div className="text-center mb-5">
+              <div className="mb-3">
+                <i className="bi bi-people display-4 text-primary opacity-75"></i>
+              </div>
+              <h5 className="fw-semibold text-dark mb-2">
+                Your Children's Information ({students.length})
+              </h5>
+              <p className="text-muted mb-0">
+                You can view your children's information here. Contact the
+                school administration for any updates.
+              </p>
             </div>
-            <p className="text-muted mb-4">
-              {userRole === "parent"
-                ? "You can view your children's information here. Contact the school administration for any updates."
-                : "Teacher access to student management is limited. Please contact administration for full access."}
-            </p>
-            {userRole === "parent" && students.length > 0 && (
-              <div className="mt-4">
-                <h5>Your Children</h5>
-                <div className="row justify-content-center">
+
+            {/* Students Cards Section */}
+            {students.length > 0 ? (
+              <div>
+                <Row className="g-4">
                   {students.map((student) => {
-                    // Get parent name for parent view as well
-                    const parentCarers = student.detailed_data?.parents_carers || 
-                                       student.detailed_data?.parent_carers || 
-                                       student.parent_carers || [];
-                    const firstParent = parentCarers.length > 0 ? parentCarers[0] : {};
-                    let parentName = "N/A";
-                    
-                    if (firstParent.first_name && firstParent.last_name) {
-                      parentName = `${firstParent.first_name} ${firstParent.last_name}`;
-                    }
+                    const parentCarer = student.raw_data?.parent_carer_1 || {};
+                    const parentName = `${parentCarer.first_name || ""} ${
+                      parentCarer.last_name || ""
+                    }`.trim();
 
                     return (
-                      <div key={student.id} className="col-md-6 col-lg-4 mb-3">
-                        <Card>
-                          <Card.Body>
-                            <h6>{student.full_name}</h6>
-                            <p className="mb-1">Class: {student.classroom}</p>
-                            <p className="mb-1">Parent: {parentName}</p>
-                            <p className="mb-1">
-                              Status:{" "}
-                              <span
-                                className={`badge ${
-                                  student.status === "Active"
-                                    ? "bg-success"
-                                    : student.status === "Pending"
-                                    ? "bg-warning"
-                                    : "bg-secondary"
-                                }`}
+                      <Col key={student.id} xl={4} lg={6} md={6} sm={12}>
+                        <Card className="h-100 border shadow-sm hover-shadow transition-all">
+                          <Card.Body className="p-4">
+                            {/* Student Header */}
+                            <div className="d-flex justify-content-between align-items-start mb-3">
+                              <div>
+                                <h5 className="fw-bold text-dark mb-1">
+                                  {student.full_name}
+                                </h5>
+                                {student.preferred_name && (
+                                  <small className="text-muted">
+                                    Preferred: {student.preferred_name}
+                                  </small>
+                                )}
+                              </div>
+                              <Badge
+                                bg={getStatusVariant(student.status)}
+                                className="fs-12px"
                               >
                                 {student.status}
+                              </Badge>
+                            </div>
+
+                            {/* Student ID */}
+                            <div className="mb-3">
+                              <small className="text-muted d-block">
+                                Student ID
+                              </small>
+                              <span className="fw-semibold text-dark">
+                                {student.student_id}
                               </span>
-                            </p>
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              onClick={() =>
-                                navigate(`/students/${student.id}`, {
-                                  state: { 
-                                    studentData: student.raw_data,
-                                    detailedData: student.detailed_data 
-                                  },
-                                })
-                              }
-                            >
-                              View Details
-                            </Button>
+                            </div>
+
+                            {/* Student Details Grid */}
+                            <Row className="g-2 mb-3">
+                              <Col sm={6}>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-mortarboard-fill text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">Class</small>
+                                </div>
+                                <span className="fw-semibold text-dark d-block">
+                                  {student.classroom}
+                                </span>
+                              </Col>
+                              <Col sm={6}>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i
+                                    className={`bi ${getGenderIcon(
+                                      student.gender
+                                    )} text-primary me-2 fs-14px`}
+                                  ></i>
+                                  <small className="text-muted">Gender</small>
+                                </div>
+                                <span className="fw-semibold text-dark d-block text-capitalize">
+                                  {student.gender || "Not specified"}
+                                </span>
+                              </Col>
+                            </Row>
+
+                            <Row className="g-2 mb-3">
+                              <Col sm={6}>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-calendar-event text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">
+                                    Date of Birth
+                                  </small>
+                                </div>
+                                <span className="fw-semibold text-dark d-block">
+                                  {student.date_of_birth}
+                                </span>
+                              </Col>
+                              <Col sm={6}>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-calendar-check text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">
+                                    Enrollment Year
+                                  </small>
+                                </div>
+                                <span className="fw-semibold text-dark d-block">
+                                  {student.enrollment_year}
+                                </span>
+                              </Col>
+                            </Row>
+
+                            {/* Parent Information */}
+                            <div className="mb-4">
+                              <div className="d-flex align-items-center mb-2">
+                                <i className="bi bi-person-badge text-primary me-2 fs-14px"></i>
+                                <small className="text-muted">Parent</small>
+                              </div>
+                              <span className="fw-semibold text-dark d-block">
+                                {parentName}
+                              </span>
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="d-flex justify-content-end">
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="fw-semibold p-2"
+                                onClick={() =>
+                                  navigate(`/students/${student.id}`, {
+                                    state: {
+                                      studentData: student.raw_data,
+                                      detailedData: student.detailed_data,
+                                    },
+                                  })
+                                }
+                              >
+                                <i className="bi bi-eye me-1"></i>
+                                View Full Details
+                              </Button>
+                            </div>
                           </Card.Body>
                         </Card>
-                      </div>
+                      </Col>
                     );
                   })}
-                </div>
+                </Row>
               </div>
-            )}
-            {userRole === "parent" && students.length === 0 && (
-              <div className="mt-4">
-                <p className="text-muted">
-                  No children found associated with your account.
+            ) : (
+              /* Empty State */
+              <div className="text-center py-5">
+                <div className="mb-4">
+                  <i className="bi bi-person-x display-4 text-muted opacity-50"></i>
+                </div>
+                <h6 className="fw-semibold text-dark mb-2">
+                  No Children Found
+                </h6>
+                <p className="text-muted mb-4">
+                  No approved enrollment found for your account.
                 </p>
-                <Button variant="outline-primary" onClick={handleRefresh}>
+                <Button
+                  variant="outline-primary"
+                  onClick={handleRefresh}
+                  className="px-4"
+                >
+                  <i className="bi bi-arrow-clockwise me-2"></i>
                   Refresh
                 </Button>
               </div>
@@ -478,7 +737,7 @@ const StudentsList = () => {
         className="d-flex justify-content-center align-items-center"
         style={{ height: "50vh" }}
       >
-        <Spinner animation="border" role="status">
+        <Spinner animation="border" role="status" variant="primary">
           <span className="visually-hidden">Loading...</span>
         </Spinner>
       </div>
@@ -529,25 +788,88 @@ const StudentsList = () => {
             <div className="text-center py-4">
               <i className="bi bi-people display-4 text-muted mb-3"></i>
               <p className="text-muted">No students found.</p>
-              <ButtonGlobal
-                onClick={handleAddStudent}
-                text="Add First Student"
-                className="btn btn-primary"
-              />
             </div>
           ) : (
             <div>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <p className="mb-0">Showing {students.length} students</p>
               </div>
-              <table
-                id="studentTable"
-                className="table table-striped table-hover custom-data-table w-100"
-              ></table>
+              {userRole === "parent" ? (
+                // Parent view with cards
+                <div className="row">
+                  {students.map((student) => {
+                    const parentCarer = student.raw_data?.parent_carer_1 || {};
+                    const parentName = `${parentCarer.first_name || ""} ${
+                      parentCarer.last_name || ""
+                    }`.trim();
+
+                    return (
+                      <div key={student.id} className="col-md-6 col-lg-4 mb-3">
+                        <Card>
+                          <Card.Body>
+                            <h6>{student.full_name}</h6>
+                            {student.preferred_name && (
+                              <p className="mb-1 text-muted">
+                                Preferred: {student.preferred_name}
+                              </p>
+                            )}
+                            <p className="mb-1">
+                              Student ID: {student.student_id}
+                            </p>
+                            <p className="mb-1">Class: {student.classroom}</p>
+                            <p className="mb-1">Gender: {student.gender}</p>
+                            <p className="mb-1">
+                              Date of Birth: {student.date_of_birth}
+                            </p>
+                            <p className="mb-1">
+                              Enrollment Year: {student.enrollment_year}
+                            </p>
+                            <p className="mb-1">Parent: {parentName}</p>
+                            <p className="mb-1">
+                              Status:{" "}
+                              <span
+                                className={`badge ${
+                                  student.status === "Active"
+                                    ? "bg-success"
+                                    : student.status === "Pending"
+                                    ? "bg-warning"
+                                    : "bg-secondary"
+                                }`}
+                              >
+                                {student.status}
+                              </span>
+                            </p>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() =>
+                                navigate(`/students/${student.id}`, {
+                                  state: {
+                                    studentData: student.raw_data,
+                                    detailedData: student.detailed_data,
+                                  },
+                                })
+                              }
+                            >
+                              View Details
+                            </Button>
+                          </Card.Body>
+                        </Card>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Admin view with DataTable
+                <table
+                  id="studentTable"
+                  className="table table-striped table-hover custom-data-table w-100"
+                ></table>
+              )}
             </div>
           )}
         </div>
-      )}  
+      )}
     </div>
   );
 };

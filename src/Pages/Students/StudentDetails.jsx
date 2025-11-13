@@ -28,6 +28,27 @@ const StudentDetails = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updateMessage, setUpdateMessage] = useState({ type: "", text: "" });
   const [activeTab, setActiveTab] = useState("parents");
+  const [userRole, setUserRole] = useState(null);
+
+  // Get user role from localStorage
+  useEffect(() => {
+    const getUserRole = () => {
+      try {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          const parsedUserData = JSON.parse(userData);
+          console.log("👤 User data from localStorage:", parsedUserData);
+          setUserRole(parsedUserData.role?.role_name || null);
+          return parsedUserData.role?.role_name;
+        }
+      } catch (error) {
+        console.error("❌ Error parsing user data from localStorage:", error);
+      }
+      return null;
+    };
+
+    getUserRole();
+  }, []);
 
   // Debug logs for initial props
   console.log("🔍 StudentDetails Component Mounted:", {
@@ -35,11 +56,72 @@ const StudentDetails = () => {
     hasStudentData: !!studentData,
     studentDataFromLocation: studentData,
     locationState: location.state,
+    userRole,
   });
 
   // Data transformation function
   const transformStudentData = (data) => {
     console.log("🔄 Transforming student data structure...", data);
+
+    // If data comes from parent API (my-enrollments)
+    if (data.student && data.parent_carer_1) {
+      console.log("📦 Found parent API data structure");
+      return {
+        student: {
+          id: data.student.enrollment_id,
+          enrollment_id: data.student.enrollment_id,
+          name: `${data.student.first_given_name || ""} ${data.student.family_name || ""}`.trim(),
+          preferred_name: data.student.preferred_first_name || "",
+          gender: data.student.gender,
+          date_of_birth: data.student.date_of_birth,
+          status: data.student.status,
+          mainstream_school_name: data.student.mainstream_school_name,
+          mainstream_enrollment_year: data.student.mainstream_enrollment_year,
+          enrol_class_in_WSTSC: data.student.enrol_class_in_WSTSC,
+          classroom_info: data.student.classroom_info,
+          submitted_by: data.student.submitted_by,
+          submitted_at: data.student.submitted_at,
+          approved_by: data.student.approved_by,
+          approved_at: data.student.approved_at,
+        },
+        parents_carers: [{
+          parent_carer_id: 1,
+          title: data.parent_carer_1.title,
+          first_name: data.parent_carer_1.first_name,
+          last_name: data.parent_carer_1.last_name,
+          relationship_to_student: data.parent_carer_1.relationship_to_student,
+          email: data.parent_carer_1.email,
+          mobile_phone: data.parent_carer_1.mobile_phone,
+          alternative_phone: data.parent_carer_1.alternative_phone,
+          occupation: data.parent_carer_1.occupation,
+          address: `${data.parent_carer_1.street_number} ${data.parent_carer_1.street_name}, ${data.parent_carer_1.suburb}, ${data.parent_carer_1.state} ${data.parent_carer_1.postal_code}`
+        }],
+        emergency_contacts: [{
+          preference: "first",
+          given_name: data.first_emergency_contact.given_name,
+          family_name: data.first_emergency_contact.family_name,
+          relationship_to_student: data.first_emergency_contact.relationship_to_student,
+          mobile_phone: data.first_emergency_contact.mobile_phone,
+          home_phone: data.first_emergency_contact.home_phone,
+          work_phone: data.first_emergency_contact.work_phone
+        }],
+        medical_details: data.medical_details,
+        personal_declaration: data.personal_declaration,
+        classes: data.student.classroom_info ? [{
+          classroom: {
+            class_id: data.student.classroom_info.class_id,
+            class_name: data.student.classroom_info.class_name,
+            grade_level: data.student.classroom_info.grade_level,
+            subject: data.student.classroom_info.subject
+          }
+        }] : [],
+        summary: {
+          total_classes: data.student.classroom_info ? 1 : 0,
+          parent_count: 1,
+          emergency_contact_count: 1,
+        },
+      };
+    }
 
     // If data comes from detailed_data endpoint (nested structure)
     if (data.detailed_data) {
@@ -50,14 +132,11 @@ const StudentDetails = () => {
         student: {
           id: data.id,
           enrollment_id: data.student_id,
-          name: `${data.first_given_name || ""} ${
-            data.family_name || ""
-          }`.trim(),
+          name: `${data.first_given_name || ""} ${data.family_name || ""}`.trim(),
           preferred_name: data.preferred_first_name || "",
           gender: data.gender,
           date_of_birth: data.date_of_birth,
           status: data.status,
-          // Merge with any student data from detailed_data
           ...(detailed.student || {}),
         },
         parents_carers: detailed.parents_carers || [],
@@ -78,11 +157,8 @@ const StudentDetails = () => {
         student: {
           id: data.id,
           enrollment_id: data.student_id || data.enrollment_id,
-          name: `${data.first_given_name || data.first_name || ""} ${
-            data.family_name || data.last_name || ""
-          }`.trim(),
-          preferred_name:
-            data.preferred_first_name || data.preferred_name || "",
+          name: `${data.first_given_name || data.first_name || ""} ${data.family_name || data.last_name || ""}`.trim(),
+          preferred_name: data.preferred_first_name || data.preferred_name || "",
           gender: data.gender,
           date_of_birth: data.date_of_birth,
           status: data.status,
@@ -92,10 +168,8 @@ const StudentDetails = () => {
         emergency_contacts: data.emergency_contacts || [],
         classes: data.classes || data.current_classes || [],
         summary: {
-          total_classes:
-            data.classes?.length || data.current_classes?.length || 0,
-          parent_count:
-            data.parents_carers?.length || data.parent_carers?.length || 0,
+          total_classes: data.classes?.length || data.current_classes?.length || 0,
+          parent_count: data.parents_carers?.length || data.parent_carers?.length || 0,
           emergency_contact_count: data.emergency_contacts?.length || 0,
         },
       };
@@ -106,15 +180,81 @@ const StudentDetails = () => {
     return data;
   };
 
+  // Fetch student data based on user role
+  const fetchStudentData = async () => {
+    try {
+      console.log("🚀 Starting API call to fetch student data for ID:", id);
+      console.log("👤 User role:", userRole);
+      
+      setLoading(true);
+      setError(null);
+
+      let response;
+
+      if (userRole === 'parent') {
+        // Use the parent API endpoint for my-enrollments
+        console.log("🎯 Using parent API endpoint");
+        response = await api.get(`/my-enrollments/${id}`);
+        
+        if (response.data.success) {
+          const studentData = response.data.data.enrollment;
+          
+          // Check if student status is approved
+          if (studentData.student.status !== 'approved') {
+            throw new Error("Student enrollment is not approved");
+          }
+          
+          console.log("✅ Parent student data fetched successfully");
+          const transformedData = transformStudentData(studentData);
+          console.log("🔄 Transformed parent data:", transformedData);
+          setCurrentStudent(transformedData);
+        } else {
+          throw new Error(response.data.message || "Failed to fetch student data");
+        }
+      } else {
+        // Use the regular admin API endpoint
+        console.log("🎯 Using admin API endpoint");
+        response = await api.get(`/class-students/student/${id}`);
+        
+        if (response.data.success) {
+          console.log("✅ Admin student data fetched successfully");
+          const transformedData = transformStudentData(response.data.data);
+          console.log("🔄 Transformed admin data:", transformedData);
+          setCurrentStudent(transformedData);
+        } else {
+          throw new Error(response.data.message || "Failed to fetch student data");
+        }
+      }
+
+    } catch (error) {
+      console.error("💥 Error fetching student data:", {
+        error,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      if (error.message === "Student enrollment is not approved") {
+        setError("This student enrollment is not approved for viewing.");
+      } else {
+        setError("Failed to load student data. Please try again.");
+      }
+    } finally {
+      console.log("🏁 API call completed, setting loading to false");
+      setLoading(false);
+    }
+  };
+
   // If no student data was passed, fetch it using the ID
   useEffect(() => {
     console.log("🔄 useEffect triggered:", {
       hasStudentData: !!studentData,
       id,
       loading,
+      userRole,
     });
 
-    if (!studentData && id) {
+    if (!studentData && id && userRole !== null) {
       console.log("📡 Fetching student data from API...");
       fetchStudentData();
     } else if (studentData) {
@@ -126,53 +266,12 @@ const StudentDetails = () => {
 
       setCurrentStudent(transformedData);
       setLoading(false);
-    } else {
-      console.log("❌ No student data and no ID available");
-      setError("No student data available");
+    } else if (!id) {
+      console.log("❌ No student ID available");
+      setError("No student ID provided");
       setLoading(false);
     }
-  }, [id, studentData]);
-
-  const fetchStudentData = async () => {
-    try {
-      console.log("🚀 Starting API call to fetch student data for ID:", id);
-      setLoading(true);
-      setError(null);
-
-      const response = await api.get(`/class-students/student/${id}`);
-      console.log("📥 API Response received:", {
-        success: response.data.success,
-        data: response.data.data,
-        fullResponse: response.data,
-      });
-
-      if (response.data.success) {
-        console.log("✅ Student data fetched successfully");
-
-        // Transform the data to match expected format
-        const transformedData = transformStudentData(response.data.data);
-        console.log("🔄 Transformed data:", transformedData);
-
-        setCurrentStudent(transformedData);
-      } else {
-        console.error("❌ API returned success: false", response.data);
-        throw new Error(
-          response.data.message || "Failed to fetch student data"
-        );
-      }
-    } catch (error) {
-      console.error("💥 Error fetching student data:", {
-        error,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      setError("Failed to load student data. Please try again.");
-    } finally {
-      console.log("🏁 API call completed, setting loading to false");
-      setLoading(false);
-    }
-  };
+  }, [id, studentData, userRole]);
 
   // Safe data access functions with debug logs
   const getStudentData = () => {
@@ -235,8 +334,17 @@ const StudentDetails = () => {
     }
   };
 
-  // Handle status change via toggle
+  // Handle status change via toggle - Only for admin users
   const handleStatusChange = async (newStatus) => {
+    // Don't allow parent users to change status
+    if (userRole === 'parent') {
+      setUpdateMessage({
+        type: 'warning',
+        text: 'You do not have permission to change student status.'
+      });
+      return;
+    }
+
     try {
       console.log("🔄 Changing student status to:", newStatus);
       setUpdatingStatus(true);
@@ -290,8 +398,17 @@ const StudentDetails = () => {
     }
   };
 
-  // Handle quick status toggle
+  // Handle quick status toggle - Only for admin users
   const handleQuickStatusToggle = () => {
+    // Don't allow parent users to change status
+    if (userRole === 'parent') {
+      setUpdateMessage({
+        type: 'warning',
+        text: 'You do not have permission to change student status.'
+      });
+      return;
+    }
+
     const student = getStudentData();
     console.log("🔀 Quick status toggle:", {
       currentStatus: student.status,
@@ -307,6 +424,7 @@ const StudentDetails = () => {
     error,
     currentStudent,
     hasStudentData: !!currentStudent,
+    userRole,
   });
 
   if (loading) {
@@ -374,6 +492,7 @@ const StudentDetails = () => {
     emergencyContactsCount: emergency_contacts.length,
     classesCount: classes.length,
     summary,
+    userRole,
   });
 
   return (
@@ -386,6 +505,11 @@ const StudentDetails = () => {
             {student.enrollment_id
               ? `Enrollment ID: ${student.enrollment_id}`
               : "Student Details"}
+            {userRole === 'parent' && (
+              <Badge bg="info" className="ms-2">
+                Parent View
+              </Badge>
+            )}
           </p>
         </div>
         <div className="d-flex gap-2">
@@ -407,6 +531,8 @@ const StudentDetails = () => {
               className={`bi bi-${
                 updateMessage.type === "success"
                   ? "check-circle"
+                  : updateMessage.type === "warning"
+                  ? "exclamation-triangle"
                   : "exclamation-triangle"
               } me-2`}
             ></i>
@@ -424,24 +550,30 @@ const StudentDetails = () => {
               {student.status && (
                 <div className="d-flex align-items-center gap-3">
                   <span className="text-muted">Status:</span>
-                  <Form.Check
-                    type="switch"
-                    id="student-status-toggle"
-                    label={
-                      <Badge
-                        bg={getStatusVariant(student.status)}
-                        className="fs-6"
-                      >
-                        {student.status}
-                      </Badge>
-                    }
-                    checked={
-                      student.status === "approved" ||
-                      student.status === "Active"
-                    }
-                    onChange={handleQuickStatusToggle}
-                    disabled={updatingStatus}
-                  />
+                  {userRole !== 'parent' ? (
+                    <Form.Check
+                      type="switch"
+                      id="student-status-toggle"
+                      label={
+                        <Badge
+                          bg={getStatusVariant(student.status)}
+                          className="fs-6"
+                        >
+                          {student.status}
+                        </Badge>
+                      }
+                      checked={
+                        student.status === "approved" ||
+                        student.status === "Active"
+                      }
+                      onChange={handleQuickStatusToggle}
+                      disabled={updatingStatus}
+                    />
+                  ) : (
+                    <Badge bg={getStatusVariant(student.status)} className="fs-6">
+                      {student.status}
+                    </Badge>
+                  )}
                 </div>
               )}
             </Card.Header>
@@ -643,12 +775,8 @@ const StudentDetails = () => {
                                   <td>{parent.alternative_phone || "N/A"}</td>
                                 </tr>
                                 <tr>
-                                  <td className="fw-bold">Type:</td>
-                                  <td className="text-capitalize">
-                                    {parent.parent_type
-                                      ? parent.parent_type.replace(/_/g, " ")
-                                      : "N/A"}
-                                  </td>
+                                  <td className="fw-bold">Address:</td>
+                                  <td>{parent.address || "N/A"}</td>
                                 </tr>
                               </tbody>
                             </Table>
@@ -845,75 +973,77 @@ const StudentDetails = () => {
 
         <Col lg={4}>
           {/* Quick Actions & Status */}
-          <Card className="mb-4">
-            <Card.Header>
-              <h5 className="mb-0">Quick Actions</h5>
-            </Card.Header>
-            <Card.Body>
-              <div className="d-grid gap-2">
-                <Button variant="outline-primary">
-                  <i className="bi bi-envelope me-2"></i>
-                  Send Message to Parent
-                </Button>
-                <Button variant="outline-success">
-                  <i className="bi bi-file-text me-2"></i>
-                  Generate Report
-                </Button>
-                <Button variant="outline-info">
-                  <i className="bi bi-calendar me-2"></i>
-                  View Attendance
-                </Button>
-                {(student.status === "approved" ||
-                  student.status === "Active") && (
-                  <Button
-                    variant="outline-warning"
-                    onClick={() => handleStatusChange("inactive")}
-                    disabled={updatingStatus}
-                  >
-                    {updatingStatus ? (
-                      <>
-                        <Spinner
-                          animation="border"
-                          size="sm"
-                          className="me-2"
-                        />
-                        Deactivating...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-pause-circle me-2"></i>
-                        Deactivate Student
-                      </>
-                    )}
+          {userRole !== 'parent' && (
+            <Card className="mb-4">
+              <Card.Header>
+                <h5 className="mb-0">Quick Actions</h5>
+              </Card.Header>
+              <Card.Body>
+                <div className="d-grid gap-2">
+                  <Button variant="outline-primary">
+                    <i className="bi bi-envelope me-2"></i>
+                    Send Message to Parent
                   </Button>
-                )}
-                {(student.status === "inactive" ||
-                  student.status === "Inactive") && (
-                  <Button
-                    variant="outline-success"
-                    onClick={() => handleStatusChange("approved")}
-                    disabled={updatingStatus}
-                  >
-                    {updatingStatus ? (
-                      <>
-                        <Spinner
-                          animation="border"
-                          size="sm"
-                          className="me-2"
-                        />
-                        Activating...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-play-circle me-2"></i>
-                        Activate Student
-                      </>
-                    )}
+                  <Button variant="outline-success">
+                    <i className="bi bi-file-text me-2"></i>
+                    Generate Report
                   </Button>
-                )}
-              </div>
-            </Card.Body>
-          </Card>
+                  <Button variant="outline-info">
+                    <i className="bi bi-calendar me-2"></i>
+                    View Attendance
+                  </Button>
+                  {(student.status === "approved" ||
+                    student.status === "Active") && (
+                    <Button
+                      variant="outline-warning"
+                      onClick={() => handleStatusChange("inactive")}
+                      disabled={updatingStatus}
+                    >
+                      {updatingStatus ? (
+                        <>
+                          <Spinner
+                            animation="border"
+                            size="sm"
+                            className="me-2"
+                          />
+                          Deactivating...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-pause-circle me-2"></i>
+                          Deactivate Student
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {(student.status === "inactive" ||
+                    student.status === "Inactive") && (
+                    <Button
+                      variant="outline-success"
+                      onClick={() => handleStatusChange("approved")}
+                      disabled={updatingStatus}
+                    >
+                      {updatingStatus ? (
+                        <>
+                          <Spinner
+                            animation="border"
+                            size="sm"
+                            className="me-2"
+                          />
+                          Activating...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-play-circle me-2"></i>
+                          Activate Student
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </Card.Body>
+            </Card>
+          )}
 
           {/* Student Summary */}
           <Card className="mb-4">

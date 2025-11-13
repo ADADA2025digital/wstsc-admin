@@ -23,7 +23,6 @@ import ClassroomsStatus from "./Pages/Classroom/ClassroomStatus";
 import SetupPassword from "./Components/SetupPassword";
 import EditProfile from "./Pages/EditProfile";
 import StudentsList from "./Pages/Students/StudentsList";
-import StudentsStatus from "./Pages/Students/StudentsStatus";
 import StudentDetails from "./Pages/Students/StudentDetails";
 
 function App() {
@@ -58,7 +57,6 @@ function App() {
 
           <Route path="/students" element={<StudentsList />} />
           <Route path="/students/:id" element={<StudentDetails />} />
-          <Route path="/student-status" element={<StudentsStatus />} />
         </Route>
       </Routes>
     </Router>

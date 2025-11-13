@@ -117,7 +117,6 @@ const Sidebar = ({
         case "students":
           return [
             { label: "View all students", to: "/students" },
-            { label: "View status Students", to: "/status-student" },
           ];
         default:
           return [];
@@ -165,7 +164,6 @@ const Sidebar = ({
         } else {
           return [
             { label: "View all students", to: "/students" },
-            { label: "View status Students", to: "/student-status" },
           ];
         }
 

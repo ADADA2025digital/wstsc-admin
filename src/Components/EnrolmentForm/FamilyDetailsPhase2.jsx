@@ -41,64 +41,302 @@ export default function FamilyDetailsPhase2({ onNext }) {
     { value: "other", label: "Other" },
   ];
 
+  const nationalities = [
+    "Afghan",
+    "Albanian",
+    "Algerian",
+    "American",
+    "Andorran",
+    "Angolan",
+    "Anguillan",
+    "Argentine",
+    "Armenian",
+    "Australian",
+    "Austrian",
+    "Azerbaijani",
+    "Bahamian",
+    "Bahraini",
+    "Bangladeshi",
+    "Barbadian",
+    "Belarusian",
+    "Belgian",
+    "Belizean",
+    "Beninese",
+    "Bermudian",
+    "Bhutanese",
+    "Bolivian",
+    "Botswanan",
+    "Brazilian",
+    "British",
+    "British Virgin Islander",
+    "Bruneian",
+    "Bulgarian",
+    "Burkinan",
+    "Burmese",
+    "Burundian",
+    "Cambodian",
+    "Cameroonian",
+    "Canadian",
+    "Cape Verdean",
+    "Cayman Islander",
+    "Central African",
+    "Chadian",
+    "Chilean",
+    "Chinese",
+    "Citizen of Antigua and Barbuda",
+    "Citizen of Bosnia and Herzegovina",
+    "Citizen of Guinea-Bissau",
+    "Citizen of Kiribati",
+    "Citizen of Seychelles",
+    "Citizen of the Dominican Republic",
+    "Citizen of Vanuatu ",
+    "Colombian",
+    "Comoran",
+    "Congolese (Congo)",
+    "Congolese (DRC)",
+    "Cook Islander",
+    "Costa Rican",
+    "Croatian",
+    "Cuban",
+    "Cymraes",
+    "Cymro",
+    "Cypriot",
+    "Czech",
+    "Danish",
+    "Djiboutian",
+    "Dominican",
+    "Dutch",
+    "East Timorese",
+    "Ecuadorean",
+    "Egyptian",
+    "Emirati",
+    "English",
+    "Equatorial Guinean",
+    "Eritrean",
+    "Estonian",
+    "Ethiopian",
+    "Faroese",
+    "Fijian",
+    "Filipino",
+    "Finnish",
+    "French",
+    "Gabonese",
+    "Gambian",
+    "Georgian",
+    "German",
+    "Ghanaian",
+    "Gibraltarian",
+    "Greek",
+    "Greenlandic",
+    "Grenadian",
+    "Guamanian",
+    "Guatemalan",
+    "Guinean",
+    "Guyanese",
+    "Haitian",
+    "Honduran",
+    "Hong Konger",
+    "Hungarian",
+    "Icelandic",
+    "Indian",
+    "Indonesian",
+    "Iranian",
+    "Iraqi",
+    "Irish",
+    "Israeli",
+    "Italian",
+    "Ivorian",
+    "Jamaican",
+    "Japanese",
+    "Jordanian",
+    "Kazakh",
+    "Kenyan",
+    "Kittitian",
+    "Kosovan",
+    "Kuwaiti",
+    "Kyrgyz",
+    "Lao",
+    "Latvian",
+    "Lebanese",
+    "Liberian",
+    "Libyan",
+    "Liechtenstein citizen",
+    "Lithuanian",
+    "Luxembourger",
+    "Macanese",
+    "Macedonian",
+    "Malagasy",
+    "Malawian",
+    "Malaysian",
+    "Maldivian",
+    "Malian",
+    "Maltese",
+    "Marshallese",
+    "Martiniquais",
+    "Mauritanian",
+    "Mauritian",
+    "Mexican",
+    "Micronesian",
+    "Moldovan",
+    "Monegasque",
+    "Mongolian",
+    "Montenegrin",
+    "Montserratian",
+    "Moroccan",
+    "Mosotho",
+    "Mozambican",
+    "Namibian",
+    "Nauruan",
+    "Nepalese",
+    "New Zealander",
+    "Nicaraguan",
+    "Nigerian",
+    "Nigerien",
+    "Niuean",
+    "North Korean",
+    "Northern Irish",
+    "Norwegian",
+    "Omani",
+    "Pakistani",
+    "Palauan",
+    "Palestinian",
+    "Panamanian",
+    "Papua New Guinean",
+    "Paraguayan",
+    "Peruvian",
+    "Pitcairn Islander",
+    "Polish",
+    "Portuguese",
+    "Prydeinig",
+    "Puerto Rican",
+    "Qatari",
+    "Romanian",
+    "Russian",
+    "Rwandan",
+    "Salvadorean",
+    "Sammarinese",
+    "Samoan",
+    "Sao Tomean",
+    "Saudi Arabian",
+    "Scottish",
+    "Senegalese",
+    "Serbian",
+    "Sierra Leonean",
+    "Singaporean",
+    "Slovak",
+    "Slovenian",
+    "Solomon Islander",
+    "Somali",
+    "South African",
+    "South Korean",
+    "South Sudanese",
+    "Spanish",
+    "Sri Lankan",
+    "St Helenian",
+    "St Lucian",
+    "Stateless",
+    "Sudanese",
+    "Surinamese",
+    "Swazi",
+    "Swedish",
+    "Swiss",
+    "Syrian",
+    "Taiwanese",
+    "Tajik",
+    "Tanzanian",
+    "Thai",
+    "Togolese",
+    "Tongan",
+    "Trinidadian",
+    "Tristanian",
+    "Tunisian",
+    "Turkish",
+    "Turkmen",
+    "Turks and Caicos Islander",
+    "Tuvaluan",
+    "Ugandan",
+    "Ukrainian",
+    "Uruguayan",
+    "Uzbek",
+    "Vatican citizen",
+    "Venezuelan",
+    "Vietnamese",
+    "Vincentian",
+    "Wallisian",
+    "Welsh",
+    "Yemeni",
+    "Zambian",
+    "Zimbabwean",
+  ];
+
+  const nationalityOptions = nationalities.map((n) => ({
+    value: n,
+    label: n,
+  }));
+
   // Get countries from country-state-city
-  const countryOptions = Country.getAllCountries().map(country => ({
+  const countryOptions = Country.getAllCountries().map((country) => ({
     value: country.isoCode,
-    label: country.name
+    label: country.name,
   }));
 
   // Get Australian states from country-state-city
-  const stateOptions = State.getStatesOfCountry("AU").map(state => ({
+  const stateOptions = State.getStatesOfCountry("AU").map((state) => ({
     value: state.isoCode,
-    label: state.name
+    label: state.name,
   }));
 
-  const { formData, updateFormData, validateField, getError, validateSection, errors } =
-    useEnrolmentForm();
+  const {
+    formData,
+    updateFormData,
+    validateField,
+    getError,
+    validateSection,
+    errors,
+  } = useEnrolmentForm();
   const [sectionError, setSectionError] = useState("");
   const [showCarer2, setShowCarer2] = useState(false);
   const [touchedFields, setTouchedFields] = useState({
     parent_carer_1: {},
-    parent_carer_2: {}
+    parent_carer_2: {},
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showProfileUpdateModal, setShowProfileUpdateModal] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
-  
+
   // State for dynamic suburb options
   const [suburbOptions, setSuburbOptions] = useState({
     parent_carer_1: [],
-    parent_carer_2: []
+    parent_carer_2: [],
   });
 
   // Improved version of hasOnlyBasicInfo
   const hasOnlyBasicInfo = (profile) => {
     if (!profile) return false;
-    
-    const basicFields = ['first_name', 'last_name', 'email'];
-    const importantFields = [
-      'phone', 'date_of_birth', 'occupation'
-    ];
-    
+
+    const basicFields = ["first_name", "last_name", "email"];
+    const importantFields = ["phone", "date_of_birth", "occupation"];
+
     // Check if basic fields are populated
-    const hasBasicInfo = basicFields.every(field => 
-      profile[field] && profile[field].trim() !== ''
+    const hasBasicInfo = basicFields.every(
+      (field) => profile[field] && profile[field].trim() !== ""
     );
-    
+
     if (!hasBasicInfo) return false;
-    
+
     // Count how many important fields are missing
-    const missingImportantCount = importantFields.filter(field => 
-      !profile[field] || profile[field].toString().trim() === ''
+    const missingImportantCount = importantFields.filter(
+      (field) => !profile[field] || profile[field].toString().trim() === ""
     ).length;
-    
+
     // Also check if address is substantially complete
-    const hasSubstantialAddress = profile.address && 
-      profile.address.address_line1 && 
-      profile.address.city && 
+    const hasSubstantialAddress =
+      profile.address &&
+      profile.address.address_line1 &&
+      profile.address.city &&
       profile.address.postal_code;
-    
+
     // If more than 2 important fields are missing OR address is incomplete, show modal
     return missingImportantCount > 2 || !hasSubstantialAddress;
   };
@@ -108,14 +346,15 @@ export default function FamilyDetailsPhase2({ onNext }) {
     try {
       setIsLoading(true);
       const response = await api.get("/profile/person");
-      
+
       if (response.data.success && response.data.data.profile) {
         const profileData = response.data.data.profile;
         setProfileData(profileData);
-        
+
         // Check if user has chosen to not see the modal again
-        const dontShowModal = localStorage.getItem('dontShowProfileModal') === 'true';
-        
+        const dontShowModal =
+          localStorage.getItem("dontShowProfileModal") === "true";
+
         // Check if profile has only basic information
         if (hasOnlyBasicInfo(profileData) && !dontShowModal) {
           setShowProfileUpdateModal(true);
@@ -135,20 +374,22 @@ export default function FamilyDetailsPhase2({ onNext }) {
   // Check for returning from profile update on component mount
   useEffect(() => {
     const checkReturnFromProfileUpdate = async () => {
-      const wasUpdatingProfile = localStorage.getItem('wasUpdatingProfile');
+      const wasUpdatingProfile = localStorage.getItem("wasUpdatingProfile");
       const urlParams = new URLSearchParams(window.location.search);
-      const profileUpdated = urlParams.get('profileUpdated');
-      
-      if (wasUpdatingProfile === 'true' || profileUpdated === 'true') {
+      const profileUpdated = urlParams.get("profileUpdated");
+
+      if (wasUpdatingProfile === "true" || profileUpdated === "true") {
         // User just returned from profile update
-        localStorage.removeItem('wasUpdatingProfile');
-        
+        localStorage.removeItem("wasUpdatingProfile");
+
         // Clean URL parameters
         if (profileUpdated) {
-          const newUrl = window.location.pathname + window.location.search.replace(/[?&]profileUpdated=true/, '');
-          window.history.replaceState({}, '', newUrl);
+          const newUrl =
+            window.location.pathname +
+            window.location.search.replace(/[?&]profileUpdated=true/, "");
+          window.history.replaceState({}, "", newUrl);
         }
-        
+
         // Refresh profile data
         await fetchProfileData();
       } else {
@@ -165,17 +406,17 @@ export default function FamilyDetailsPhase2({ onNext }) {
     const handleVisibilityChange = async () => {
       if (!document.hidden) {
         // Check if we should refresh (user might have updated profile in another tab)
-        const shouldRefresh = localStorage.getItem('shouldRefreshProfile');
-        if (shouldRefresh === 'true') {
-          localStorage.removeItem('shouldRefreshProfile');
+        const shouldRefresh = localStorage.getItem("shouldRefreshProfile");
+        if (shouldRefresh === "true") {
+          localStorage.removeItem("shouldRefreshProfile");
           await fetchProfileData();
         }
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -187,19 +428,19 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
       if (stateCode) {
         const cities = City.getCitiesOfState(countryCode, stateCode);
-        const suburbOptions = cities.map(city => ({
+        const suburbOptions = cities.map((city) => ({
           value: city.name,
-          label: city.name
+          label: city.name,
         }));
-        
-        setSuburbOptions(prev => ({
+
+        setSuburbOptions((prev) => ({
           ...prev,
-          [section]: suburbOptions
+          [section]: suburbOptions,
         }));
       } else {
-        setSuburbOptions(prev => ({
+        setSuburbOptions((prev) => ({
           ...prev,
-          [section]: []
+          [section]: [],
         }));
       }
     };
@@ -208,7 +449,11 @@ export default function FamilyDetailsPhase2({ onNext }) {
     if (showCarer2) {
       loadSuburbsForParent("parent_carer_2");
     }
-  }, [formData.parent_carer_1?.state, formData.parent_carer_2?.state, showCarer2]);
+  }, [
+    formData.parent_carer_1?.state,
+    formData.parent_carer_2?.state,
+    showCarer2,
+  ]);
 
   // Function to auto-fill parent data from API response
   const autoFillParentData = (profileData) => {
@@ -218,7 +463,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
       first_name: profileData.first_name,
       last_name: profileData.last_name,
       middle_name: profileData.middle_name,
-      gender: profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : "",
+      gender: profileData.gender
+        ? profileData.gender.charAt(0).toUpperCase() +
+          profileData.gender.slice(1)
+        : "",
       email: profileData.email,
       mobile_phone: profileData.phone,
       alternative_phone: profileData.alternate_phone,
@@ -226,7 +474,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
       nationality: profileData.nationality,
       marital_status: profileData.marital_status,
       occupation: profileData.occupation,
-      
+
       // Address details
       street_number: extractStreetNumber(profileData.address?.address_line1),
       street_name: extractStreetName(profileData.address?.address_line1),
@@ -234,7 +482,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
       state: mapStateToIsoCode(profileData.address?.state),
       postal_code: profileData.address?.postal_code,
       country: profileData.address?.country || "AU",
-      address_type: profileData.address?.address_type || "home"
+      address_type: profileData.address?.address_type || "home",
     };
 
     // Update form data for parent_carer_1
@@ -278,26 +526,26 @@ export default function FamilyDetailsPhase2({ onNext }) {
   // Helper function to map state names to ISO codes
   const mapStateToIsoCode = (stateName) => {
     if (!stateName) return "";
-    
+
     const stateMap = {
-      'New South Wales': 'NSW',
-      'Victoria': 'VIC',
-      'Queensland': 'QLD',
-      'Western Australia': 'WA',
-      'South Australia': 'SA',
-      'Tasmania': 'TAS',
-      'Australian Capital Territory': 'ACT',
-      'Northern Territory': 'NT',
-      'NSW': 'NSW',
-      'VIC': 'VIC',
-      'QLD': 'QLD',
-      'WA': 'WA',
-      'SA': 'SA',
-      'TAS': 'TAS',
-      'ACT': 'ACT',
-      'NT': 'NT'
+      "New South Wales": "NSW",
+      Victoria: "VIC",
+      Queensland: "QLD",
+      "Western Australia": "WA",
+      "South Australia": "SA",
+      Tasmania: "TAS",
+      "Australian Capital Territory": "ACT",
+      "Northern Territory": "NT",
+      NSW: "NSW",
+      VIC: "VIC",
+      QLD: "QLD",
+      WA: "WA",
+      SA: "SA",
+      TAS: "TAS",
+      ACT: "ACT",
+      NT: "NT",
     };
-    
+
     return stateMap[stateName] || "";
   };
 
@@ -311,32 +559,36 @@ export default function FamilyDetailsPhase2({ onNext }) {
   const handleBlur = (section, field) => {
     const value = formData[section]?.[field];
     validateField(section, field, value);
-    
+
     // Mark field as touched
-    setTouchedFields(prev => ({
+    setTouchedFields((prev) => ({
       ...prev,
       [section]: {
         ...prev[section],
-        [field]: true
-      }
+        [field]: true,
+      },
     }));
   };
 
   // Handle Update Profile action
   const handleUpdateProfile = () => {
     // Set flag to indicate user is going to update profile
-    localStorage.setItem('wasUpdatingProfile', 'true');
-    localStorage.setItem('shouldRefreshProfile', 'true');
-    
+    localStorage.setItem("wasUpdatingProfile", "true");
+    localStorage.setItem("shouldRefreshProfile", "true");
+
     // Redirect to profile edit page with return URL
-    const returnUrl = encodeURIComponent(window.location.href + (window.location.search ? '&' : '?') + 'profileUpdated=true');
+    const returnUrl = encodeURIComponent(
+      window.location.href +
+        (window.location.search ? "&" : "?") +
+        "profileUpdated=true"
+    );
     window.location.href = `/edit-profile?return=${returnUrl}`;
   };
 
   // Handle Continue Anyway action
   const handleContinueAnyway = () => {
     if (dontShowAgain) {
-      localStorage.setItem('dontShowProfileModal', 'true');
+      localStorage.setItem("dontShowProfileModal", "true");
     }
     setShowProfileUpdateModal(false);
     // Auto-fill whatever data we have
@@ -350,13 +602,26 @@ export default function FamilyDetailsPhase2({ onNext }) {
     // For carer 1, show required for specific fields
     if (section === "parent_carer_1") {
       const requiredFields = [
-        "title", "gender", "relationship_to_student", "first_name", "last_name",
-        "country_of_birth", "date_of_birth", "nationality", "email", "mobile_phone",
-        "marital_status", "occupation", "street_name", "suburb", "state", "postal_code"
+        "title",
+        "gender",
+        "relationship_to_student",
+        "first_name",
+        "last_name",
+        "country_of_birth",
+        "date_of_birth",
+        "nationality",
+        "email",
+        "mobile_phone",
+        "marital_status",
+        "occupation",
+        "street_name",
+        "suburb",
+        "state",
+        "postal_code",
       ];
       return requiredFields.includes(field);
     }
-    
+
     // For carer 2, never show required since all fields are optional
     return false;
   };
@@ -383,7 +648,8 @@ export default function FamilyDetailsPhase2({ onNext }) {
       "postal_code",
     ];
 
-    const fieldsToCheck = section === "parent_carer_1" ? requiredFieldsCarer1 : [];
+    const fieldsToCheck =
+      section === "parent_carer_1" ? requiredFieldsCarer1 : [];
 
     const missingFields = [];
     const isValid = fieldsToCheck.every((field) => {
@@ -438,7 +704,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
         parent1FailedFields.push({
           field,
           value,
-          error: getError("parent_carer_1", field)
+          error: getError("parent_carer_1", field),
         });
       }
     });
@@ -446,10 +712,24 @@ export default function FamilyDetailsPhase2({ onNext }) {
     // Validate parent/carer 2 if shown - all fields are optional
     if (showCarer2) {
       const optionalFieldsCarer2 = [
-        "title", "gender", "relationship_to_student", "first_name", "last_name",
-        "country_of_birth", "date_of_birth", "nationality", "email", "mobile_phone",
-        "marital_status", "occupation", "street_number", "street_name", "suburb",
-        "state", "postal_code", "country"
+        "title",
+        "gender",
+        "relationship_to_student",
+        "first_name",
+        "last_name",
+        "country_of_birth",
+        "date_of_birth",
+        "nationality",
+        "email",
+        "mobile_phone",
+        "marital_status",
+        "occupation",
+        "street_number",
+        "street_name",
+        "suburb",
+        "state",
+        "postal_code",
+        "country",
       ];
 
       optionalFieldsCarer2.forEach((field) => {
@@ -465,9 +745,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
     // Check if sections are complete (have values for required fields)
     const hasParent1Complete = isParentSectionValid("parent_carer_1");
-    const hasParent2Complete = showCarer2 
+    const hasParent2Complete = showCarer2
       ? Object.keys(formData.parent_carer_2).some(
-          (key) => formData.parent_carer_2[key] && formData.parent_carer_2[key] !== ""
+          (key) =>
+            formData.parent_carer_2[key] && formData.parent_carer_2[key] !== ""
         )
       : false;
 
@@ -480,8 +761,8 @@ export default function FamilyDetailsPhase2({ onNext }) {
     console.log("===================================");
 
     // User can proceed if at least one parent section is complete AND has no errors
-    const canProceed = 
-      (hasParent1Complete && !hasParent1Errors) || 
+    const canProceed =
+      (hasParent1Complete && !hasParent1Errors) ||
       (showCarer2 && hasParent2Complete && !hasParent2Errors);
 
     if (canProceed) {
@@ -491,19 +772,23 @@ export default function FamilyDetailsPhase2({ onNext }) {
       }
     } else {
       // Provide more specific error message
-      let errorMessage = "Please complete all required fields for Parent/Carer 1";
-      
+      let errorMessage =
+        "Please complete all required fields for Parent/Carer 1";
+
       if (hasParent1Errors) {
-        errorMessage = "Please fix the validation errors in Parent/Carer 1 details";
-        
+        errorMessage =
+          "Please fix the validation errors in Parent/Carer 1 details";
+
         // Add specific field information if available
         if (parent1FailedFields.length > 0) {
-          errorMessage += `\nErrors in: ${parent1FailedFields.map(f => f.field).join(', ')}`;
+          errorMessage += `\nErrors in: ${parent1FailedFields
+            .map((f) => f.field)
+            .join(", ")}`;
         }
       } else if (!hasParent1Complete) {
         errorMessage = "Please complete all required fields for Parent/Carer 1";
       }
-      
+
       setSectionError(errorMessage);
     }
   };
@@ -563,20 +848,20 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   ></i>
                 </div>
 
-                <h6 className="mb-3">
-                  Your profile needs more information
-                </h6>
+                <h6 className="mb-3">Your profile needs more information</h6>
 
                 <p className="text-muted small">
-                  We noticed you only have basic information (name and email) in your profile. 
-                  To complete the enrolment process smoothly, we recommend updating your profile 
-                  with additional details like phone number, address, date of birth, and other 
-                  important information.
+                  We noticed you only have basic information (name and email) in
+                  your profile. To complete the enrolment process smoothly, we
+                  recommend updating your profile with additional details like
+                  phone number, address, date of birth, and other important
+                  information.
                 </p>
 
                 <div className="alert alert-warning small mt-3" role="alert">
                   <i className="bi bi-exclamation-triangle me-2"></i>
-                  <strong>Note:</strong> A complete profile will auto-fill most of the parent details below.
+                  <strong>Note:</strong> A complete profile will auto-fill most
+                  of the parent details below.
                 </div>
 
                 <div className="form-check text-start mt-3">
@@ -587,7 +872,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
                     checked={dontShowAgain}
                     onChange={(e) => setDontShowAgain(e.target.checked)}
                   />
-                  <label className="form-check-label small" htmlFor="dontShowAgain">
+                  <label
+                    className="form-check-label small"
+                    htmlFor="dontShowAgain"
+                  >
                     Don't show this message again
                   </label>
                 </div>
@@ -599,7 +887,8 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   className="btn btn-outline-secondary"
                   onClick={handleContinueAnyway}
                 >
-                  <i className="bi bi-arrow-right-circle me-2"></i> Continue Anyway
+                  <i className="bi bi-arrow-right-circle me-2"></i> Continue
+                  Anyway
                 </button>
 
                 <button
@@ -720,7 +1009,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
                 handleBlur("parent_carer_1", "relationship_to_student")
               }
               error={getError("parent_carer_1", "relationship_to_student")}
-              required={shouldShowRequired("parent_carer_1", "relationship_to_student")}
+              required={shouldShowRequired(
+                "parent_carer_1",
+                "relationship_to_student"
+              )}
               options={relationOptions}
             />
           </div>
@@ -749,7 +1041,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
               }
               onBlur={() => handleBlur("parent_carer_1", "country_of_birth")}
               error={getError("parent_carer_1", "country_of_birth")}
-              required={shouldShowRequired("parent_carer_1", "country_of_birth")}
+              required={shouldShowRequired(
+                "parent_carer_1",
+                "country_of_birth"
+              )}
               options={countryOptions}
             />
           </div>
@@ -757,16 +1052,18 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
         <div className="row align-items-end gap-4 mb-4">
           <div className="col-md-2">
-            <TextInput
+            <SelectInput
               id="nationality1"
               label="Nationality"
-              value={formData.parent_carer_1.nationality}
+              placeholder="Select nationality"
+              value={formData.parent_carer_1.nationality || ""}
               onChange={(value) =>
                 handleInputChange("parent_carer_1", "nationality", value)
               }
               onBlur={() => handleBlur("parent_carer_1", "nationality")}
               error={getError("parent_carer_1", "nationality")}
               required={shouldShowRequired("parent_carer_1", "nationality")}
+              options={nationalityOptions}
             />
           </div>
           <div className="col-md-3">
@@ -806,7 +1103,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
               }
               onBlur={() => handleBlur("parent_carer_1", "alternative_phone")}
               error={getError("parent_carer_1", "alternative_phone")}
-              required={shouldShowRequired("parent_carer_1", "alternative_phone")}
+              required={shouldShowRequired(
+                "parent_carer_1",
+                "alternative_phone"
+              )}
             />
           </div>
         </div>
@@ -1084,9 +1384,15 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   placeholder="Select country"
                   value={formData.parent_carer_2.country_of_birth || ""}
                   onChange={(value) =>
-                    handleInputChange("parent_carer_2", "country_of_birth", value)
+                    handleInputChange(
+                      "parent_carer_2",
+                      "country_of_birth",
+                      value
+                    )
                   }
-                  onBlur={() => handleBlur("parent_carer_2", "country_of_birth")}
+                  onBlur={() =>
+                    handleBlur("parent_carer_2", "country_of_birth")
+                  }
                   error={getError("parent_carer_2", "country_of_birth")}
                   required={false}
                   options={countryOptions}
@@ -1096,16 +1402,18 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
             <div className="row align-items-end gap-4 mb-4">
               <div className="col-md-2">
-                <TextInput
+                <SelectInput
                   id="nationality2"
                   label="Nationality"
-                  value={formData.parent_carer_2.nationality}
+                  placeholder="Select nationality"
+                  value={formData.parent_carer_2.nationality || ""}
                   onChange={(value) =>
                     handleInputChange("parent_carer_2", "nationality", value)
                   }
                   onBlur={() => handleBlur("parent_carer_2", "nationality")}
                   error={getError("parent_carer_2", "nationality")}
                   required={false}
+                  options={nationalityOptions}
                 />
               </div>
               <div className="col-md-3">
@@ -1147,7 +1455,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
                       value
                     )
                   }
-                  onBlur={() => handleBlur("parent_carer_2", "alternative_phone")}
+                  onBlur={() =>
+                    handleBlur("parent_carer_2", "alternative_phone")
+                  }
                   error={getError("parent_carer_2", "alternative_phone")}
                   required={false}
                 />

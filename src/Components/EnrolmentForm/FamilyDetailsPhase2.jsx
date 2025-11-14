@@ -5,6 +5,7 @@ import RadioGroup from "../RadioGroup.jsx";
 import SelectInput from "../SelectInput.jsx";
 import { useEnrolmentForm } from "../../Context/EnrolmentFormContext";
 import api from "../../config/axiosConfig.jsx";
+import { Country, State, City } from "country-state-city";
 
 export default function FamilyDetailsPhase2({ onNext }) {
   const genderOptions = [
@@ -40,19 +41,17 @@ export default function FamilyDetailsPhase2({ onNext }) {
     { value: "other", label: "Other" },
   ];
 
-  const stateOptions = [
-    { value: "New South Wales", label: "New South Wales" },
-    {
-      value: "Australian Capital Territory",
-      label: "Australian Capital Territory",
-    },
-    { value: "Victoria", label: "Victoria" },
-    { value: "Northern Territory", label: "Northern Territory" },
-    { value: "South Australia", label: "South Australia" },
-    { value: "Queensland", label: "Queensland" },
-    { value: "Western Australia", label: "Western Australia" },
-    { value: "Tasmania", label: "Tasmania" },
-  ];
+  // Get countries from country-state-city
+  const countryOptions = Country.getAllCountries().map(country => ({
+    value: country.isoCode,
+    label: country.name
+  }));
+
+  // Get Australian states from country-state-city
+  const stateOptions = State.getStatesOfCountry("AU").map(state => ({
+    value: state.isoCode,
+    label: state.name
+  }));
 
   const { formData, updateFormData, validateField, getError, validateSection, errors } =
     useEnrolmentForm();
@@ -65,6 +64,12 @@ export default function FamilyDetailsPhase2({ onNext }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showProfileUpdateModal, setShowProfileUpdateModal] = useState(false);
   const [profileData, setProfileData] = useState(null);
+  
+  // State for dynamic suburb options
+  const [suburbOptions, setSuburbOptions] = useState({
+    parent_carer_1: [],
+    parent_carer_2: []
+  });
 
   // Check if profile has only basic information
   const hasOnlyBasicInfo = (profile) => {
@@ -124,6 +129,37 @@ export default function FamilyDetailsPhase2({ onNext }) {
     fetchProfileData();
   }, []);
 
+  // Load suburbs when state changes for a specific parent
+  useEffect(() => {
+    const loadSuburbsForParent = (section) => {
+      const stateCode = formData[section]?.state;
+      const countryCode = "AU"; // Assuming Australia for this form
+
+      if (stateCode) {
+        const cities = City.getCitiesOfState(countryCode, stateCode);
+        const suburbOptions = cities.map(city => ({
+          value: city.name,
+          label: city.name
+        }));
+        
+        setSuburbOptions(prev => ({
+          ...prev,
+          [section]: suburbOptions
+        }));
+      } else {
+        setSuburbOptions(prev => ({
+          ...prev,
+          [section]: []
+        }));
+      }
+    };
+
+    loadSuburbsForParent("parent_carer_1");
+    if (showCarer2) {
+      loadSuburbsForParent("parent_carer_2");
+    }
+  }, [formData.parent_carer_1?.state, formData.parent_carer_2?.state, showCarer2]);
+
   // Function to auto-fill parent data from API response
   const autoFillParentData = (profileData) => {
     // Map API response to form fields for parent_carer_1
@@ -145,9 +181,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
       street_number: extractStreetNumber(profileData.address?.address_line1),
       street_name: extractStreetName(profileData.address?.address_line1),
       suburb: profileData.address?.city,
-      state: mapStateToFullName(profileData.address?.state),
+      state: mapStateToIsoCode(profileData.address?.state),
       postal_code: profileData.address?.postal_code,
-      country: profileData.address?.country,
+      country: profileData.address?.country || "AU",
       address_type: profileData.address?.address_type || "home"
     };
 
@@ -168,6 +204,11 @@ export default function FamilyDetailsPhase2({ onNext }) {
       }
       updateFormData("parent_carer_1", "relationship_to_student", relationship);
     }
+
+    // Set country of birth to Australia by default if not set
+    if (!formData.parent_carer_1.country_of_birth) {
+      updateFormData("parent_carer_1", "country_of_birth", "AU");
+    }
   };
 
   // Helper function to extract street number from address_line1
@@ -184,22 +225,30 @@ export default function FamilyDetailsPhase2({ onNext }) {
     return addressLine.replace(/^\d+\s*/, "").trim();
   };
 
-  // Helper function to map state abbreviations to full names
-  const mapStateToFullName = (stateAbbr) => {
-    if (!stateAbbr) return "";
+  // Helper function to map state names to ISO codes
+  const mapStateToIsoCode = (stateName) => {
+    if (!stateName) return "";
     
     const stateMap = {
-      'NSW': 'New South Wales',
-      'VIC': 'Victoria',
-      'QLD': 'Queensland',
-      'WA': 'Western Australia',
-      'SA': 'South Australia',
-      'TAS': 'Tasmania',
-      'ACT': 'Australian Capital Territory',
-      'NT': 'Northern Territory'
+      'New South Wales': 'NSW',
+      'Victoria': 'VIC',
+      'Queensland': 'QLD',
+      'Western Australia': 'WA',
+      'South Australia': 'SA',
+      'Tasmania': 'TAS',
+      'Australian Capital Territory': 'ACT',
+      'Northern Territory': 'NT',
+      'NSW': 'NSW',
+      'VIC': 'VIC',
+      'QLD': 'QLD',
+      'WA': 'WA',
+      'SA': 'SA',
+      'TAS': 'TAS',
+      'ACT': 'ACT',
+      'NT': 'NT'
     };
     
-    return stateMap[stateAbbr.toUpperCase()] || stateAbbr;
+    return stateMap[stateName] || "";
   };
 
   const handleInputChange = (section, field, value) => {
@@ -619,16 +668,18 @@ export default function FamilyDetailsPhase2({ onNext }) {
             />
           </div>
           <div className="col-md-3">
-            <TextInput
+            <SelectInput
               id="countryofbirth1"
               label="Country of birth"
-              value={formData.parent_carer_1.country_of_birth}
+              placeholder="Select country"
+              value={formData.parent_carer_1.country_of_birth || ""}
               onChange={(value) =>
                 handleInputChange("parent_carer_1", "country_of_birth", value)
               }
               onBlur={() => handleBlur("parent_carer_1", "country_of_birth")}
               error={getError("parent_carer_1", "country_of_birth")}
               required={shouldShowRequired("parent_carer_1", "country_of_birth")}
+              options={countryOptions}
             />
           </div>
         </div>
@@ -768,16 +819,18 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
         <div className="row align-items-end gap-5 mb-4">
           <div className="col-md-3">
-            <TextInput
+            <SelectInput
               id="suburb1"
               label="Suburb"
-              value={formData.parent_carer_1.suburb}
+              placeholder="Select suburb"
+              value={formData.parent_carer_1.suburb || ""}
               onChange={(value) =>
                 handleInputChange("parent_carer_1", "suburb", value)
               }
               onBlur={() => handleBlur("parent_carer_1", "suburb")}
               error={getError("parent_carer_1", "suburb")}
               required={shouldShowRequired("parent_carer_1", "suburb")}
+              options={suburbOptions.parent_carer_1}
             />
           </div>
           <div className="col-md-3">
@@ -954,16 +1007,18 @@ export default function FamilyDetailsPhase2({ onNext }) {
                 />
               </div>
               <div className="col-md-3">
-                <TextInput
+                <SelectInput
                   id="countryofbirth2"
                   label="Country of birth"
-                  value={formData.parent_carer_2.country_of_birth}
+                  placeholder="Select country"
+                  value={formData.parent_carer_2.country_of_birth || ""}
                   onChange={(value) =>
                     handleInputChange("parent_carer_2", "country_of_birth", value)
                   }
                   onBlur={() => handleBlur("parent_carer_2", "country_of_birth")}
                   error={getError("parent_carer_2", "country_of_birth")}
                   required={false}
+                  options={countryOptions}
                 />
               </div>
             </div>
@@ -1107,16 +1162,18 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
             <div className="row align-items-end gap-5 mb-4">
               <div className="col-md-3">
-                <TextInput
+                <SelectInput
                   id="suburb2"
                   label="Suburb"
-                  value={formData.parent_carer_2.suburb}
+                  placeholder="Select suburb"
+                  value={formData.parent_carer_2.suburb || ""}
                   onChange={(value) =>
                     handleInputChange("parent_carer_2", "suburb", value)
                   }
                   onBlur={() => handleBlur("parent_carer_2", "suburb")}
                   error={getError("parent_carer_2", "suburb")}
                   required={false}
+                  options={suburbOptions.parent_carer_2}
                 />
               </div>
               <div className="col-md-3">

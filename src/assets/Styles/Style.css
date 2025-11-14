@@ -738,6 +738,12 @@ body.dark-mode .card-header {
   height: auto;
 }
 
+@media (max-width: 480px) {
+  .form-container {
+    width: 400px;
+  }
+}
+
 .title {
   text-align: center;
   font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",

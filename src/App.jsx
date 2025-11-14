@@ -8,7 +8,6 @@ import RootLayout from "./Pages/layout";
 import Home from "./Pages/Home";
 import UserAccount from "./Pages/UserAccount";
 import Login from "./Pages/Login";
-import ResetPassword from "./Pages/ResetPassword";
 import ForgotPassword from "./Pages/ForgotPassword";
 import EnrolStudents from "./Pages/Enrolment/EnrolStudents";
 import EnrolmentDetails from "./Pages/Enrolment/EnrolmentDetails";
@@ -31,8 +30,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
-        <Route path="/forgotpassword" element={<ForgotPassword />} />
-        <Route path="/resetpassword" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/setup-password" element={<SetupPassword />} />
 
         {/* Protected routes */}

@@ -376,6 +376,13 @@ const Login = () => {
                   )}
                 </button>
               </form>
+              <a
+                href="/forgot-password"
+                className="sign-up-link text-decoration-underline fw-bold text-end justify-content-end d-block mb-2"
+              >
+                Forgot Password?
+              </a>
+
               <p className="sign-up-label m-0 text-muted">
                 Having trouble logging in? Contact <br />
                 <a

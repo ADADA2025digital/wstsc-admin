@@ -64,6 +64,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showProfileUpdateModal, setShowProfileUpdateModal] = useState(false);
   const [profileData, setProfileData] = useState(null);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   
   // State for dynamic suburb options
   const [suburbOptions, setSuburbOptions] = useState({
@@ -71,14 +72,13 @@ export default function FamilyDetailsPhase2({ onNext }) {
     parent_carer_2: []
   });
 
-  // Check if profile has only basic information
+  // Improved version of hasOnlyBasicInfo
   const hasOnlyBasicInfo = (profile) => {
     if (!profile) return false;
     
     const basicFields = ['first_name', 'last_name', 'email'];
-    const additionalFields = [
-      'middle_name', 'gender', 'phone', 'alternate_phone', 
-      'date_of_birth', 'nationality', 'marital_status', 'occupation'
+    const importantFields = [
+      'phone', 'date_of_birth', 'occupation'
     ];
     
     // Check if basic fields are populated
@@ -86,47 +86,97 @@ export default function FamilyDetailsPhase2({ onNext }) {
       profile[field] && profile[field].trim() !== ''
     );
     
-    // Check if additional fields are missing or empty
-    const missingAdditionalInfo = additionalFields.some(field => 
-      !profile[field] || profile[field].trim() === ''
-    );
+    if (!hasBasicInfo) return false;
     
-    // Also check if address is missing
-    const missingAddress = !profile.address || 
-      !profile.address.address_line1 || 
-      !profile.address.city || 
-      !profile.address.state || 
-      !profile.address.postal_code;
+    // Count how many important fields are missing
+    const missingImportantCount = importantFields.filter(field => 
+      !profile[field] || profile[field].toString().trim() === ''
+    ).length;
     
-    return hasBasicInfo && (missingAdditionalInfo || missingAddress);
+    // Also check if address is substantially complete
+    const hasSubstantialAddress = profile.address && 
+      profile.address.address_line1 && 
+      profile.address.city && 
+      profile.address.postal_code;
+    
+    // If more than 2 important fields are missing OR address is incomplete, show modal
+    return missingImportantCount > 2 || !hasSubstantialAddress;
   };
 
-  // Fetch profile data on component mount
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        setIsLoading(true);
-        const response = await api.get("/profile/person");
+  // Modified fetchProfileData to be reusable
+  const fetchProfileData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get("/profile/person");
+      
+      if (response.data.success && response.data.data.profile) {
+        const profileData = response.data.data.profile;
+        setProfileData(profileData);
         
-        if (response.data.success && response.data.data.profile) {
-          const profileData = response.data.data.profile;
-          setProfileData(profileData);
-          
-          // Check if profile has only basic information
-          if (hasOnlyBasicInfo(profileData)) {
-            setShowProfileUpdateModal(true);
-          } else {
-            autoFillParentData(profileData);
-          }
+        // Check if user has chosen to not see the modal again
+        const dontShowModal = localStorage.getItem('dontShowProfileModal') === 'true';
+        
+        // Check if profile has only basic information
+        if (hasOnlyBasicInfo(profileData) && !dontShowModal) {
+          setShowProfileUpdateModal(true);
+        } else {
+          setShowProfileUpdateModal(false);
+          autoFillParentData(profileData);
         }
-      } catch (error) {
-        console.error("Error fetching profile data:", error);
-      } finally {
-        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Error fetching profile data:", error);
+      setShowProfileUpdateModal(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Check for returning from profile update on component mount
+  useEffect(() => {
+    const checkReturnFromProfileUpdate = async () => {
+      const wasUpdatingProfile = localStorage.getItem('wasUpdatingProfile');
+      const urlParams = new URLSearchParams(window.location.search);
+      const profileUpdated = urlParams.get('profileUpdated');
+      
+      if (wasUpdatingProfile === 'true' || profileUpdated === 'true') {
+        // User just returned from profile update
+        localStorage.removeItem('wasUpdatingProfile');
+        
+        // Clean URL parameters
+        if (profileUpdated) {
+          const newUrl = window.location.pathname + window.location.search.replace(/[?&]profileUpdated=true/, '');
+          window.history.replaceState({}, '', newUrl);
+        }
+        
+        // Refresh profile data
+        await fetchProfileData();
+      } else {
+        // Normal load, fetch profile data
+        await fetchProfileData();
       }
     };
 
-    fetchProfileData();
+    checkReturnFromProfileUpdate();
+  }, []);
+
+  // Refresh profile data when component becomes visible (user returns from profile update)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        // Check if we should refresh (user might have updated profile in another tab)
+        const shouldRefresh = localStorage.getItem('shouldRefreshProfile');
+        if (shouldRefresh === 'true') {
+          localStorage.removeItem('shouldRefreshProfile');
+          await fetchProfileData();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Load suburbs when state changes for a specific parent
@@ -274,12 +324,20 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
   // Handle Update Profile action
   const handleUpdateProfile = () => {
-    // Redirect to profile edit page
-    window.location.href = '/edit-profile';
+    // Set flag to indicate user is going to update profile
+    localStorage.setItem('wasUpdatingProfile', 'true');
+    localStorage.setItem('shouldRefreshProfile', 'true');
+    
+    // Redirect to profile edit page with return URL
+    const returnUrl = encodeURIComponent(window.location.href + (window.location.search ? '&' : '?') + 'profileUpdated=true');
+    window.location.href = `/edit-profile?return=${returnUrl}`;
   };
 
   // Handle Continue Anyway action
   const handleContinueAnyway = () => {
+    if (dontShowAgain) {
+      localStorage.setItem('dontShowProfileModal', 'true');
+    }
     setShowProfileUpdateModal(false);
     // Auto-fill whatever data we have
     if (profileData) {
@@ -519,6 +577,19 @@ export default function FamilyDetailsPhase2({ onNext }) {
                 <div className="alert alert-warning small mt-3" role="alert">
                   <i className="bi bi-exclamation-triangle me-2"></i>
                   <strong>Note:</strong> A complete profile will auto-fill most of the parent details below.
+                </div>
+
+                <div className="form-check text-start mt-3">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="dontShowAgain"
+                    checked={dontShowAgain}
+                    onChange={(e) => setDontShowAgain(e.target.checked)}
+                  />
+                  <label className="form-check-label small" htmlFor="dontShowAgain">
+                    Don't show this message again
+                  </label>
                 </div>
               </div>
 

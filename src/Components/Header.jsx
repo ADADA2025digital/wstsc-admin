@@ -18,6 +18,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [rotate, setRotate] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [userData, setUserData] = useState(null);
 
   // Logout confirm modal state (Bootstrap-like)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -30,6 +31,18 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const profileDropdownRef = useRef(null);
 
   const navigate = useNavigate();
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const storedUserData = localStorage.getItem("userData");
+    if (storedUserData) {
+      try {
+        setUserData(JSON.parse(storedUserData));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  }, []);
 
   const toggleBellDropdown = () => {
     setBellDropdownOpen((s) => !s);
@@ -249,6 +262,16 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
         </div>
 
         <div className="d-flex align-items-center justify-content-between gap-3">
+          {/* Welcome Message for Desktop */}
+          {!isMobile && userData && (
+            <div className="d-flex align-items-center text-white">
+              <span className="fw-light me-2">
+                Welcome to Western Sydney Study Center,
+              </span>
+              <span className="fw-bold">{userData.name}</span>
+            </div>
+          )}
+
           {!isMobile && (
             <HeaderIcon
               type={
@@ -410,7 +433,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                 </h6>
 
                 <p className="text-muted small">
-                  You’ll be signed out from this device. You can sign back in
+                  You'll be signed out from this device. You can sign back in
                   anytime.
                 </p>
 

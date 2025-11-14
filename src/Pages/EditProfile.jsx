@@ -16,6 +16,235 @@ import SelectInput from "../Components/SelectInput";
 import api from "../config/axiosConfig";
 import { Country, State, City } from "country-state-city";
 
+// Nationalities array
+const nationalities = [
+  "Afghan",
+  "Albanian",
+  "Algerian",
+  "American",
+  "Andorran",
+  "Angolan",
+  "Anguillan",
+  "Argentine",
+  "Armenian",
+  "Australian",
+  "Austrian",
+  "Azerbaijani",
+  "Bahamian",
+  "Bahraini",
+  "Bangladeshi",
+  "Barbadian",
+  "Belarusian",
+  "Belgian",
+  "Belizean",
+  "Beninese",
+  "Bermudian",
+  "Bhutanese",
+  "Bolivian",
+  "Botswanan",
+  "Brazilian",
+  "British",
+  "British Virgin Islander",
+  "Bruneian",
+  "Bulgarian",
+  "Burkinan",
+  "Burmese",
+  "Burundian",
+  "Cambodian",
+  "Cameroonian",
+  "Canadian",
+  "Cape Verdean",
+  "Cayman Islander",
+  "Central African",
+  "Chadian",
+  "Chilean",
+  "Chinese",
+  "Citizen of Antigua and Barbuda",
+  "Citizen of Bosnia and Herzegovina",
+  "Citizen of Guinea-Bissau",
+  "Citizen of Kiribati",
+  "Citizen of Seychelles",
+  "Citizen of the Dominican Republic",
+  "Citizen of Vanuatu ",
+  "Colombian",
+  "Comoran",
+  "Congolese (Congo)",
+  "Congolese (DRC)",
+  "Cook Islander",
+  "Costa Rican",
+  "Croatian",
+  "Cuban",
+  "Cymraes",
+  "Cymro",
+  "Cypriot",
+  "Czech",
+  "Danish",
+  "Djiboutian",
+  "Dominican",
+  "Dutch",
+  "East Timorese",
+  "Ecuadorean",
+  "Egyptian",
+  "Emirati",
+  "English",
+  "Equatorial Guinean",
+  "Eritrean",
+  "Estonian",
+  "Ethiopian",
+  "Faroese",
+  "Fijian",
+  "Filipino",
+  "Finnish",
+  "French",
+  "Gabonese",
+  "Gambian",
+  "Georgian",
+  "German",
+  "Ghanaian",
+  "Gibraltarian",
+  "Greek",
+  "Greenlandic",
+  "Grenadian",
+  "Guamanian",
+  "Guatemalan",
+  "Guinean",
+  "Guyanese",
+  "Haitian",
+  "Honduran",
+  "Hong Konger",
+  "Hungarian",
+  "Icelandic",
+  "Indian",
+  "Indonesian",
+  "Iranian",
+  "Iraqi",
+  "Irish",
+  "Israeli",
+  "Italian",
+  "Ivorian",
+  "Jamaican",
+  "Japanese",
+  "Jordanian",
+  "Kazakh",
+  "Kenyan",
+  "Kittitian",
+  "Kosovan",
+  "Kuwaiti",
+  "Kyrgyz",
+  "Lao",
+  "Latvian",
+  "Lebanese",
+  "Liberian",
+  "Libyan",
+  "Liechtenstein citizen",
+  "Lithuanian",
+  "Luxembourger",
+  "Macanese",
+  "Macedonian",
+  "Malagasy",
+  "Malawian",
+  "Malaysian",
+  "Maldivian",
+  "Malian",
+  "Maltese",
+  "Marshallese",
+  "Martiniquais",
+  "Mauritanian",
+  "Mauritian",
+  "Mexican",
+  "Micronesian",
+  "Moldovan",
+  "Monegasque",
+  "Mongolian",
+  "Montenegrin",
+  "Montserratian",
+  "Moroccan",
+  "Mosotho",
+  "Mozambican",
+  "Namibian",
+  "Nauruan",
+  "Nepalese",
+  "New Zealander",
+  "Nicaraguan",
+  "Nigerian",
+  "Nigerien",
+  "Niuean",
+  "North Korean",
+  "Northern Irish",
+  "Norwegian",
+  "Omani",
+  "Pakistani",
+  "Palauan",
+  "Palestinian",
+  "Panamanian",
+  "Papua New Guinean",
+  "Paraguayan",
+  "Peruvian",
+  "Pitcairn Islander",
+  "Polish",
+  "Portuguese",
+  "Prydeinig",
+  "Puerto Rican",
+  "Qatari",
+  "Romanian",
+  "Russian",
+  "Rwandan",
+  "Salvadorean",
+  "Sammarinese",
+  "Samoan",
+  "Sao Tomean",
+  "Saudi Arabian",
+  "Scottish",
+  "Senegalese",
+  "Serbian",
+  "Sierra Leonean",
+  "Singaporean",
+  "Slovak",
+  "Slovenian",
+  "Solomon Islander",
+  "Somali",
+  "South African",
+  "South Korean",
+  "South Sudanese",
+  "Spanish",
+  "Sri Lankan",
+  "St Helenian",
+  "St Lucian",
+  "Stateless",
+  "Sudanese",
+  "Surinamese",
+  "Swazi",
+  "Swedish",
+  "Swiss",
+  "Syrian",
+  "Taiwanese",
+  "Tajik",
+  "Tanzanian",
+  "Thai",
+  "Togolese",
+  "Tongan",
+  "Trinidadian",
+  "Tristanian",
+  "Tunisian",
+  "Turkish",
+  "Turkmen",
+  "Turks and Caicos Islander",
+  "Tuvaluan",
+  "Ugandan",
+  "Ukrainian",
+  "Uruguayan",
+  "Uzbek",
+  "Vatican citizen",
+  "Venezuelan",
+  "Vietnamese",
+  "Vincentian",
+  "Wallisian",
+  "Welsh",
+  "Yemeni",
+  "Zambian",
+  "Zimbabwean",
+];
+
 const EditProfile = () => {
   const navigate = useNavigate();
 
@@ -87,14 +316,14 @@ const EditProfile = () => {
   const initializeCountries = () => {
     try {
       const countriesData = Country.getAllCountries();
-      
-      const formattedCountries = countriesData.map(country => ({
+
+      const formattedCountries = countriesData.map((country) => ({
         value: country.isoCode,
-        label: country.name
+        label: country.name,
       }));
 
       formattedCountries.sort((a, b) => a.label.localeCompare(b.label));
-      
+
       setCountriesList(formattedCountries);
     } catch (error) {
       console.error("Error loading countries:", error);
@@ -116,23 +345,26 @@ const EditProfile = () => {
   const loadStates = (countryCode) => {
     try {
       const statesData = State.getStatesOfCountry(countryCode);
-      
-      const formattedStates = statesData.map(state => ({
+
+      const formattedStates = statesData.map((state) => ({
         value: state.isoCode,
-        label: state.name
+        label: state.name,
       }));
 
       formattedStates.sort((a, b) => a.label.localeCompare(b.label));
-      
+
       setStatesList(formattedStates);
-      
+
       // Clear city and state if country changes and state is no longer valid
-      if (formData.state && !formattedStates.find(state => state.value === formData.state)) {
-        setFormData(prev => ({
+      if (
+        formData.state &&
+        !formattedStates.find((state) => state.value === formData.state)
+      ) {
+        setFormData((prev) => ({
           ...prev,
           state: "",
           city: "",
-          suburb: ""
+          suburb: "",
         }));
       }
     } catch (error) {
@@ -145,27 +377,31 @@ const EditProfile = () => {
   const loadCities = (countryCode, stateCode) => {
     try {
       const citiesData = City.getCitiesOfState(countryCode, stateCode);
-      
-      const formattedCities = citiesData.map(city => ({
+
+      const formattedCities = citiesData.map((city) => ({
         value: city.name,
-        label: city.name
+        label: city.name,
       }));
 
       // Remove duplicates and sort
-      const uniqueCities = formattedCities.filter((city, index, self) =>
-        index === self.findIndex(c => c.value === city.value)
+      const uniqueCities = formattedCities.filter(
+        (city, index, self) =>
+          index === self.findIndex((c) => c.value === city.value)
       );
-      
+
       uniqueCities.sort((a, b) => a.label.localeCompare(b.label));
-      
+
       setCitiesList(uniqueCities);
-      
+
       // Clear city if state changes and city is no longer valid
-      if (formData.city && !uniqueCities.find(city => city.value === formData.city)) {
-        setFormData(prev => ({
+      if (
+        formData.city &&
+        !uniqueCities.find((city) => city.value === formData.city)
+      ) {
+        setFormData((prev) => ({
           ...prev,
           city: "",
-          suburb: ""
+          suburb: "",
         }));
       }
     } catch (error) {
@@ -601,6 +837,7 @@ const EditProfile = () => {
                                 onChange={handleInputChange}
                                 required
                                 placeholder="Enter your first name"
+                                className="rounded-0"
                               />
                             </Form.Group>
                           </div>
@@ -614,6 +851,7 @@ const EditProfile = () => {
                                 value={formData.middle_name}
                                 onChange={handleInputChange}
                                 placeholder="Enter your middle name"
+                                className="rounded-0"
                               />
                             </Form.Group>
                           </div>
@@ -628,6 +866,7 @@ const EditProfile = () => {
                                 onChange={handleInputChange}
                                 required
                                 placeholder="Enter your last name"
+                                className="rounded-0"
                               />
                             </Form.Group>
                           </div>
@@ -640,6 +879,7 @@ const EditProfile = () => {
                                 value={formData.email}
                                 disabled
                                 placeholder="No email available"
+                                className="rounded-0"
                               />
                               <Form.Text className="text-muted">
                                 Email cannot be changed
@@ -660,6 +900,7 @@ const EditProfile = () => {
                                 name="gender"
                                 value={formData.gender}
                                 onChange={handleInputChange}
+                                className="rounded-0"
                               >
                                 <option value="">Select Gender</option>
                                 <option value="male">Male</option>
@@ -677,21 +918,23 @@ const EditProfile = () => {
                                 name="date_of_birth"
                                 value={formData.date_of_birth}
                                 onChange={handleInputChange}
+                                className="rounded-0"
                               />
                             </Form.Group>
                           </div>
 
                           <div className="col-12">
-                            <Form.Group>
-                              <Form.Label>Nationality</Form.Label>
-                              <Form.Control
-                                type="text"
-                                name="nationality"
-                                value={formData.nationality}
-                                onChange={handleInputChange}
-                                placeholder="e.g., Australian"
-                              />
-                            </Form.Group>
+                            <SelectInput
+                              id="nationality"
+                              label="Nationality"
+                              value={formData.nationality}
+                              onChange={(value) =>
+                                handleSelectChange("nationality", value)
+                              }
+                              placeholder="Select your nationality"
+                              options={nationalities}
+                              simpleArray={true}
+                            />
                           </div>
 
                           <div className="col-md-6">
@@ -701,6 +944,7 @@ const EditProfile = () => {
                                 name="marital_status"
                                 value={formData.marital_status}
                                 onChange={handleInputChange}
+                                className="rounded-0"
                               >
                                 <option value="">Select Status</option>
                                 <option value="single">Single</option>
@@ -720,6 +964,7 @@ const EditProfile = () => {
                                 value={formData.occupation}
                                 onChange={handleInputChange}
                                 placeholder="e.g., Senior Developer"
+                                className="rounded-0"
                               />
                             </Form.Group>
                           </div>
@@ -748,6 +993,7 @@ const EditProfile = () => {
                               onChange={handleInputChange}
                               required
                               placeholder="+61412345678"
+                              className="rounded-0"
                             />
                           </Form.Group>
                         </div>
@@ -761,6 +1007,7 @@ const EditProfile = () => {
                               value={formData.alternate_phone}
                               onChange={handleInputChange}
                               placeholder="+61298765432"
+                              className="rounded-0"
                             />
                           </Form.Group>
                         </div>
@@ -780,6 +1027,7 @@ const EditProfile = () => {
                               value={formData.address_line1}
                               onChange={handleInputChange}
                               placeholder="456 Collins Street"
+                              className="rounded-0"
                             />
                           </Form.Group>
                         </div>
@@ -790,9 +1038,12 @@ const EditProfile = () => {
                             id="country"
                             label="Country"
                             value={formData.country}
-                            onChange={(value) => handleSelectChange("country", value)}
+                            onChange={(value) =>
+                              handleSelectChange("country", value)
+                            }
                             placeholder="Select Country"
                             options={countriesList}
+                            className="rounded-0"
                           />
                         </div>
 
@@ -802,10 +1053,17 @@ const EditProfile = () => {
                             id="state"
                             label="State/Province"
                             value={formData.state}
-                            onChange={(value) => handleSelectChange("state", value)}
-                            placeholder={statesList.length > 0 ? "Select State" : "Select Country First"}
+                            onChange={(value) =>
+                              handleSelectChange("state", value)
+                            }
+                            placeholder={
+                              statesList.length > 0
+                                ? "Select State"
+                                : "Select Country First"
+                            }
                             options={statesList}
                             disabled={!formData.country}
+                            className="rounded-0"
                           />
                         </div>
 
@@ -815,10 +1073,17 @@ const EditProfile = () => {
                             id="city"
                             label="City"
                             value={formData.city}
-                            onChange={(value) => handleSelectChange("city", value)}
-                            placeholder={citiesList.length > 0 ? "Select City" : "Select State First"}
+                            onChange={(value) =>
+                              handleSelectChange("city", value)
+                            }
+                            placeholder={
+                              citiesList.length > 0
+                                ? "Select City"
+                                : "Select State First"
+                            }
                             options={citiesList}
                             disabled={!formData.state}
+                            className="rounded-0"
                           />
                         </div>
 
@@ -833,6 +1098,7 @@ const EditProfile = () => {
                               onChange={handleInputChange}
                               placeholder="Enter suburb"
                               disabled={!formData.city}
+                              className="rounded-0"
                             />
                             <Form.Text className="text-muted">
                               Enter your local suburb/area
@@ -848,6 +1114,7 @@ const EditProfile = () => {
                               name="postal_code"
                               value={formData.postal_code}
                               onChange={handleInputChange}
+                              className="rounded-0"
                               placeholder="3000"
                             />
                           </Form.Group>
@@ -907,8 +1174,8 @@ const EditProfile = () => {
                               type="file"
                               accept="image/*"
                               onChange={handleProfilePictureChange}
-                              className="w-100"
                               style={{ maxWidth: "100%" }}
+                              className="rounded-0 w-100"
                             />
                             <Form.Text className="text-muted d-block text-start">
                               Supported formats: JPEG, PNG, GIF. Max size: 5MB

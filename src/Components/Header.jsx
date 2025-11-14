@@ -266,7 +266,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
           {!isMobile && userData && (
             <div className="d-flex align-items-center text-white">
               <span className="fw-light me-2">
-                Welcome to Western Sydney Study Center,
+                Welcome to Western Sydney Tamil Study Center,
               </span>
               <span className="fw-bold">{userData.name}</span>
             </div>

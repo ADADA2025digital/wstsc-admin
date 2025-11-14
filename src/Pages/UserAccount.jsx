@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "../assets/Styles/Style.css";
 import Profile from "../assets/Images/profile.png";
 import ButtonGlobal from "../Components/Button";
 import api from "../config/axiosConfig";
 import { formatDisplayDate } from "../config/utils";
 import { useNavigate } from "react-router-dom";
-import TextInput from "../Components/TextInput";
+
+// Move TabContent component outside the main component
+const TabContent = ({ children, active }) => {
+  if (!active) return null;
+  return <div className="tab-content">{children}</div>;
+};
 
 const UserAccount = () => {
   const navigate = useNavigate();
@@ -18,7 +23,7 @@ const UserAccount = () => {
   const [passwordSuccess, setPasswordSuccess] = useState(null);
   const [profileSuccess, setProfileSuccess] = useState(null);
 
-  // Password form state
+  // Password form state (kept for UI but not used for API calls)
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -32,12 +37,6 @@ const UserAccount = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Password validation pattern
-  const passwordValidation = {
-    pattern: /^.{6,}$/,
-    message: "Password must be at least 6 characters long",
-  };
 
   // Fetch user profile data
   const fetchUserProfile = async () => {
@@ -87,127 +86,49 @@ const UserAccount = () => {
         newPassword: "",
         confirmPassword: "",
       });
+      setPasswordSuccess(null);
     }
   };
 
-  // Handle password form input changes
-  const handlePasswordChange = (field, value) => {
-    setPasswordForm((prev) => ({
+  // Optimized password change handler with useCallback
+  const handlePasswordChange = useCallback((field, value) => {
+    setPasswordForm(prev => ({
       ...prev,
       [field]: value,
     }));
 
-    // Clear error when user starts typing
-    if (passwordErrors[field]) {
-      setPasswordErrors((prev) => ({
+    // Clear error without causing unnecessary re-renders
+    setPasswordErrors(prev => {
+      if (!prev[field]) return prev;
+      return {
         ...prev,
         [field]: "",
-      }));
-    }
-  };
-
-  // Validate password fields
-  const validatePasswordFields = () => {
-    const errors = {};
-
-    // Current password validation
-    if (!passwordForm.currentPassword) {
-      errors.currentPassword = "Current password is required";
-    }
-
-    // New password validation
-    if (!passwordForm.newPassword) {
-      errors.newPassword = "New password is required";
-    } else if (!passwordValidation.pattern.test(passwordForm.newPassword)) {
-      errors.newPassword = passwordValidation.message;
-    }
-
-    // Confirm password validation
-    if (!passwordForm.confirmPassword) {
-      errors.confirmPassword = "Please confirm your new password";
-    } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      errors.confirmPassword = "Passwords do not match";
-    }
-
-    setPasswordErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+      };
+    });
+  }, []);
 
   // Handle password form submission
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validatePasswordFields()) {
-      return;
-    }
-
     setIsSubmitting(true);
-    try {
-      // Replace with your actual API endpoint
-      const response = await api.put("/auth/change-password", {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      // Show success message for demo purposes
+      setPasswordSuccess("Password updated successfully! (UI Demo Only - No actual change made)");
+      setShowPasswordForm(false);
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
-
-      if (response.data.success) {
-        setPasswordSuccess("Password updated successfully!");
-        setShowPasswordForm(false);
-        setPasswordForm({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-        setPasswordErrors({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-      } else {
-        setPasswordErrors({
-          currentPassword: response.data.message || "Failed to update password",
-        });
-      }
-    } catch (err) {
-      console.error("Error updating password:", err);
       setPasswordErrors({
-        currentPassword:
-          err.response?.data?.message ||
-          "Failed to update password. Please check your current password.",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
-    } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Handle blur validation for password fields
-  const handlePasswordBlur = (field) => {
-    if (
-      field === "newPassword" &&
-      passwordForm.newPassword &&
-      !passwordValidation.pattern.test(passwordForm.newPassword)
-    ) {
-      setPasswordErrors((prev) => ({
-        ...prev,
-        newPassword: passwordValidation.message,
-      }));
-    }
-
-    if (
-      field === "confirmPassword" &&
-      passwordForm.confirmPassword &&
-      passwordForm.newPassword !== passwordForm.confirmPassword
-    ) {
-      setPasswordErrors((prev) => ({
-        ...prev,
-        confirmPassword: "Passwords do not match",
-      }));
-    }
-  };
-
-  // Tab content component
-  const TabContent = ({ children, active }) => {
-    if (!active) return null;
-    return <div className="tab-content">{children}</div>;
+    }, 1000);
   };
 
   // Remove the loading spinner section entirely
@@ -626,56 +547,67 @@ const UserAccount = () => {
                     <form onSubmit={handlePasswordSubmit}>
                       <div className="row">
                         <div className="col-md-4">
-                          <TextInput
+                          <label htmlFor="currentPassword" className="form-label small">
+                            Current Password *
+                          </label>
+                          <input
+                            key="currentPassword" // Added key prop
                             id="currentPassword"
-                            label="Current Password"
                             type="password"
+                            className={`form-control ${passwordErrors.currentPassword ? 'is-invalid' : ''}`}
                             value={passwordForm.currentPassword}
-                            onChange={(value) =>
-                              handlePasswordChange("currentPassword", value)
-                            }
-                            onBlur={() => handlePasswordBlur("currentPassword")}
+                            onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
                             placeholder="Enter current password"
-                            required={true}
-                            error={passwordErrors.currentPassword}
                           />
+                          {passwordErrors.currentPassword && (
+                            <div className="invalid-feedback">{passwordErrors.currentPassword}</div>
+                          )}
                         </div>
 
                         <div className="col-md-4">
-                          <TextInput
+                          <label htmlFor="newPassword" className="form-label small">
+                            New Password *
+                          </label>
+                          <input
+                            key="newPassword" // Added key prop
                             id="newPassword"
-                            label="New Password"
                             type="password"
+                            className={`form-control ${passwordErrors.newPassword ? 'is-invalid' : ''}`}
                             value={passwordForm.newPassword}
-                            onChange={(value) =>
-                              handlePasswordChange("newPassword", value)
-                            }
-                            onBlur={() => handlePasswordBlur("newPassword")}
+                            onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
                             placeholder="Enter new password"
-                            required={true}
-                            error={passwordErrors.newPassword}
-                            help="Password must be at least 6 characters long"
                           />
+                          {passwordErrors.newPassword && (
+                            <div className="invalid-feedback">{passwordErrors.newPassword}</div>
+                          )}
+                          <div className="form-text">Password must be at least 6 characters long</div>
                         </div>
-                        <div className="col-md-4">
-                          <TextInput
-                            id="confirmPassword"
-                            label="Confirm New Password"
-                            type="password"
-                            value={passwordForm.confirmPassword}
-                            onChange={(value) =>
-                              handlePasswordChange("confirmPassword", value)
-                            }
-                            onBlur={() => handlePasswordBlur("confirmPassword")}
-                            placeholder="Confirm new password"
-                            required={true}
-                            error={passwordErrors.confirmPassword}
-                          />
 
-                          <div className="mt-4 d-flex justify-content-end">
+                        <div className="col-md-4">
+                          <label htmlFor="confirmPassword" className="form-label small">
+                            Confirm New Password *
+                          </label>
+                          <input
+                            key="confirmPassword" // Added key prop
+                            id="confirmPassword"
+                            type="password"
+                            className={`form-control ${passwordErrors.confirmPassword ? 'is-invalid' : ''}`}
+                            value={passwordForm.confirmPassword}
+                            onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
+                            placeholder="Confirm new password"
+                          />
+                          {passwordErrors.confirmPassword && (
+                            <div className="invalid-feedback">{passwordErrors.confirmPassword}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="row mt-4">
+                        <div className="col-12">
+                          <div className="d-flex justify-content-end">
                             <ButtonGlobal
                               type="submit"
-                              className="btn custom-btn me-2"
+                              className="btn custom-btn"
                               disabled={isSubmitting}
                             >
                               {isSubmitting ? (

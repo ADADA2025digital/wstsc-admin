@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../assets/Styles/Style.css";
 import DropdownItem from "./DropdownItem";
-import Profile from "../assets/Images/profile.png";
+import Profile from "../assets/Images/profile.jpeg";
 
 const Dropdown = ({ title, style }) => {
   const [messages, setMessages] = useState([

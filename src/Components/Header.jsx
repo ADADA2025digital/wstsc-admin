@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../assets/Styles/Style.css";
 import Logo from "../assets/Images/fav.svg";
-import Profile from "../assets/Images/profile.png";
+import Profile from "../assets/Images/profile.jpeg";
 import HeaderIcon from "../Components/HeaderIcon";
 import Dropdown from "../Components/Dropdown";
 import Icon from "../Components/SideBarIcon";
 import Cookies from "js-cookie";
+import api from "../config/axiosConfig";
 
 const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [isEnvelopeDropdownOpen, setEnvelopeDropdownOpen] = useState(false);
@@ -19,8 +20,10 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [rotate, setRotate] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [profileImage, setProfileImage] = useState(Profile);
+  const [isProfileImageLoading, setProfileImageLoading] = useState(false);
 
-  // Logout confirm modal state (Bootstrap-like)
+  // Logout confirm modal state
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -32,12 +35,59 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
   const navigate = useNavigate();
 
-  // Load user data from localStorage
+  // Function to fetch profile image
+  const fetchProfileImage = async () => {
+    setProfileImageLoading(true);
+    try {
+      console.log("🔄 Starting profile image fetch from /profile/person");
+      
+      const response = await api.get("/profile/person");
+      
+      console.log("✅ Profile API Response received");
+      
+      // Extract the image URL from the correct path based on your API response
+      const imageUrl = response.data?.data?.profile?.photo_url;
+      
+      console.log("🖼️ Extracted image URL:", imageUrl);
+      
+      if (imageUrl) {
+        console.log("🔍 Testing if image URL loads...");
+        
+        // Verify the image loads successfully
+        const img = new Image();
+        img.onload = () => {
+          console.log("✅ Profile image loaded successfully");
+          setProfileImage(imageUrl);
+          setProfileImageLoading(false);
+        };
+        img.onerror = () => {
+          console.warn("❌ Profile image failed to load, using fallback");
+          setProfileImage(Profile);
+          setProfileImageLoading(false);
+        };
+        img.src = imageUrl;
+      } else {
+        console.warn("⚠️ No image URL found, using fallback");
+        setProfileImage(Profile);
+        setProfileImageLoading(false);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching profile image:", error);
+      setProfileImage(Profile);
+      setProfileImageLoading(false);
+    }
+  };
+
+  // Load user data from localStorage and fetch profile image
   useEffect(() => {
     const storedUserData = localStorage.getItem("userData");
     if (storedUserData) {
       try {
-        setUserData(JSON.parse(storedUserData));
+        const parsedData = JSON.parse(storedUserData);
+        setUserData(parsedData);
+        
+        // Fetch profile image
+        fetchProfileImage();
       } catch (error) {
         console.error("Error parsing user data:", error);
       }
@@ -84,14 +134,14 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Close all dropdowns when clicking outside any of the referenced elements
+  // Close all dropdowns when clicking outside
   useEffect(() => {
     const refs = [
       bellDropdownRef,
       bookmarkDropdownRef,
       envelopeDropdownRef,
       profileDropdownRef,
-      toggleIconRef, // hamburger/menu trigger on mobile
+      toggleIconRef,
     ];
 
     const handlePointerDown = (event) => {
@@ -112,7 +162,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     };
   }, []);
 
-  // Close on Esc (dropdowns + modal)
+  // Close on Esc
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -128,23 +178,20 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   }, [loggingOut]);
 
   const actuallyLogout = () => {
-    // Clear all authentication data
     localStorage.removeItem("authToken");
     localStorage.removeItem("userData");
     localStorage.removeItem("authenticated");
+    localStorage.removeItem("profileImage");
 
-    // Clear all cookies
     const cookies = Cookies.get();
     Object.keys(cookies).forEach((cookieName) => {
       Cookies.remove(cookieName);
     });
 
-    // Redirect to login
     window.location.href = "/login";
   };
 
   const confirmLogout = () => {
-    // Optional small delay to showcase spinner / handle async cleanup
     setLoggingOut(true);
     setTimeout(() => {
       actuallyLogout();
@@ -171,7 +218,6 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     toggleFullScreen && toggleFullScreen();
   };
 
-  // Keep isFullScreen in sync with actual fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       const fullscreenMode = !!document.fullscreenElement;
@@ -250,12 +296,6 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
               to="/"
               className="navbar-brand d-flex align-items-center gap-2"
             >
-              {/* <img
-                src={Logo}
-                className="ms-3"
-                alt="Brand Logo"
-                style={{ height: "50px" }}
-              /> */}
               <span className="fw-bold">WSTSC</span>
             </Link>
           )}
@@ -281,37 +321,6 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
             />
           )}
 
-          {/* Uncomment when needed; outside click handler already supports them */}
-          {/* <div ref={bellDropdownRef}>
-            <HeaderIcon type="bi-bell" onClick={toggleBellDropdown} />
-            {isBellDropdownOpen && (
-              <Dropdown
-                title="Notifications"
-                style={{ left: isMobile ? "5%" : "77%", top: "100%" }}
-              />
-            )}
-          </div>
-
-          <div ref={bookmarkDropdownRef}>
-            <HeaderIcon type="bi-bookmark" onClick={toggleBookmarkDropdown} />
-            {isBookmarkDropdownOpen && (
-              <Dropdown
-                title="Bookmarks"
-                style={{ left: isMobile ? "5%" : "80%", top: "100%" }}
-              />
-            )}
-          </div>
-
-          <div ref={envelopeDropdownRef}>
-            <HeaderIcon type="bi-envelope" onClick={toggleEnvelopeDropdown} />
-            {isEnvelopeDropdownOpen && (
-              <Dropdown
-                title="Messages"
-                style={{ left: isMobile ? "5%" : "83%", top: "100%" }}
-              />
-            )}
-          </div> */}
-
           {!isMobile && (
             <HeaderIcon
               type={isDarkMode ? "bi-brightness-high" : "bi-moon-stars"}
@@ -320,13 +329,32 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
           )}
 
           <div ref={profileDropdownRef} className="position-relative">
-            <img
-              src={Profile}
-              alt="User Profile"
-              className="rounded-circle"
-              style={{ width: "40px", height: "40px", cursor: "pointer" }}
-              onClick={toggleProfileDropdown}
-            />
+            <div className="position-relative">
+              {isProfileImageLoading && (
+                <div className="position-absolute top-50 start-50 translate-middle">
+                  <div className="spinner-border spinner-border-sm text-white" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              )}
+              <img
+                src={profileImage}
+                alt="User Profile"
+                className={`rounded-circle ${isProfileImageLoading ? 'opacity-25' : ''}`}
+                style={{ 
+                  width: "40px", 
+                  height: "40px", 
+                  cursor: "pointer",
+                  objectFit: "cover"
+                }}
+                onClick={toggleProfileDropdown}
+                onError={(e) => {
+                  console.warn("Profile image load error, using fallback");
+                  e.target.src = Profile;
+                  setProfileImage(Profile);
+                }}
+              />
+            </div>
             {isProfileDropdownOpen && (
               <div className="dropdown-menu top-100 position-absolute end-0 py-2 d-block shadow">
                 <Link
@@ -336,6 +364,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                 >
                   <i className="bi bi-person me-3"></i> Account
                 </Link>
+                <hr className="dropdown-divider" />
                 <a
                   href="#logout"
                   className="dropdown-item d-flex align-items-center"
@@ -397,7 +426,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
         </nav>
       )}
 
-      {/* Logout Confirmation Modal (Bootstrap-like) */}
+      {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div
           className="modal fade show"

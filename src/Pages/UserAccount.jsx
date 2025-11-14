@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "../assets/Styles/Style.css";
-import Profile from "../assets/Images/profile.png";
+import Profile from "../assets/Images/profile.jpeg";
 import ButtonGlobal from "../Components/Button";
 import api from "../config/axiosConfig";
 import { formatDisplayDate } from "../config/utils";

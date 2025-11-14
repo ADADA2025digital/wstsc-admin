@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TextInput from "../TextInput.jsx";
 import TextArea from "../TextArea.jsx";
 import RadioGroup from "../RadioGroup.jsx";
 import SelectInput from "../SelectInput.jsx";
 import { useEnrolmentForm } from "../../Context/EnrolmentFormContext";
+import api from "../../config/axiosConfig.jsx";
 
 export default function FamilyDetailsPhase2({ onNext }) {
   const genderOptions = [
@@ -61,6 +62,107 @@ export default function FamilyDetailsPhase2({ onNext }) {
     parent_carer_1: {},
     parent_carer_2: {}
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch profile data on component mount
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get("/profile/person");
+        
+        if (response.data.success && response.data.data.profile) {
+          const profileData = response.data.data.profile;
+          autoFillParentData(profileData);
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+        // You might want to show a user-friendly error message here
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, []);
+
+  // Function to auto-fill parent data from API response
+  const autoFillParentData = (profileData) => {
+    // Map API response to form fields for parent_carer_1
+    const fieldMappings = {
+      // Personal details
+      first_name: profileData.first_name,
+      last_name: profileData.last_name,
+      middle_name: profileData.middle_name,
+      gender: profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : "",
+      email: profileData.email,
+      mobile_phone: profileData.phone,
+      alternative_phone: profileData.alternate_phone,
+      date_of_birth: profileData.date_of_birth,
+      nationality: profileData.nationality,
+      marital_status: profileData.marital_status,
+      occupation: profileData.occupation,
+      
+      // Address details
+      street_number: extractStreetNumber(profileData.address?.address_line1),
+      street_name: extractStreetName(profileData.address?.address_line1),
+      suburb: profileData.address?.city,
+      state: mapStateToFullName(profileData.address?.state),
+      postal_code: profileData.address?.postal_code,
+      country: profileData.address?.country,
+      address_type: profileData.address?.address_type || "home"
+    };
+
+    // Update form data for parent_carer_1
+    Object.entries(fieldMappings).forEach(([field, value]) => {
+      if (value !== null && value !== undefined && value !== "") {
+        updateFormData("parent_carer_1", field, value);
+      }
+    });
+
+    // Set relationship based on gender if not already set
+    if (!formData.parent_carer_1.relationship_to_student) {
+      let relationship = "Guardian"; // default
+      if (profileData.gender === "female") {
+        relationship = "Mother";
+      } else if (profileData.gender === "male") {
+        relationship = "Father";
+      }
+      updateFormData("parent_carer_1", "relationship_to_student", relationship);
+    }
+  };
+
+  // Helper function to extract street number from address_line1
+  const extractStreetNumber = (addressLine) => {
+    if (!addressLine) return "";
+    const match = addressLine.match(/^(\d+)/);
+    return match ? match[1] : "";
+  };
+
+  // Helper function to extract street name from address_line1
+  const extractStreetName = (addressLine) => {
+    if (!addressLine) return "";
+    // Remove the street number and trim
+    return addressLine.replace(/^\d+\s*/, "").trim();
+  };
+
+  // Helper function to map state abbreviations to full names
+  const mapStateToFullName = (stateAbbr) => {
+    if (!stateAbbr) return "";
+    
+    const stateMap = {
+      'NSW': 'New South Wales',
+      'VIC': 'Victoria',
+      'QLD': 'Queensland',
+      'WA': 'Western Australia',
+      'SA': 'South Australia',
+      'TAS': 'Tasmania',
+      'ACT': 'Australian Capital Territory',
+      'NT': 'Northern Territory'
+    };
+    
+    return stateMap[stateAbbr.toUpperCase()] || stateAbbr;
+  };
 
   const handleInputChange = (section, field, value) => {
     updateFormData(section, field, value);
@@ -254,6 +356,20 @@ export default function FamilyDetailsPhase2({ onNext }) {
       setSectionError("");
     }
   };
+
+  // Show loading state while fetching data
+  if (isLoading) {
+    return (
+      <section className="container bg-light p-3">
+        <div className="d-flex justify-content-center align-items-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading parent details...</span>
+          </div>
+          <span className="ms-3">Loading parent details...</span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="container bg-light p-3">

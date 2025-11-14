@@ -21,9 +21,9 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated, personType = "tea
 
   // Email.js configuration
   const EMAILJS_CONFIG = {
-    serviceId: 'service_atcmru7',
-    templateId: 'template_stoertv', 
-    publicKey: '1JhpDFWb4tZlLmkCh',
+    serviceId: 'service_1gocmzl',
+    templateId: 'template_n832gnt', 
+    publicKey: 'Ro7uPiRIt-owJl0Nn',
   };
 
   // Initialize Email.js

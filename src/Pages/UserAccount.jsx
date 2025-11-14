@@ -23,7 +23,7 @@ const UserAccount = () => {
   const [passwordSuccess, setPasswordSuccess] = useState(null);
   const [profileSuccess, setProfileSuccess] = useState(null);
 
-  // Password form state (kept for UI but not used for API calls)
+  // Password form state
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -37,6 +37,11 @@ const UserAccount = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Fetch user profile data
   const fetchUserProfile = async () => {
@@ -87,18 +92,22 @@ const UserAccount = () => {
         confirmPassword: "",
       });
       setPasswordSuccess(null);
+      // Reset password visibility states
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
     }
   };
 
   // Optimized password change handler with useCallback
   const handlePasswordChange = useCallback((field, value) => {
-    setPasswordForm(prev => ({
+    setPasswordForm((prev) => ({
       ...prev,
       [field]: value,
     }));
 
     // Clear error without causing unnecessary re-renders
-    setPasswordErrors(prev => {
+    setPasswordErrors((prev) => {
       if (!prev[field]) return prev;
       return {
         ...prev,
@@ -107,28 +116,107 @@ const UserAccount = () => {
     });
   }, []);
 
+  // Validate password form
+  const validatePasswordForm = () => {
+    const errors = {};
+    let isValid = true;
+
+    if (!passwordForm.currentPassword.trim()) {
+      errors.currentPassword = "Current password is required";
+      isValid = false;
+    }
+
+    if (!passwordForm.newPassword.trim()) {
+      errors.newPassword = "New password is required";
+      isValid = false;
+    } else if (passwordForm.newPassword.length < 6) {
+      errors.newPassword = "Password must be at least 6 characters long";
+      isValid = false;
+    } else if (passwordForm.newPassword === passwordForm.currentPassword) {
+      errors.newPassword = "New password must be different from current password";
+      isValid = false;
+    }
+
+    if (!passwordForm.confirmPassword.trim()) {
+      errors.confirmPassword = "Please confirm your new password";
+      isValid = false;
+    } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+      isValid = false;
+    }
+
+    setPasswordErrors(errors);
+    return isValid;
+  };
+
   // Handle password form submission
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      // Show success message for demo purposes
-      setPasswordSuccess("Password updated successfully! (UI Demo Only - No actual change made)");
-      setShowPasswordForm(false);
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+    // Validate form
+    if (!validatePasswordForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await api.put("/update-password", {
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+        new_password_confirmation: passwordForm.confirmPassword,
       });
-      setPasswordErrors({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
+
+      if (response.data.success) {
+        setPasswordSuccess(response.data.message || "Password updated successfully!");
+        
+        // Reset form
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setPasswordErrors({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        
+        // Hide form after success
+        setTimeout(() => {
+          setShowPasswordForm(false);
+          // Reset password visibility states
+          setShowCurrentPassword(false);
+          setShowNewPassword(false);
+          setShowConfirmPassword(false);
+        }, 2000);
+      } else {
+        setPasswordErrors({
+          currentPassword: response.data.message || "Failed to update password",
+        });
+      }
+    } catch (err) {
+      console.error("Error updating password:", err);
+      
+      // Handle different error scenarios
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          "Failed to update password. Please try again.";
+      
+      // Check if it's a current password error
+      if (errorMessage.toLowerCase().includes("current") || 
+          errorMessage.toLowerCase().includes("old")) {
+        setPasswordErrors({
+          currentPassword: errorMessage,
+        });
+      } else {
+        setPasswordErrors({
+          newPassword: errorMessage,
+        });
+      }
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   // Remove the loading spinner section entirely
@@ -546,59 +634,173 @@ const UserAccount = () => {
                   {showPasswordForm ? (
                     <form onSubmit={handlePasswordSubmit}>
                       <div className="row">
+                        {/* Current Password */}
                         <div className="col-md-4">
-                          <label htmlFor="currentPassword" className="form-label small">
+                          <label
+                            htmlFor="currentPassword"
+                            className="form-label small"
+                          >
                             Current Password *
                           </label>
-                          <input
-                            key="currentPassword" // Added key prop
-                            id="currentPassword"
-                            type="password"
-                            className={`form-control ${passwordErrors.currentPassword ? 'is-invalid' : ''}`}
-                            value={passwordForm.currentPassword}
-                            onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
-                            placeholder="Enter current password"
-                          />
-                          {passwordErrors.currentPassword && (
-                            <div className="invalid-feedback">{passwordErrors.currentPassword}</div>
-                          )}
+                          <div className="input-group">
+                            <input
+                              key="currentPassword"
+                              id="currentPassword"
+                              type={showCurrentPassword ? "text" : "password"}
+                              className={`form-control ${
+                                passwordErrors.currentPassword
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
+                              value={passwordForm.currentPassword}
+                              onChange={(e) =>
+                                handlePasswordChange(
+                                  "currentPassword",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter current password"
+                              disabled={isSubmitting}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary border-start-0"
+                              onClick={() =>
+                                setShowCurrentPassword(!showCurrentPassword)
+                              }
+                              disabled={isSubmitting}
+                              style={{
+                                borderColor: "#ced4da",
+                                borderLeft: "none",
+                              }}
+                            >
+                              <i
+                                className={`bi ${
+                                  showCurrentPassword
+                                    ? "bi-eye-slash-fill"
+                                    : "bi-eye-fill"
+                                }`}
+                              ></i>
+                            </button>
+                            {passwordErrors.currentPassword && (
+                              <div className="invalid-feedback">
+                                {passwordErrors.currentPassword}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
+                        {/* New Password */}
                         <div className="col-md-4">
-                          <label htmlFor="newPassword" className="form-label small">
+                          <label
+                            htmlFor="newPassword"
+                            className="form-label small"
+                          >
                             New Password *
                           </label>
-                          <input
-                            key="newPassword" // Added key prop
-                            id="newPassword"
-                            type="password"
-                            className={`form-control ${passwordErrors.newPassword ? 'is-invalid' : ''}`}
-                            value={passwordForm.newPassword}
-                            onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
-                            placeholder="Enter new password"
-                          />
-                          {passwordErrors.newPassword && (
-                            <div className="invalid-feedback">{passwordErrors.newPassword}</div>
-                          )}
-                          <div className="form-text">Password must be at least 6 characters long</div>
+                          <div className="input-group">
+                            <input
+                              key="newPassword"
+                              id="newPassword"
+                              type={showNewPassword ? "text" : "password"}
+                              className={`form-control ${
+                                passwordErrors.newPassword ? "is-invalid" : ""
+                              }`}
+                              value={passwordForm.newPassword}
+                              onChange={(e) =>
+                                handlePasswordChange(
+                                  "newPassword",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter new password"
+                              disabled={isSubmitting}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary border-start-0"
+                              onClick={() =>
+                                setShowNewPassword(!showNewPassword)
+                              }
+                              disabled={isSubmitting}
+                              style={{
+                                borderColor: "#ced4da",
+                                borderLeft: "none",
+                              }}
+                            >
+                              <i
+                                className={`bi ${
+                                  showNewPassword
+                                    ? "bi-eye-slash-fill"
+                                    : "bi-eye-fill"
+                                }`}
+                              ></i>
+                            </button>
+                            {passwordErrors.newPassword && (
+                              <div className="invalid-feedback">
+                                {passwordErrors.newPassword}
+                              </div>
+                            )}
+                          </div>
+                          <div className="form-text">
+                            Password must be at least 6 characters long and different from current password
+                          </div>
                         </div>
 
+                        {/* Confirm Password */}
                         <div className="col-md-4">
-                          <label htmlFor="confirmPassword" className="form-label small">
+                          <label
+                            htmlFor="confirmPassword"
+                            className="form-label small"
+                          >
                             Confirm New Password *
                           </label>
-                          <input
-                            key="confirmPassword" // Added key prop
-                            id="confirmPassword"
-                            type="password"
-                            className={`form-control ${passwordErrors.confirmPassword ? 'is-invalid' : ''}`}
-                            value={passwordForm.confirmPassword}
-                            onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
-                            placeholder="Confirm new password"
-                          />
-                          {passwordErrors.confirmPassword && (
-                            <div className="invalid-feedback">{passwordErrors.confirmPassword}</div>
-                          )}
+                          <div className="input-group">
+                            <input
+                              key="confirmPassword"
+                              id="confirmPassword"
+                              type={showConfirmPassword ? "text" : "password"}
+                              className={`form-control ${
+                                passwordErrors.confirmPassword
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
+                              value={passwordForm.confirmPassword}
+                              onChange={(e) =>
+                                handlePasswordChange(
+                                  "confirmPassword",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Confirm new password"
+                              disabled={isSubmitting}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary border-start-0"
+                              onClick={() =>
+                                setShowConfirmPassword(!showConfirmPassword)
+                              }
+                              disabled={isSubmitting}
+                              style={{
+                                borderColor: "#ced4da",
+                                borderLeft: "none",
+                              }}
+                            >
+                              <i
+                                className={`bi ${
+                                  showConfirmPassword
+                                    ? "bi-eye-slash-fill"
+                                    : "bi-eye-fill"
+                                }`}
+                              ></i>
+                            </button>
+                            {passwordErrors.confirmPassword && (
+                              <div className="invalid-feedback">
+                                {passwordErrors.confirmPassword}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -632,7 +834,7 @@ const UserAccount = () => {
                       <h5 className="mt-3">Password Management</h5>
                       <p className="text-muted">
                         Click the "Change Password" button to update your
-                        password.
+                        password. Your new password must be different from your current password.
                       </p>
                     </div>
                   )}

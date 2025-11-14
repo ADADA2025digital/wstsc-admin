@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import FamilyDetails from "../../Components/EnrolmentForm/FamilyDetails";
+import MedicalDetails from "../../Components/EnrolmentForm/MedicalDetails";
 import FamilyDetailsPhase2 from "../../Components/EnrolmentForm/FamilyDetailsPhase2";
 import FamilyDetailsPhase3 from "../../Components/EnrolmentForm/FamilyDetailsPhase3";
 import PersonalInfoAndDeclaration from "../../Components/EnrolmentForm/PersonalInfoAndDeclaration";
@@ -14,7 +14,7 @@ const EnrolmentForm = () => {
   const steps = [
     { component: StudentDetails, title: "Student details" },
     {
-      component: FamilyDetails,
+      component: MedicalDetails,
       title: "Student Medical Details",
     },
     {

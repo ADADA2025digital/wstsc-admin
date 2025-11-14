@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import TextInput from "../TextInput.jsx";
 import RadioGroup from "../RadioGroup.jsx";
 import SelectInput from "../SelectInput.jsx";
-import { useEnrolmentForm } from "../../Context/EnrolmentFormContext";
+import { useEnrolmentForm } from "../../Context/EnrolmentFormContext.jsx";
 import TextArea from "../TextArea.jsx";
 
-export default function FamilyDetails({ onNext }) {
+export default function MedicalDetails({ onNext }) {
   const { formData, updateFormData, validateField, getError } =
     useEnrolmentForm();
   const [sectionError, setSectionError] = useState("");
@@ -37,7 +37,7 @@ export default function FamilyDetails({ onNext }) {
     ];
 
     // Validate each required field
-    requiredRadioFields.forEach(field => {
+    requiredRadioFields.forEach((field) => {
       const value = medicalData[field];
       if (!value || value === "") {
         validateField("medical_details", field, value);
@@ -47,9 +47,15 @@ export default function FamilyDetails({ onNext }) {
 
     // If special learning needs is "Yes", validate the details field
     if (medicalData.special_learning_needs === "Yes") {
-      if (!medicalData.special_learning_needs_details || 
-          medicalData.special_learning_needs_details.trim() === "") {
-        validateField("medical_details", "special_learning_needs_details", medicalData.special_learning_needs_details);
+      if (
+        !medicalData.special_learning_needs_details ||
+        medicalData.special_learning_needs_details.trim() === ""
+      ) {
+        validateField(
+          "medical_details",
+          "special_learning_needs_details",
+          medicalData.special_learning_needs_details
+        );
         isValid = false;
       }
     }

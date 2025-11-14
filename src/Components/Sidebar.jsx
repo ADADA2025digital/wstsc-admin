@@ -92,6 +92,7 @@ const Sidebar = ({
   // Check user roles for conditional rendering
   const isTeacher = userRole === "teacher";
   const isParent = userRole === "parent";
+  const isAdmin = userRole === "admin";
   const isRestrictedUser = isTeacher || isParent;
 
   // Role-based sub-items configuration
@@ -128,6 +129,10 @@ const Sidebar = ({
     // After role verification, apply restrictions
     switch (section) {
       case "enrolment":
+        // Admin should not see "Enrol the student"
+        if (isAdmin) {
+          return [{ label: "View All Enrolments", to: "/enrolments" }];
+        }
         return [
           { label: "View All Enrolments", to: "/enrolments" },
           { label: "Enrol the student", to: "/enrol" },

@@ -97,11 +97,68 @@ export default function ClassroomsList() {
   const { userRole, userId, userData } = getCurrentUserInfo();
   const canCreateClassroom = !["teacher", "parent"].includes(userRole);
   const isParent = userRole === "parent";
+  const isTeacher = userRole === "teacher";
 
   useEffect(() => {
     console.log("🚀 ClassroomsList component mounted");
     fetchClassrooms();
   }, []);
+
+  // Fetch teacher's assigned classrooms
+  const fetchTeacherClassrooms = async () => {
+    try {
+      console.log("👨‍🏫 Fetching teacher classrooms for user ID:", userId);
+      
+      if (!userId) {
+        throw new Error("User ID not found. Please log in again.");
+      }
+
+      const response = await api.get(`/classroom-teachers/teacher/${userId}/classrooms`, {
+        timeout: 10000,
+      });
+
+      console.log("📦 Teacher classrooms API response:", response.data);
+
+      if (response.data.success) {
+        const teacherClassrooms = response.data.data.classrooms || [];
+        
+        // Transform the API response to match our classroom structure
+        const transformedClassrooms = teacherClassrooms.map((assignment) => {
+          const classroom = assignment.classroom;
+          return {
+            id: classroom.class_id, // Using class_id as ID
+            name: classroom.class_name,
+            code: classroom.class_id,
+            status: classroom.is_active ? "Active" : "Inactive",
+            students: 0, // Will be updated from student counts
+            teachers: 1, // At least this teacher is assigned
+            is_active: classroom.is_active,
+            assignment_id: assignment.assignment_id,
+            assignment_date: assignment.assignment_date,
+            end_date: assignment.end_date,
+            is_current: assignment.is_current,
+            assignment_status: assignment.status,
+            created_at: assignment.created_at,
+            updated_at: assignment.updated_at,
+          };
+        });
+
+        console.log("✅ Transformed teacher classrooms:", transformedClassrooms);
+        return transformedClassrooms;
+      } else {
+        throw new Error(response.data.message || "Failed to fetch teacher classrooms");
+      }
+    } catch (err) {
+      console.error("❌ Error fetching teacher classrooms:", err);
+      
+      if (err.response?.status === 404) {
+        console.log("No classrooms assigned to this teacher yet.");
+        return [];
+      }
+      
+      throw err;
+    }
+  };
 
   // Fetch parent enrollments
   const fetchParentEnrollments = async () => {
@@ -290,8 +347,21 @@ export default function ClassroomsList() {
         
         // Also fetch teacher counts for the assigned classrooms
         await fetchTeacherCounts();
-      } else {
-        // For non-parent users, fetch all classrooms as before
+      } 
+      // If user is teacher, fetch their assigned classrooms
+      else if (isTeacher) {
+        console.log("👨‍🏫 User is teacher, fetching assigned classrooms...");
+        const assignedClassrooms = await fetchTeacherClassrooms();
+        setClassrooms(assignedClassrooms);
+        
+        // Fetch student and teacher counts for the assigned classrooms
+        await Promise.all([
+          fetchStudentCounts(),
+          fetchTeacherCounts()
+        ]);
+      }
+      // For admin users, fetch all classrooms
+      else {
         await Promise.all([
           fetchAllClassrooms(),
           fetchStudentCounts(),
@@ -395,6 +465,7 @@ export default function ClassroomsList() {
     userId,
     canCreateClassroom,
     isParent,
+    isTeacher,
     classroomsCount: classrooms.length,
     filteredCount: filtered.length,
     parentEnrollments: parentEnrollments.length,
@@ -583,7 +654,11 @@ export default function ClassroomsList() {
               <span className="visually-hidden">Loading...</span>
             </div>
             <p className="mt-3 text-muted">
-              {isParent ? "Loading your child's classrooms..." : "Loading classrooms..."}
+              {isParent 
+                ? "Loading your child's classrooms..." 
+                : isTeacher
+                ? "Loading your assigned classrooms..."
+                : "Loading classrooms..."}
             </p>
           </div>
         </div>
@@ -829,7 +904,7 @@ export default function ClassroomsList() {
               <small className="text-muted ms-2 fs-6">
                 (
                 {userRole === "teacher"
-                  ? "Available Classrooms"
+                  ? "Your Assigned Classrooms"
                   : userRole === "parent"
                   ? "Child's Classrooms"
                   : "All Classrooms"}
@@ -895,7 +970,7 @@ export default function ClassroomsList() {
           <div className="col-md-6">
             <p className="mb-0">
               Showing {filtered.length} of {classrooms.length} classrooms
-              {userRole === "teacher" && " available to you"}
+              {userRole === "teacher" && " assigned to you"}
               {totalStudents > 0 && (
                 <span className="text-muted ms-2">
                   • Total Students: <strong>{totalStudents}</strong>
@@ -958,7 +1033,18 @@ export default function ClassroomsList() {
                       <i className="bi bi-person-badge me-1" /> Teachers:{" "}
                       <strong>{cls.teachers || 0}</strong>
                     </div>
-                    {cls.created_at && (
+                    {cls.assignment_date && isTeacher && (
+                      <div
+                        className="text-truncate"
+                        title={`Assigned: ${new Date(
+                          cls.assignment_date
+                        ).toLocaleDateString()}`}
+                      >
+                        <i className="bi bi-calendar-check me-1" /> Assigned:{" "}
+                        {new Date(cls.assignment_date).toLocaleDateString()}
+                      </div>
+                    )}
+                    {cls.created_at && !isTeacher && (
                       <div
                         className="text-truncate"
                         title={`Created: ${new Date(
@@ -971,27 +1057,29 @@ export default function ClassroomsList() {
                     )}
                   </div>
 
-                  {/* Actions - Only show for non-parent users */}
-                  <div className="mt-auto d-flex justify-content-end gap-1">
-                    <button
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() => handleView(cls)}
-                      title="View"
-                    >
-                      <i className="bi bi-eye" />
-                    </button>
-
-                    {/* Only show delete button for admin users */}
-                    {canCreateClassroom && (
+                  {/* Actions - Show for admin users only, remove for teacher users */}
+                  {!isTeacher && (
+                    <div className="mt-auto d-flex justify-content-end gap-1">
                       <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => askDelete(cls)}
-                        title="Delete"
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleView(cls)}
+                        title="View"
                       >
-                        <i className="bi bi-trash" />
+                        <i className="bi bi-eye" />
                       </button>
-                    )}
-                  </div>
+
+                      {/* Only show delete button for admin users */}
+                      {canCreateClassroom && (
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => askDelete(cls)}
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1005,7 +1093,7 @@ export default function ClassroomsList() {
                   {query
                     ? "No classrooms match your search."
                     : userRole === "teacher"
-                    ? "No classrooms available at the moment."
+                    ? "No classrooms assigned to you at the moment."
                     : "No classrooms found."}
                 </p>
                 {userRole === "teacher" && (

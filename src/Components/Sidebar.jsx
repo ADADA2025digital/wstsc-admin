@@ -110,6 +110,8 @@ const Sidebar = ({
           return [{ label: "View All Teachers", to: "/teachers" }];
         case "parents":
           return [{ label: "View All Parents", to: "/parents" }];
+        case "principals":
+          return [{ label: "View All Principals", to: "/principals" }];
         case "classroom":
           return [
             { label: "View all classrooms", to: "/classrooms" },
@@ -149,6 +151,13 @@ const Sidebar = ({
         return isRestrictedUser
           ? []
           : [{ label: "View All Parents", to: "/parents" }];
+      }
+
+      case "principals": {
+        // Principals section: Only show for admin
+        return isAdmin
+          ? [{ label: "View All Principals", to: "/principals" }]
+          : [];
       }
 
       case "classroom":
@@ -203,6 +212,11 @@ const Sidebar = ({
         const showParents = !isRestrictedUser;
         // console.log(`Parents section visible: ${showParents}`);
         return showParents;
+      case "principals":
+        // Principals section: Only visible for admin
+        const showPrincipals = isAdmin;
+        // console.log(`Principals section visible: ${showPrincipals}`);
+        return showPrincipals;
       case "classroom":
         return true; // Always visible (sub-items are restricted)
       case "students":
@@ -294,6 +308,21 @@ const Sidebar = ({
               isExpanded={activeSection === "Teachers"}
               onToggle={() => handleToggle("Teachers")}
               subItems={getSubItems("teachers")}
+              collapsed={collapsed && !isHovered}
+              onItemClick={handleItemClick}
+            />
+          </ul>
+        )}
+
+        {/* Principals - Only visible for admin */}
+        {shouldShowSection("principals") && (
+          <ul className="nav flex-column">
+            <SideBarLink
+              iconType="bi-person-gear" // Using a gear icon for principal, you can change this
+              label="Principals"
+              isExpanded={activeSection === "Principals"}
+              onToggle={() => handleToggle("Principals")}
+              subItems={getSubItems("principals")}
               collapsed={collapsed && !isHovered}
               onItemClick={handleItemClick}
             />

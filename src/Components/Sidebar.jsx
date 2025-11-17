@@ -191,7 +191,8 @@ const Sidebar = ({
       case "dashboard":
         return true; // Always visible
       case "enrolment":
-        return true; // Always visible
+        // Hide enrollment section completely for teachers
+        return !isTeacher;
       case "teachers":
         // Teachers section: Hidden for both teacher and parent roles
         const showTeachers = !isRestrictedUser;
@@ -239,7 +240,7 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Enrolment - Always visible */}
+        {/* Enrolment - Hidden for teachers */}
         {shouldShowSection("enrolment") && (
           <ul className="nav flex-column">
             <SideBarLink

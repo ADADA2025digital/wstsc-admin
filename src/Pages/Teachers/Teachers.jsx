@@ -560,15 +560,15 @@ export default function TeachersTable() {
             render: function (data, type, row) {
               if (type === "display") {
                 return `
-                  <div id="status-toggle-${row.id}" class="status-toggle-container">
-                    <div class="d-flex align-items-center justify-content-center">
-                      <div class="form-check form-switch mb-0">
-                        <input class="form-check-input status-toggle-input" type="checkbox" 
+                  <div id="status-toggle-${row.id}" className="status-toggle-container">
+                    <div className="d-flex align-items-center justify-content-center">
+                      <div className="form-check form-switch mb-0">
+                        <input className="form-check-input status-toggle-input" type="checkbox" 
                           ${data === "Active" ? "checked" : ""}
                           data-teacher-id="${row.id}"
                           style="cursor: pointer;"
                         >
-                        <label class="form-check-label small fw-medium ${
+                        <label className="form-check-label small fw-medium ${
                           data === "Active" ? "text-success" : "text-danger"
                         }" 
                                style="cursor: pointer; margin-left: 0.5rem;">
@@ -597,12 +597,12 @@ export default function TeachersTable() {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <div class="d-flex justify-content-center gap-2">
-                  <button class="btn btn-sm btn-outline-primary view-btn" 
+                <div className="d-flex justify-content-center gap-2">
+                  <button className="btn btn-sm btn-outline-primary view-btn" 
                           data-id="${row.id}" 
                           data-user-id="${row.user_id}"
                           title="View Details">
-                    <i class="bi bi-eye"></i>
+                    <i className="bi bi-eye"></i>
                   </button>
                 </div>
               `;

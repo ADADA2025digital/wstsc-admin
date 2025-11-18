@@ -273,16 +273,16 @@ export default function ParentTable() {
     if (type === "display") {
       const isActive = row.status === "Active";
       return `
-        <div class="d-flex align-items-center justify-content-center">
-          <div class="form-check form-switch mb-0">
+        <div className="d-flex align-items-center justify-content-center">
+          <div className="form-check form-switch mb-0">
             <input 
-              class="form-check-input status-toggle-input" 
+              className="form-check-input status-toggle-input" 
               type="checkbox" 
               ${isActive ? "checked" : ""}
               data-parent-id="${row.id}"
               style="cursor: pointer;"
             >
-            <label class="form-check-label small fw-medium ${
+            <label className="form-check-label small fw-medium ${
               isActive ? "text-success" : "text-danger"
             }" 
                    style="cursor: pointer; margin-left: 0.5rem;">
@@ -291,8 +291,8 @@ export default function ParentTable() {
           </div>
           <div id="spinner-${
             row.id
-          }" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
-            <span class="visually-hidden">Loading...</span>
+          }" className="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
+            <span className="visually-hidden">Loading...</span>
           </div>
         </div>
       `;
@@ -304,8 +304,8 @@ export default function ParentTable() {
   const renderChildrenColumn = (data, type, row) => {
     if (type === "display") {
       return `
-        <div class="d-flex align-items-center justify-content-between">
-          <span class="children-text">${data}</span>
+        <div className="d-flex align-items-center justify-content-between">
+          <span className="children-text">${data}</span>
         </div>
       `;
     }
@@ -374,11 +374,11 @@ export default function ParentTable() {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <div class="d-flex justify-content-center gap-2">
-                  <button class="btn btn-sm btn-outline-primary view-btn" 
+                <div className="d-flex justify-content-center gap-2">
+                  <button className="btn btn-sm btn-outline-primary view-btn" 
                           data-id="${row.id}" 
                           title="View Details">
-                    <i class="bi bi-eye"></i>
+                    <i className="bi bi-eye"></i>
                   </button>
                 </div>
               `;

@@ -428,7 +428,7 @@ const EnrolStudents = () => {
                 default:
                   badgeClass += "bg-secondary";
               }
-              return `<span class="${badgeClass}">${data}</span>`;
+              return `<span className="${badgeClass}">${data}</span>`;
             },
           },
           {
@@ -439,8 +439,8 @@ const EnrolStudents = () => {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <button class="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details" style="border: 1px solid #0d6efd; background: transparent; padding: 4px 8px; border-radius: 4px;">
-                  <i class="bi bi-eye" style="font-size: 16px; color: #0d6efd;"></i>
+                <button className="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details" style="border: 1px solid #0d6efd; background: transparent; padding: 4px 8px; border-radius: 4px;">
+                  <i className="bi bi-eye" style="font-size: 16px; color: #0d6efd;"></i>
                 </button>
               `;
             },

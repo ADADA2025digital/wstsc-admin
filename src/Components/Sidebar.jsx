@@ -106,21 +106,15 @@ const Sidebar = ({
             { label: "View All Enrolments", to: "/enrolments" },
             { label: "Enrol the student", to: "/enrol" },
           ];
-        case "teachers":
-          return [{ label: "View All Teachers", to: "/teachers" }];
-        case "parents":
-          return [{ label: "View All Parents", to: "/parents" }];
-        case "principals":
-          return [{ label: "View All Principals", to: "/principals" }];
         case "classroom":
           return [
             { label: "View all classrooms", to: "/classrooms" },
             { label: "View status Classrooms", to: "/classroom-status" },
           ];
         case "students":
-          return [
-            { label: "View all students", to: "/students" },
-          ];
+          return [{ label: "View all students", to: "/students" }];
+        case "persons":
+          return [{ label: "View all persons", to: "/persons" }];
         default:
           return [];
       }
@@ -140,26 +134,6 @@ const Sidebar = ({
           { label: "Enrol the student", to: "/enrol" },
         ];
 
-      case "teachers":
-        // Teachers section: Hidden for both teacher and parent roles
-        return isRestrictedUser
-          ? []
-          : [{ label: "View All Teachers", to: "/teachers" }];
-
-      case "parents": {
-        // Parents section: Hidden for both teacher and parent roles
-        return isRestrictedUser
-          ? []
-          : [{ label: "View All Parents", to: "/parents" }];
-      }
-
-      case "principals": {
-        // Principals section: Only show for admin
-        return isAdmin
-          ? [{ label: "View All Principals", to: "/principals" }]
-          : [];
-      }
-
       case "classroom":
         // Classroom section: For teacher or parent, hide "View status Classrooms"
         if (isRestrictedUser) {
@@ -176,10 +150,13 @@ const Sidebar = ({
         if (isRestrictedUser) {
           return [{ label: "View all students", to: "/students" }];
         } else {
-          return [
-            { label: "View all students", to: "/students" },
-          ];
+          return [{ label: "View all students", to: "/students" }];
         }
+
+      case "persons":
+        // Persons section: For teacher or parent, restrict access if needed
+        // Currently showing for all roles, but you can add restrictions here
+        return [{ label: "View all persons", to: "/persons" }];
 
       default:
         return [];
@@ -202,25 +179,12 @@ const Sidebar = ({
       case "enrolment":
         // Hide enrollment section completely for teachers
         return !isTeacher;
-      case "teachers":
-        // Teachers section: Hidden for both teacher and parent roles
-        const showTeachers = !isRestrictedUser;
-        // console.log(`Teachers section visible: ${showTeachers}`);
-        return showTeachers;
-      case "parents":
-        // Parents section: Hidden for both teacher and parent roles
-        const showParents = !isRestrictedUser;
-        // console.log(`Parents section visible: ${showParents}`);
-        return showParents;
-      case "principals":
-        // Principals section: Only visible for admin
-        const showPrincipals = isAdmin;
-        // console.log(`Principals section visible: ${showPrincipals}`);
-        return showPrincipals;
       case "classroom":
         return true; // Always visible (sub-items are restricted)
       case "students":
         return true; // Always visible (sub-items are restricted)
+      case "persons":
+        return true; // Always visible for now, can add role restrictions later
       default:
         return true;
     }
@@ -284,45 +248,15 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Parents - Hidden for teacher and parent roles */}
-        {shouldShowSection("parents") && (
+        {/* Persons - New section for person management */}
+        {shouldShowSection("persons") && (
           <ul className="nav flex-column">
             <SideBarLink
-              iconType="bi-people"
-              label="Parents"
-              isExpanded={activeSection === "Parents"}
-              onToggle={() => handleToggle("Parents")}
-              subItems={getSubItems("parents")}
-              collapsed={collapsed && !isHovered}
-              onItemClick={handleItemClick}
-            />
-          </ul>
-        )}
-
-        {/* Teachers - Hidden for teacher and parent roles */}
-        {shouldShowSection("teachers") && (
-          <ul className="nav flex-column">
-            <SideBarLink
-              iconType="bi-person-badge"
-              label="Teachers"
-              isExpanded={activeSection === "Teachers"}
-              onToggle={() => handleToggle("Teachers")}
-              subItems={getSubItems("teachers")}
-              collapsed={collapsed && !isHovered}
-              onItemClick={handleItemClick}
-            />
-          </ul>
-        )}
-
-        {/* Principals - Only visible for admin */}
-        {shouldShowSection("principals") && (
-          <ul className="nav flex-column">
-            <SideBarLink
-              iconType="bi-person-gear" // Using a gear icon for principal, you can change this
-              label="Principals"
-              isExpanded={activeSection === "Principals"}
-              onToggle={() => handleToggle("Principals")}
-              subItems={getSubItems("principals")}
+              iconType="bi-person-badge" // Using a person badge icon, you can change this
+              label="Persons"
+              isExpanded={activeSection === "Persons"}
+              onToggle={() => handleToggle("Persons")}
+              subItems={getSubItems("persons")}
               collapsed={collapsed && !isHovered}
               onItemClick={handleItemClick}
             />

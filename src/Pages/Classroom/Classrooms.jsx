@@ -901,7 +901,7 @@ export default function ClassroomsList() {
           <h4 className="H4-heading fw-bold m-0">
             Classrooms
             {userRole && (
-              <small className="text-muted ms-2 fs-6">
+              <small className="ms-2 fs-6">
                 (
                 {userRole === "teacher"
                   ? "Your Assigned Classrooms"

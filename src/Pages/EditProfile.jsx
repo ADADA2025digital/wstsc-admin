@@ -801,7 +801,7 @@ const EditProfile = () => {
 
           <ButtonGlobal
             onClick={handleSubmit}
-            className="btn btn-primary"
+            className="btn custom-btn"
             disabled={isSubmitting || !hasChanges}
           >
             <i className="bi bi-floppy me-1"></i>{" "}
@@ -924,17 +924,24 @@ const EditProfile = () => {
                           </div>
 
                           <div className="col-12">
-                            <SelectInput
-                              id="nationality"
-                              label="Nationality"
-                              value={formData.nationality}
-                              onChange={(value) =>
-                                handleSelectChange("nationality", value)
-                              }
-                              placeholder="Select your nationality"
-                              options={nationalities}
-                              simpleArray={true}
-                            />
+                            <Form.Group>
+                              <Form.Label>Nationality</Form.Label>
+                              <Form.Select
+                                name="nationality"
+                                value={formData.nationality}
+                                onChange={handleInputChange}
+                                className="rounded-0"
+                              >
+                                <option value="">
+                                  Select your nationality
+                                </option>
+                                {nationalities.map((nationality) => (
+                                  <option key={nationality} value={nationality}>
+                                    {nationality}
+                                  </option>
+                                ))}
+                              </Form.Select>
+                            </Form.Group>
                           </div>
 
                           <div className="col-md-6">
@@ -1186,7 +1193,7 @@ const EditProfile = () => {
                           <div className="d-flex gap-2 justify-content-start">
                             <ButtonGlobal
                               onClick={handleProfilePictureUpload}
-                              className="btn btn-primary"
+                              className="btn custom-btn"
                               disabled={
                                 !profilePictureFile || isUploadingPicture
                               }

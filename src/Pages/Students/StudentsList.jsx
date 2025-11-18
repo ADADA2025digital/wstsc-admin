@@ -421,7 +421,7 @@ const StudentsList = () => {
                   ? "badge bg-secondary"
                   : "badge bg-info";
 
-              return `<span class="${statusClass}">${data}</span>`;
+              return `<span className="${statusClass}">${data}</span>`;
             },
           },
           {
@@ -441,11 +441,11 @@ const StudentsList = () => {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <div class="d-flex justify-content-center gap-2">
-                  <button class="btn btn-sm btn-outline-primary view-btn" 
+                <div className="d-flex justify-content-center gap-2">
+                  <button className="btn btn-sm btn-outline-primary view-btn" 
                           data-student-id="${row.id}" 
                           title="View Details">
-                    <i class="bi bi-eye"></i>
+                    <i className="bi bi-eye"></i>
                   </button>
                 </div>
               `;

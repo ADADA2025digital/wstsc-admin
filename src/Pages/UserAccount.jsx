@@ -812,6 +812,7 @@ const UserAccount = () => {
                               className="btn custom-btn"
                               disabled={isSubmitting}
                             >
+                                                  <i className="bi bi-check2-all me-2"></i>
                               {isSubmitting ? (
                                 <>
                                   <span className="spinner-border spinner-border-sm me-2" />

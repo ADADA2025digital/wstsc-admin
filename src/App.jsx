@@ -23,6 +23,10 @@ import SetupPassword from "./Components/SetupPassword";
 import EditProfile from "./Pages/EditProfile";
 import StudentsList from "./Pages/Students/StudentsList";
 import StudentDetails from "./Pages/Students/StudentDetails";
+import PrincipalDetails from "./Pages/Principal/PrincipalDetails";
+import Loader from "./Pages/Loader";
+import PersonsList from "./Pages/Persons/PersonsList";
+import PersonDetails from "./Pages/Persons/PersonDetails";
 
 function App() {
   return (
@@ -38,6 +42,9 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/useraccount" element={<UserAccount />} />
           <Route path="/edit-profile" element={<EditProfile />} />
+
+          <Route path="/persons" element={<PersonsList />} />
+          <Route path="/persons/:name" element={<PersonDetails />} />
 
           <Route path="/enrolments" element={<EnrolStudents />} />
           <Route path="/enrolment/:id" element={<EnrolmentDetails />} />
@@ -55,6 +62,8 @@ function App() {
 
           <Route path="/students" element={<StudentsList />} />
           <Route path="/students/:id" element={<StudentDetails />} />
+
+          <Route path="/principal" element={<PrincipalDetails />} />
         </Route>
       </Routes>
     </Router>

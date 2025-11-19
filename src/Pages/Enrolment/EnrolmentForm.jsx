@@ -32,7 +32,7 @@ const EnrolmentForm = () => {
     },
   ];
 
-  // Effect to handle showing and auto-hiding success message
+  // Effect to handle showing success message WITHOUT immediate reset
   useEffect(() => {
     if (success) {
       setShowSuccess(true);
@@ -42,7 +42,6 @@ const EnrolmentForm = () => {
         setShowSuccess(false);
       }, 5000);
       
-      // Cleanup timer on component unmount or when success changes
       return () => clearTimeout(timer);
     } else {
       setShowSuccess(false);

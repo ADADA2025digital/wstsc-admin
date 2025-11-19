@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useEnrolmentForm } from "../../Context/EnrolmentFormContext";
 
-export default function PersonalInfoAndDeclaration() {
+export default function PersonalInfoAndDeclaration({ onNext }) {
   const {
     formData,
     updateFormData,
@@ -14,12 +14,53 @@ export default function PersonalInfoAndDeclaration() {
     error,
     success,
     submissionResult,
+    resetForm,
   } = useEnrolmentForm();
   const [sectionError, setSectionError] = useState("");
   const [showAllErrors, setShowAllErrors] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const navigate = useNavigate();
 
-  // Simple direct input change handler
+  // Enhanced success handler - FIXED VERSION
+  useEffect(() => {
+    if (success && submissionResult && !hasSubmitted) {
+      console.log("✅ Form submitted successfully:", submissionResult);
+      
+      // Set hasSubmitted to prevent multiple alerts
+      setHasSubmitted(true);
+      
+      Swal.fire({
+        title: "Success!",
+        text: `Student enrollment submitted successfully and is pending approval.${
+          submissionResult.enrollment_id ? ` Enrollment ID: ${submissionResult.enrollment_id}` : ''
+        }`,
+        icon: "success",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#3085d6",
+        showConfirmButton: true,
+      }).then((result) => {
+        // Reset the form AFTER the user acknowledges the success message
+        resetForm();
+        setHasSubmitted(false); // Reset the flag
+        navigate("/");
+      });
+    }
+  }, [success, submissionResult, navigate, resetForm, hasSubmitted]);
+
+  // Show error alert if there's an error
+  useEffect(() => {
+    if (error && !loading && !hasSubmitted) {
+      Swal.fire({
+        title: "Error!",
+        text: error,
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#d33",
+      });
+    }
+  }, [error, loading, hasSubmitted]);
+
+  // Handle input changes
   const handleInputChange = (section, field, value) => {
     updateFormData(section, field, value);
     if (sectionError) {
@@ -35,48 +76,19 @@ export default function PersonalInfoAndDeclaration() {
     }
   };
 
-  // Enhanced success handler
-  useEffect(() => {
-    if (success && submissionResult) {
-      console.log("✅ Form submitted successfully:", submissionResult);
-      
-      const alert = Swal.fire({
-        title: "Success!",
-        text: `Student enrollment submitted successfully and is pending approval. Enrollment ID: ${submissionResult.enrollment_id}`,
-        icon: "success",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#3085d6",
-        timer: 5000,
-        timerProgressBar: true,
-        showConfirmButton: true,
-      });
-
-      alert.then((result) => {
-        navigate("/");
-      });
-    }
-  }, [success, submissionResult, navigate]);
-
-  // Show error alert if there's an error
-  useEffect(() => {
-    if (error && !loading) {
-      Swal.fire({
-        title: "Error!",
-        text: error,
-        icon: "error",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#d33",
-      });
-    }
-  }, [error, loading]);
-
-  // Simple validation functions
+  // Validation functions
   const validateName = (value, isRequired = true) => {
     if (!value || value.toString().trim() === "") {
       return isRequired ? "This field is required" : null;
     }
     if (/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value.toString())) {
       return "Name should not contain numbers or symbols";
+    }
+    if (value.toString().trim().length < 2) {
+      return "Name must be at least 2 characters long";
+    }
+    if (value.toString().trim().length > 30) {
+      return "Name cannot exceed 30 characters";
     }
     return null;
   };
@@ -85,6 +97,18 @@ export default function PersonalInfoAndDeclaration() {
     if (!value || value.toString().trim() === "") {
       return isRequired ? "This field is required" : null;
     }
+    
+    const date = new Date(value);
+    const today = new Date();
+    
+    if (isNaN(date.getTime())) {
+      return "Please enter a valid date";
+    }
+    
+    if (date > today) {
+      return "Date cannot be in the future";
+    }
+    
     return null;
   };
 
@@ -98,23 +122,52 @@ export default function PersonalInfoAndDeclaration() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setShowAllErrors(true);
+    setHasSubmitted(false); // Reset submission flag
 
     // ONLY validate the personal declaration section
     const isPersonalDeclarationValid = validateSection("personal_declaration");
 
-    // Check required fields for personal declaration (only first parent and medical consent required)
+    // Check required fields for personal declaration
     const requiredFields = [
       "first_parent_carer_name",
       "first_parent_carer_name_date",
-      "medical_treatment_consent", // Only medical consent is required
+      "medical_treatment_consent",
     ];
-    const missingFields = requiredFields.filter(
-      (field) =>
-        !formData.personal_declaration?.[field] ||
-        formData.personal_declaration[field]?.toString().trim() === ""
-    );
 
-    if (isPersonalDeclarationValid && missingFields.length === 0) {
+    let hasErrors = false;
+    const fieldErrors = {};
+
+    // Validate first parent name
+    const firstNameError = validateName(
+      formData.personal_declaration?.first_parent_carer_name,
+      true
+    );
+    if (firstNameError) {
+      fieldErrors.first_parent_carer_name = firstNameError;
+      hasErrors = true;
+    }
+
+    // Validate first parent date
+    const firstDateError = validateDate(
+      formData.personal_declaration?.first_parent_carer_name_date,
+      true
+    );
+    if (firstDateError) {
+      fieldErrors.first_parent_carer_name_date = firstDateError;
+      hasErrors = true;
+    }
+
+    // Validate medical consent
+    const medicalConsentError = validateCheckbox(
+      formData.personal_declaration?.medical_treatment_consent,
+      true
+    );
+    if (medicalConsentError) {
+      fieldErrors.medical_treatment_consent = medicalConsentError;
+      hasErrors = true;
+    }
+
+    if (!hasErrors && isPersonalDeclarationValid) {
       setSectionError("");
       try {
         console.log("🔄 Starting form submission...");
@@ -122,6 +175,8 @@ export default function PersonalInfoAndDeclaration() {
         // Success handling is now in the useEffect above
       } catch (err) {
         console.error("❌ Submission error:", err);
+        setHasSubmitted(false); // Reset flag on error
+        
         if (err.message === "Form validation failed") {
           Swal.fire({
             title: "Incomplete Form",
@@ -141,10 +196,10 @@ export default function PersonalInfoAndDeclaration() {
         }
       }
     } else {
-      const errorMessage =
-        "Please complete all required fields in the personal declaration before submitting the form.";
+      const errorMessage = "Please complete all required fields in the personal declaration before submitting the form.";
       setSectionError(errorMessage);
 
+      // Scroll to error message
       setTimeout(() => {
         const errorElement = document.querySelector(".alert-danger");
         if (errorElement) {
@@ -164,6 +219,41 @@ export default function PersonalInfoAndDeclaration() {
       return "";
     }
     return String(value);
+  };
+
+  // Get field error - combines context errors and local validation
+  const getFieldError = (field) => {
+    const contextError = getError("personal_declaration", field);
+    if (contextError) return contextError;
+
+    if (showAllErrors) {
+      switch (field) {
+        case "first_parent_carer_name":
+          return validateName(getFieldValue("personal_declaration", field), true);
+        case "first_parent_carer_name_date":
+          return validateDate(getFieldValue("personal_declaration", field), true);
+        case "medical_treatment_consent":
+          return validateCheckbox(formData.personal_declaration?.[field], true);
+        case "second_parent_carer_name":
+          if (getFieldValue("personal_declaration", field).trim() !== "") {
+            return validateName(getFieldValue("personal_declaration", field), false);
+          }
+          return null;
+        case "second_parent_carer_name_date":
+          if (getFieldValue("personal_declaration", field).trim() !== "") {
+            return validateDate(getFieldValue("personal_declaration", field), false);
+          }
+          return null;
+        default:
+          return null;
+      }
+    }
+    return null;
+  };
+
+  // Check if field has error
+  const hasError = (field) => {
+    return showAllErrors && getFieldError(field);
   };
 
   return (
@@ -224,7 +314,7 @@ export default function PersonalInfoAndDeclaration() {
           <div className="mb-4">
             <div className="form-check">
               <input
-                className="form-check-input"
+                className={`form-check-input ${hasError("medical_treatment_consent") ? "is-invalid" : ""}`}
                 type="checkbox"
                 id="medicalTreatmentConsent"
                 checked={
@@ -250,18 +340,11 @@ export default function PersonalInfoAndDeclaration() {
                 <span className="text-danger"> *</span>
               </label>
             </div>
-            {showAllErrors &&
-              validateCheckbox(
-                formData.personal_declaration?.medical_treatment_consent,
-                true
-              ) && (
-                <div className="text-danger small mt-1">
-                  {validateCheckbox(
-                    formData.personal_declaration?.medical_treatment_consent,
-                    true
-                  )}
-                </div>
-              )}
+            {hasError("medical_treatment_consent") && (
+              <div className="text-danger small mt-1">
+                {getFieldError("medical_treatment_consent")}
+              </div>
+            )}
           </div>
 
           {/* Photo and Video Consent Checkbox - OPTIONAL */}
@@ -289,18 +372,6 @@ export default function PersonalInfoAndDeclaration() {
                 School website.
               </label>
             </div>
-            {showAllErrors &&
-              validateCheckbox(
-                formData.personal_declaration?.photo_video_consent,
-                false // Changed to false to make it optional
-              ) && (
-                <div className="text-danger small mt-1">
-                  {validateCheckbox(
-                    formData.personal_declaration?.photo_video_consent,
-                    false // Changed to false to make it optional
-                  )}
-                </div>
-              )}
           </div>
 
           <div className="row">
@@ -314,22 +385,7 @@ export default function PersonalInfoAndDeclaration() {
                 <input
                   id="firstParentCarerName"
                   type="text"
-                  className={`form-control ${
-                    showAllErrors &&
-                    (getError(
-                      "personal_declaration",
-                      "first_parent_carer_name"
-                    ) ||
-                      validateName(
-                        getFieldValue(
-                          "personal_declaration",
-                          "first_parent_carer_name"
-                        ),
-                        true
-                      ))
-                      ? "is-invalid"
-                      : ""
-                  }`}
+                  className={`form-control ${hasError("first_parent_carer_name") ? "is-invalid" : ""}`}
                   value={getFieldValue(
                     "personal_declaration",
                     "first_parent_carer_name"
@@ -342,35 +398,16 @@ export default function PersonalInfoAndDeclaration() {
                     );
                   }}
                   required={true}
+                  maxLength={30}
+                  placeholder="Enter full name"
                 />
-                {showAllErrors &&
-                  (getError(
-                    "personal_declaration",
-                    "first_parent_carer_name"
-                  ) ||
-                    validateName(
-                      getFieldValue(
-                        "personal_declaration",
-                        "first_parent_carer_name"
-                      ),
-                      true
-                    )) && (
-                    <div className="invalid-feedback">
-                      {getError(
-                        "personal_declaration",
-                        "first_parent_carer_name"
-                      ) ||
-                        validateName(
-                          getFieldValue(
-                            "personal_declaration",
-                            "first_parent_carer_name"
-                          ),
-                          true
-                        )}
-                    </div>
-                  )}
+                {hasError("first_parent_carer_name") && (
+                  <div className="invalid-feedback">
+                    {getFieldError("first_parent_carer_name")}
+                  </div>
+                )}
               </div>
-              <p className="small">
+              <p className="small text-muted">
                 <i>
                   (at least one of the student's parents/carers must sign the
                   enrolment form)
@@ -387,22 +424,7 @@ export default function PersonalInfoAndDeclaration() {
                 <input
                   id="declarationDate1"
                   type="date"
-                  className={`form-control ${
-                    showAllErrors &&
-                    (getError(
-                      "personal_declaration",
-                      "first_parent_carer_name_date"
-                    ) ||
-                      validateDate(
-                        getFieldValue(
-                          "personal_declaration",
-                          "first_parent_carer_name_date"
-                        ),
-                        true
-                      ))
-                      ? "is-invalid"
-                      : ""
-                  }`}
+                  className={`form-control ${hasError("first_parent_carer_name_date") ? "is-invalid" : ""}`}
                   value={getFieldValue(
                     "personal_declaration",
                     "first_parent_carer_name_date"
@@ -415,37 +437,17 @@ export default function PersonalInfoAndDeclaration() {
                     );
                   }}
                   required={true}
+                  max={new Date().toISOString().split('T')[0]}
                 />
-                {showAllErrors &&
-                  (getError(
-                    "personal_declaration",
-                    "first_parent_carer_name_date"
-                  ) ||
-                    validateDate(
-                      getFieldValue(
-                        "personal_declaration",
-                        "first_parent_carer_name_date"
-                      ),
-                      true
-                    )) && (
-                    <div className="invalid-feedback">
-                      {getError(
-                        "personal_declaration",
-                        "first_parent_carer_name_date"
-                      ) ||
-                        validateDate(
-                          getFieldValue(
-                            "personal_declaration",
-                            "first_parent_carer_name_date"
-                          ),
-                          true
-                        )}
-                    </div>
-                  )}
+                {hasError("first_parent_carer_name_date") && (
+                  <div className="invalid-feedback">
+                    {getFieldError("first_parent_carer_name_date")}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Second Parent/Carer - OPTIONAL (No validation) */}
+            {/* Second Parent/Carer - OPTIONAL */}
             <div className="col-md-6">
               <div className="mb-3">
                 <label htmlFor="secondParentCarerName" className="form-label">
@@ -454,7 +456,7 @@ export default function PersonalInfoAndDeclaration() {
                 <input
                   id="secondParentCarerName"
                   type="text"
-                  className="form-control"
+                  className={`form-control ${hasError("second_parent_carer_name") ? "is-invalid" : ""}`}
                   value={getFieldValue(
                     "personal_declaration",
                     "second_parent_carer_name"
@@ -466,12 +468,18 @@ export default function PersonalInfoAndDeclaration() {
                       e.target.value
                     );
                   }}
+                  maxLength={30}
+                  placeholder="Enter full name (optional)"
                 />
-                {/* No validation errors shown for optional field */}
+                {hasError("second_parent_carer_name") && (
+                  <div className="invalid-feedback">
+                    {getFieldError("second_parent_carer_name")}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Second Parent Date - OPTIONAL (No validation) */}
+            {/* Second Parent Date - OPTIONAL */}
             <div className="col-md-6">
               <div className="mb-3">
                 <label htmlFor="declarationDate2" className="form-label">
@@ -480,7 +488,7 @@ export default function PersonalInfoAndDeclaration() {
                 <input
                   id="declarationDate2"
                   type="date"
-                  className="form-control"
+                  className={`form-control ${hasError("second_parent_carer_name_date") ? "is-invalid" : ""}`}
                   value={getFieldValue(
                     "personal_declaration",
                     "second_parent_carer_name_date"
@@ -492,8 +500,13 @@ export default function PersonalInfoAndDeclaration() {
                       e.target.value
                     );
                   }}
+                  max={new Date().toISOString().split('T')[0]}
                 />
-                {/* No validation errors shown for optional field */}
+                {hasError("second_parent_carer_name_date") && (
+                  <div className="invalid-feedback">
+                    {getFieldError("second_parent_carer_name_date")}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -506,11 +519,17 @@ export default function PersonalInfoAndDeclaration() {
               {sectionError}
             </div>
           )}
+          
           <div className="row">
             {loading && (
-              <div className="container">
+              <div className="container mb-3">
                 <div className="alert alert-info" role="alert">
-                  Submitting form, please wait...
+                  <div className="d-flex align-items-center">
+                    <div className="spinner-border spinner-border-sm me-2" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    Submitting form, please wait...
+                  </div>
                 </div>
               </div>
             )}
@@ -521,6 +540,7 @@ export default function PersonalInfoAndDeclaration() {
                 onClick={handleSubmit}
                 className="btn globalbutton rounded-0 dark-text fw-bold fs-5 position-relative overflow-hidden"
                 disabled={loading}
+                style={{ minWidth: '200px' }}
               >
                 {loading ? (
                   <>

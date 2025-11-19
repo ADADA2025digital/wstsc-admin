@@ -139,9 +139,9 @@ const ClassroomsStatus = () => {
     try {
       setUpdatingStatus(classroom.class_id);
 
-      // Use PATCH request to toggle status - no request body needed
+      // Use PATCH request to toggle status - using c_id in the URL
       const response = await api.patch(
-        `/classrooms/${classroom.class_id}/toggle-status`
+        `/classrooms/${classroom.c_id}/toggle-status`
       );
 
       if (response.data.success) {
@@ -201,6 +201,13 @@ const ClassroomsStatus = () => {
               {classrooms.length}
             </Badge>
           </h5>
+          <ButtonGlobal
+            onClick={openCreateModal}
+            className="btn btn-primary"
+          >
+            <i className="bi bi-plus-circle me-2" />
+            Create Classroom
+          </ButtonGlobal>
         </div>
       </Card.Header>
       <Card.Body className="p-0">
@@ -226,7 +233,7 @@ const ClassroomsStatus = () => {
                           {classroom.class_name}
                         </h6>
                         <small className="text-muted">
-                          ID: {classroom.class_id}
+                          ID: {classroom.class_id} | C_ID: {classroom.c_id}
                         </small>
                       </div>
                     </div>
@@ -245,6 +252,9 @@ const ClassroomsStatus = () => {
                       disabled={updatingStatus === classroom.class_id}
                       className="mb-0"
                     />
+                    {updatingStatus === classroom.class_id && (
+                      <Spinner animation="border" size="sm" className="ms-2" />
+                    )}
                   </td>
                   <td>
                     <small className="text-muted">
@@ -263,6 +273,7 @@ const ClassroomsStatus = () => {
                         size="sm"
                         onClick={() => handleViewClassroom(classroom)}
                         title="View Details"
+                        disabled={updatingStatus === classroom.class_id}
                       >
                         <i className="bi bi-eye"></i>
                       </Button>
@@ -283,6 +294,13 @@ const ClassroomsStatus = () => {
                 ? "There are no active classrooms at the moment."
                 : "There are no inactive classrooms at the moment."}
             </p>
+            <ButtonGlobal
+              onClick={openCreateModal}
+              className="btn btn-primary"
+            >
+              <i className="bi bi-plus-circle me-2" />
+              Create Classroom
+            </ButtonGlobal>
           </div>
         )}
       </Card.Body>
@@ -307,6 +325,13 @@ const ClassroomsStatus = () => {
           >
             <i className="bi bi-arrow-clockwise me-2" />
             Refresh
+          </ButtonGlobal>
+          <ButtonGlobal
+            onClick={openCreateModal}
+            className="btn btn-primary"
+          >
+            <i className="bi bi-plus-circle me-2" />
+            Create Classroom
           </ButtonGlobal>
         </div>
       </div>

@@ -30,7 +30,7 @@ const EnrolmentDetails = () => {
         const userData = localStorage.getItem("userData");
         if (userData) {
           const parsedUserData = JSON.parse(userData);
-          
+
           // Check multiple possible locations for role
           let role;
           if (parsedUserData.primary_role?.role_name) {
@@ -42,7 +42,7 @@ const EnrolmentDetails = () => {
           } else {
             role = "parent"; // default fallback
           }
-          
+
           console.log("👤 User role detected:", role);
           console.log("📋 Full user data structure:", parsedUserData);
           setUserRole(role);
@@ -71,7 +71,45 @@ const EnrolmentDetails = () => {
       return rawData;
     }
 
-    // If data is flat (from location state), convert to nested structure
+    // Debug medical data structure
+    console.log("🏥 Raw medical data structure:", {
+      rawMedical: rawData.medical_details,
+      flatMedical: {
+        asthma: rawData.asthma,
+        major_illness: rawData.major_illness,
+        allergies: rawData.allergies,
+        special_learning_needs: rawData.special_learning_needs,
+      },
+    });
+
+    // Handle medical details - multiple possible structures
+    let medicalDetails = null;
+
+    if (rawData.medical_details) {
+      // If medical_details is an object with the expected properties
+      if (typeof rawData.medical_details === "object") {
+        medicalDetails = {
+          asthma: rawData.medical_details.asthma || "No",
+          major_illness: rawData.medical_details.major_illness || "No",
+          allergies: rawData.medical_details.allergies || "No",
+          special_learning_needs:
+            rawData.medical_details.special_learning_needs || "No",
+          special_learning_needs_details:
+            rawData.medical_details.special_learning_needs_details || null,
+        };
+      }
+    } else {
+      // If medical details are flat on the main object
+      medicalDetails = {
+        asthma: rawData.asthma || "No",
+        major_illness: rawData.major_illness || "No",
+        allergies: rawData.allergies || "No",
+        special_learning_needs: rawData.special_learning_needs || "No",
+        special_learning_needs_details:
+          rawData.special_learning_needs_details || null,
+      };
+    }
+
     const normalizedData = {
       student: {
         enrollment_id: rawData.enrollment_id,
@@ -100,13 +138,13 @@ const EnrolmentDetails = () => {
       },
       // Use first parent from parent_carers array
       parent_carer_1: rawData.parent_carers?.[0] || null,
-      medical_details: rawData.medical_details || null,
+      medical_details: medicalDetails,
       // Use first emergency contact from array
       first_emergency_contact: rawData.emergency_contacts?.[0] || null,
       personal_declaration: rawData.personal_declaration || null,
     };
 
-    console.log("🎯 Normalized data:", normalizedData);
+    console.log("🎯 Normalized medical data:", normalizedData.medical_details);
     return normalizedData;
   };
 
@@ -211,21 +249,26 @@ const EnrolmentDetails = () => {
       console.log("🎯 Using approval endpoint:", endpoint);
 
       // Make POST request with empty body as shown in your API example
-      const response = await api.post(endpoint, {}, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure token is included
+      const response = await api.post(
+        endpoint,
+        {},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // Ensure token is included
+          },
         }
-      });
+      );
 
       console.log("✅ Accept enrolment API response:", response);
       console.log("📊 Response data:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment accepted successfully!");
-        
+
         // Extract data from the API response matching your structure
-        const responseData = response.data.data.enrollment || response.data.data;
+        const responseData =
+          response.data.data.enrollment || response.data.data;
         console.log("📋 Response enrollment data:", responseData);
 
         // Update local state with the complete API response data
@@ -239,12 +282,14 @@ const EnrolmentDetails = () => {
               approved_at: responseData.approved_at || new Date().toISOString(),
               // Include any other fields that might be returned
               ...(responseData.enrid && { enrollment_id: responseData.enrid }),
-              ...(responseData.student_name && { 
-                first_given_name: responseData.student_name.split(' ')[0], 
-                family_name: responseData.student_name.split(' ')[1] 
+              ...(responseData.student_name && {
+                first_given_name: responseData.student_name.split(" ")[0],
+                family_name: responseData.student_name.split(" ")[1],
               }),
-              ...(responseData.class_name && { enrol_class_in_WSTSC: responseData.class_name })
-            }
+              ...(responseData.class_name && {
+                enrol_class_in_WSTSC: responseData.class_name,
+              }),
+            },
           };
           console.log("🔄 Updated student data after acceptance:", updatedData);
           return updatedData;
@@ -252,13 +297,12 @@ const EnrolmentDetails = () => {
 
         // Show success message
         setError(null);
-        
+
         // Optional: Show a temporary success message
         setTimeout(() => {
           // You could add a toast notification here
           console.log("✅ Enrolment approval completed");
         }, 1000);
-
       } else {
         throw new Error(response.data.message || "Failed to accept enrolment");
       }
@@ -278,7 +322,7 @@ const EnrolmentDetails = () => {
         console.error("Error response status:", err.response.status);
         console.error("Error response headers:", err.response.headers);
       }
-      
+
       // Handle specific HTTP status codes
       if (err.response?.status === 401) {
         console.error("Authentication error - token may be invalid");
@@ -329,7 +373,7 @@ const EnrolmentDetails = () => {
 
       // Try different request body formats to find what the server expects
       let requestBody;
-      
+
       // Option 1: Exact format from API documentation (most likely)
       requestBody = {
         rejection_reason: rejectionReason.trim(),
@@ -340,9 +384,9 @@ const EnrolmentDetails = () => {
       // Make the POST request to reject the enrolment with the rejection reason
       const response = await api.post(endpoint, requestBody, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
 
       console.log("✅ Reject enrolment API response:", response);
@@ -350,10 +394,14 @@ const EnrolmentDetails = () => {
 
       if (response.data.success) {
         console.log("🎉 Enrolment rejected successfully!");
-        
+
         // Extract the response data matching your API structure
-        const responseData = response.data.data?.enrollment || response.data.data;
-        console.log("📋 Response enrollment data after rejection:", responseData);
+        const responseData =
+          response.data.data?.enrollment || response.data.data;
+        console.log(
+          "📋 Response enrollment data after rejection:",
+          responseData
+        );
 
         // Update local state with the complete API response data
         setStudentData((prevData) => {
@@ -364,14 +412,15 @@ const EnrolmentDetails = () => {
               status: "rejected",
               rejected_by: responseData.rejected_by || "Admin Two",
               rejected_at: responseData.rejected_at || new Date().toISOString(),
-              rejection_reason: responseData.rejection_reason || rejectionReason.trim(),
+              rejection_reason:
+                responseData.rejection_reason || rejectionReason.trim(),
               // Include any other fields that might be returned
               ...(responseData.enrid && { enrollment_id: responseData.enrid }),
-              ...(responseData.student_name && { 
-                first_given_name: responseData.student_name.split(' ')[0], 
-                family_name: responseData.student_name.split(' ')[1] 
-              })
-            }
+              ...(responseData.student_name && {
+                first_given_name: responseData.student_name.split(" ")[0],
+                family_name: responseData.student_name.split(" ")[1],
+              }),
+            },
           };
           console.log("🔄 Updated student data after rejection:", updatedData);
           return updatedData;
@@ -382,18 +431,17 @@ const EnrolmentDetails = () => {
 
         // Show success message
         setError(null);
-        
+
         // Optional: Show a temporary success message
         setTimeout(() => {
           console.log("✅ Enrolment rejection completed");
         }, 1000);
-
       } else {
         throw new Error(response.data.message || "Failed to reject enrolment");
       }
     } catch (err) {
       console.error("❌ Error rejecting enrolment:", err);
-      
+
       // Enhanced error logging for 422 validation errors
       if (err.response?.status === 422) {
         console.error("🔍 Validation Error Details:");
@@ -401,19 +449,22 @@ const EnrolmentDetails = () => {
         console.error("🔍 Error data:", err.response.data);
         console.error("🔍 Validation errors:", err.response.data?.errors);
         console.error("🔍 Error message:", err.response.data?.message);
-        
+
         // Try to extract specific field errors
         if (err.response.data?.errors) {
-          Object.keys(err.response.data.errors).forEach(field => {
-            console.error(`🔍 Field '${field}' errors:`, err.response.data.errors[field]);
+          Object.keys(err.response.data.errors).forEach((field) => {
+            console.error(
+              `🔍 Field '${field}' errors:`,
+              err.response.data.errors[field]
+            );
           });
         }
       }
 
       const errorMessage =
         err.response?.data?.message ||
-        (err.response?.data?.errors && 
-          Object.values(err.response.data.errors).flat().join(', ')) ||
+        (err.response?.data?.errors &&
+          Object.values(err.response.data.errors).flat().join(", ")) ||
         err.message ||
         "Failed to reject enrolment. Please try again.";
 
@@ -425,7 +476,7 @@ const EnrolmentDetails = () => {
         console.error("Error response status:", err.response.status);
         console.error("Error response headers:", err.response.headers);
       }
-      
+
       // Handle specific HTTP status codes
       if (err.response?.status === 401) {
         console.error("Authentication error - token may be invalid");
@@ -434,8 +485,10 @@ const EnrolmentDetails = () => {
       } else if (err.response?.status === 404) {
         console.error("Enrolment not found - ID may be invalid");
       } else if (err.response?.status === 422) {
-        console.error("Validation error - check rejection reason format and length");
-        
+        console.error(
+          "Validation error - check rejection reason format and length"
+        );
+
         // If validation fails, try alternative request formats
         await tryAlternativeRejectFormats();
       }
@@ -447,39 +500,39 @@ const EnrolmentDetails = () => {
   // Alternative method to try different request formats
   const tryAlternativeRejectFormats = async () => {
     console.log("🔄 Trying alternative request formats...");
-    
+
     const alternativeFormats = [
       {
         name: "camelCase format",
-        body: { rejectionReason: rejectionReason.trim() }
+        body: { rejectionReason: rejectionReason.trim() },
       },
       {
-        name: "nested data format", 
-        body: { data: { rejection_reason: rejectionReason.trim() } }
+        name: "nested data format",
+        body: { data: { rejection_reason: rejectionReason.trim() } },
       },
       {
         name: "simple string format",
-        body: rejectionReason.trim()
+        body: rejectionReason.trim(),
       },
       {
         name: "with additional fields",
-        body: { 
+        body: {
           rejection_reason: rejectionReason.trim(),
-          reason: rejectionReason.trim()
-        }
-      }
+          reason: rejectionReason.trim(),
+        },
+      },
     ];
 
     for (const format of alternativeFormats) {
       try {
         console.log(`🔄 Trying ${format.name}:`, format.body);
         const endpoint = `/admin/enrollments/${id}/reject`;
-        
+
         const response = await api.post(endpoint, format.body, {
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         });
 
         if (response.data.success) {
@@ -536,12 +589,14 @@ const EnrolmentDetails = () => {
             <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
             <div>
               <h4 className="alert-heading mb-1">
-                {error.includes('accept') ? 'Acceptance Error' : 'Error Loading Student'}
+                {error.includes("accept")
+                  ? "Acceptance Error"
+                  : "Error Loading Student"}
               </h4>
               <p className="mb-3">{error}</p>
-              {error.includes('Authentication') && (
-                <button 
-                  onClick={() => window.location.href = '/login'} 
+              {error.includes("Authentication") && (
+                <button
+                  onClick={() => (window.location.href = "/login")}
                   className="btn btn-warning btn-sm me-2"
                 >
                   Re-login
@@ -607,9 +662,10 @@ const EnrolmentDetails = () => {
           {isApproved && (
             <div className="alert alert-success mt-2 py-2" role="alert">
               <i className="bi bi-check2-circle me-2"></i>
-              <strong>Enrolment Approved!</strong> 
+              <strong>Enrolment Approved!</strong>
               {student?.approved_by && ` by ${student.approved_by}`}
-              {student?.approved_at && ` on ${formatDateToMMDDYYYY(student.approved_at)}`}
+              {student?.approved_at &&
+                ` on ${formatDateToMMDDYYYY(student.approved_at)}`}
             </div>
           )}
 
@@ -617,10 +673,12 @@ const EnrolmentDetails = () => {
           {isRejected && (
             <div className="alert alert-danger mt-2 py-2" role="alert">
               <i className="bi bi-x-circle me-2"></i>
-              <strong>Enrolment Rejected!</strong> 
+              <strong>Enrolment Rejected!</strong>
               {student?.rejected_by && ` by ${student.rejected_by}`}
-              {student?.rejected_at && ` on ${formatDateToMMDDYYYY(student.rejected_at)}`}
-              {student?.rejection_reason && ` - Reason: ${student.rejection_reason}`}
+              {student?.rejected_at &&
+                ` on ${formatDateToMMDDYYYY(student.rejected_at)}`}
+              {student?.rejection_reason &&
+                ` - Reason: ${student.rejection_reason}`}
             </div>
           )}
 
@@ -1035,12 +1093,13 @@ const EnrolmentDetails = () => {
                               <p className="mb-0">
                                 <span
                                   className={`badge ${
-                                    medical_details.asthma === "Yes"
-                                      ? "bg-warning"
-                                      : "bg-success"
+                                    medical_details.asthma === "Yes" ||
+                                    medical_details.asthma === true
+                                      ? "bg-success"
+                                      : "bg-secondary"
                                   }`}
                                 >
-                                  {medical_details.asthma}
+                                  {medical_details.asthma?.toString() || "No"}
                                 </span>
                               </p>
                             </div>
@@ -1052,12 +1111,14 @@ const EnrolmentDetails = () => {
                               <p className="mb-0">
                                 <span
                                   className={`badge ${
-                                    medical_details.major_illness === "Yes"
-                                      ? "bg-warning"
-                                      : "bg-success"
+                                    medical_details.major_illness === "Yes" ||
+                                    medical_details.major_illness === true
+                                      ? "bg-success"
+                                      : "bg-secondary"
                                   }`}
                                 >
-                                  {medical_details.major_illness}
+                                  {medical_details.major_illness?.toString() ||
+                                    "No"}
                                 </span>
                               </p>
                             </div>
@@ -1069,12 +1130,14 @@ const EnrolmentDetails = () => {
                               <p className="mb-0">
                                 <span
                                   className={`badge ${
-                                    medical_details.allergies === "Yes"
-                                      ? "bg-warning"
-                                      : "bg-success"
+                                    medical_details.allergies === "Yes" ||
+                                    medical_details.allergies === true
+                                      ? "bg-success"
+                                      : "bg-secondary"
                                   }`}
                                 >
-                                  {medical_details.allergies}
+                                  {medical_details.allergies?.toString() ||
+                                    "No"}
                                 </span>
                               </p>
                             </div>
@@ -1089,12 +1152,15 @@ const EnrolmentDetails = () => {
                                 <span
                                   className={`badge ${
                                     medical_details.special_learning_needs ===
-                                    "Yes"
-                                      ? "bg-danger"
-                                      : "bg-success"
+                                      "Yes" ||
+                                    medical_details.special_learning_needs ===
+                                      true
+                                      ? "bg-success"
+                                      : "bg-secondary"
                                   }`}
                                 >
-                                  {medical_details.special_learning_needs}
+                                  {medical_details.special_learning_needs?.toString() ||
+                                    "No"}
                                 </span>
                               </p>
                               {medical_details.special_learning_needs_details && (
@@ -1273,7 +1339,8 @@ const EnrolmentDetails = () => {
                 <div className="invalid-feedback">{rejectionError}</div>
               )}
               <div className="form-text">
-                Please provide a detailed reason (minimum 10 characters). This reason will be recorded and visible in the enrolment history.
+                Please provide a detailed reason (minimum 10 characters). This
+                reason will be recorded and visible in the enrolment history.
               </div>
             </div>
           </Modal.Body>
@@ -1288,7 +1355,11 @@ const EnrolmentDetails = () => {
             <ButtonGlobal
               onClick={handleRejectEnrolment}
               className="btn btn-danger"
-              disabled={rejectLoading || !rejectionReason.trim() || rejectionReason.trim().length < 10}
+              disabled={
+                rejectLoading ||
+                !rejectionReason.trim() ||
+                rejectionReason.trim().length < 10
+              }
             >
               {rejectLoading ? (
                 <>

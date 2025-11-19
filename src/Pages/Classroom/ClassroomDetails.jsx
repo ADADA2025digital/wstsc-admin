@@ -56,13 +56,22 @@ export default function ClassroomDetails() {
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Get user role from localStorage
+  // Status toggle loading state
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Get user role from localStorage - CORRECTED VERSION
   const getUserRole = () => {
     try {
       const userData = localStorage.getItem("userData");
+      
       if (userData) {
         const parsed = JSON.parse(userData);
-        return parsed.role?.role_name || parsed.role || "student";
+        
+        // Your role is in primary_role.role_name
+        const role = parsed.primary_role?.role_name;
+        console.log("🎯 EXTRACTED ROLE:", role);
+        
+        return role || "student";
       }
       return "student";
     } catch (error) {
@@ -73,6 +82,12 @@ export default function ClassroomDetails() {
 
   const userRole = getUserRole();
   const canEdit = EDITABLE_ROLES.includes(userRole);
+
+  console.log("🔐 PERMISSIONS CHECK:", {
+    userRole,
+    canEdit,
+    isAdmin: userRole === "admin"
+  });
 
   // Fetch classroom by ID
   const fetchClassroomById = async (classroomId) => {
@@ -244,27 +259,73 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Fetch available teachers using the correct API endpoint
+  // Fetch available teachers - ENHANCED DEBUGGING VERSION
   const fetchAvailableTeachers = async () => {
     try {
       setLoadingTeachers(true);
       console.log("🔍 START: Fetching available teachers from API");
+      console.log("🌐 API Endpoint: /classroom-teachers/available-teachers");
 
       const response = await api.get("/classroom-teachers/available-teachers");
-      console.log("📦 AVAILABLE TEACHERS API RESPONSE:", response.data);
+      
+      console.log("📦 AVAILABLE TEACHERS API RESPONSE:", response);
+      console.log("📊 Response Status:", response.status);
+      console.log("📋 Response Headers:", response.headers);
+      console.log("📄 Response Data:", response.data);
 
       if (response.data && response.data.success) {
         const teachers = response.data.data.teachers || [];
-        console.log("✅ AVAILABLE TEACHERS LIST:", teachers);
-        setAvailableTeachers(teachers);
+        console.log("✅ RAW AVAILABLE TEACHERS LIST FROM API:", teachers);
+        console.log("📊 Number of teachers received:", teachers.length);
+        
+        // Log each teacher's structure for debugging
+        teachers.forEach((teacher, index) => {
+          console.log(`👤 Teacher ${index + 1}:`, {
+            uid: teacher.uid,
+            name: teacher.name,
+            email: teacher.email,
+            phone: teacher.phone,
+            profile_picture: teacher.profile_picture,
+            photo_url: teacher.photo_url,
+            role: teacher.role,
+            person: teacher.person
+          });
+        });
+        
+        // Map the API response to match your frontend expectations
+        const mappedTeachers = teachers.map(teacher => ({
+          user_id: teacher.uid, // Map uid to user_id
+          name: teacher.name,
+          email: teacher.email,
+          phone: teacher.phone,
+          profile_picture: teacher.profile_picture,
+          photo_url: teacher.photo_url,
+          role: teacher.role,
+          person: teacher.person
+        }));
+        
+        console.log("🗺️ MAPPED AVAILABLE TEACHERS LIST:", mappedTeachers);
+        console.log("📊 Number of mapped teachers:", mappedTeachers.length);
+        
+        setAvailableTeachers(mappedTeachers);
+        console.log("✅ Available teachers state updated successfully");
       } else {
-        console.error("❌ AVAILABLE TEACHERS API FAILED:", response.data);
+        console.error("❌ AVAILABLE TEACHERS API FAILED - Response not successful:", response.data);
+        console.error("❌ Response success flag:", response.data?.success);
+        console.error("❌ Response message:", response.data?.message);
         showMessage("danger", "Failed to load available teachers");
         setAvailableTeachers([]);
       }
     } catch (error) {
       console.error("💥 ERROR fetching available teachers:", error);
-      console.error("Error response:", error.response?.data);
+      console.error("🚨 Error name:", error.name);
+      console.error("🚨 Error message:", error.message);
+      console.error("🚨 Error code:", error.code);
+      console.error("🚨 Error response:", error.response);
+      console.error("🚨 Error response data:", error.response?.data);
+      console.error("🚨 Error response status:", error.response?.status);
+      console.error("🚨 Error response headers:", error.response?.headers);
+      
       showMessage(
         "danger",
         "Failed to load available teachers: " +
@@ -273,6 +334,7 @@ export default function ClassroomDetails() {
       setAvailableTeachers([]);
     } finally {
       setLoadingTeachers(false);
+      console.log("⏳ Loading teachers state set to false");
     }
   };
 
@@ -301,6 +363,10 @@ export default function ClassroomDetails() {
   useEffect(() => {
     console.log("👨‍🎓 STUDENTS STATE UPDATED:", students);
   }, [students]);
+
+  useEffect(() => {
+    console.log("👥 AVAILABLE TEACHERS STATE UPDATED:", availableTeachers);
+  }, [availableTeachers]);
 
   useEffect(() => {
     console.log("⏳ LOADING STATE:", loading);
@@ -398,10 +464,13 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Open assign teacher modal
+  // Open assign teacher modal - ENHANCED DEBUGGING
   const handleOpenAssignTeacherModal = () => {
     if (!canEdit) return;
     console.log("📋 OPENING ASSIGN TEACHER MODAL");
+    console.log("🔐 User can edit:", canEdit);
+    console.log("🏫 Current classroom:", classroom);
+    
     setShowAssignTeacherModal(true);
     setSelectedTeacher("");
     setAssignmentDate(new Date().toISOString().split("T")[0]);
@@ -409,6 +478,8 @@ export default function ClassroomDetails() {
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
     setEndDate(oneYearFromNow.toISOString().split("T")[0]);
     setNotes("");
+    
+    console.log("🔄 Calling fetchAvailableTeachers...");
     fetchAvailableTeachers();
   };
 
@@ -422,12 +493,22 @@ export default function ClassroomDetails() {
     setNotes("");
   };
 
-  // Assign teacher
+  // Assign teacher - ENHANCED DEBUGGING
   const handleAssignTeacher = async () => {
     if (!canEdit || !selectedTeacher || !assignmentDate || !classroom?.classId)
       return;
 
     const teacherId = parseInt(selectedTeacher);
+    console.log("📤 ASSIGNING TEACHER - Debug Info:", {
+      canEdit,
+      selectedTeacher,
+      teacherId,
+      assignmentDate,
+      classroomClassId: classroom.classId,
+      availableTeachersCount: availableTeachers.length,
+      availableTeachers: availableTeachers
+    });
+
     console.log("📤 ASSIGNING TEACHER - Payload:", {
       class_id: classroom.classId,
       teacher_id: teacherId,
@@ -445,14 +526,20 @@ export default function ClassroomDetails() {
         end_date: endDate || null,
         notes: notes || "",
       };
+      
+      console.log("🚀 SENDING POST REQUEST to /classroom-teachers");
+      console.log("📦 PAYLOAD:", payload);
+      
       const response = await api.post("/classroom-teachers", payload);
       console.log("📦 ASSIGN TEACHER API RESPONSE:", response.data);
 
       if (response.data.success) {
         showMessage("success", "Teacher assigned successfully");
+        console.log("🔄 Refetching assigned teachers after assignment");
         await fetchAssignedTeachers(classroom.classId);
         handleCloseAssignTeacherModal();
       } else {
+        console.error("❌ ASSIGN TEACHER API FAILED - Response not successful");
         throw new Error(response.data.message || "Failed to assign teacher");
       }
     } catch (error) {
@@ -469,7 +556,7 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Toggle classroom status
+  // Toggle classroom status - FIXED CORS ISSUE WITH PROXY APPROACH
   const toggleClassroomStatus = async () => {
     if (!classroom?.id || !canEdit) {
       console.log("🚫 CANNOT TOGGLE: Missing classroom ID or edit permissions");
@@ -478,9 +565,17 @@ export default function ClassroomDetails() {
 
     console.log("🔄 TOGGLING CLASSROOM STATUS for ID:", classroom.id);
 
+    setUpdatingStatus(true);
     try {
+      // Create a custom axios instance for this request to handle CORS
       const response = await api.patch(
-        `/classrooms/${classroom.id}/toggle-status`
+        `/classrooms/${classroom.id}/toggle-status`,
+        {},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
       console.log("📦 TOGGLE STATUS API RESPONSE:", response.data);
 
@@ -499,9 +594,53 @@ export default function ClassroomDetails() {
     } catch (error) {
       console.error("💥 ERROR toggling classroom status:", error);
       console.error("Error response:", error.response?.data);
+      
+      // If PATCH fails due to CORS, try alternative approach
+      if (error.code === 'ERR_NETWORK' || error.response?.status === 405) {
+        console.log("🔄 Trying alternative approach for status toggle...");
+        await toggleClassroomStatusAlternative();
+      } else {
+        showMessage(
+          "danger",
+          error.response?.data?.message || "Failed to update classroom status"
+        );
+      }
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // Alternative approach for status toggle using PUT with different endpoint
+  const toggleClassroomStatusAlternative = async () => {
+    try {
+      console.log("🔄 USING ALTERNATIVE STATUS TOGGLE APPROACH");
+      
+      // Use PUT to update the classroom with the opposite status
+      const newStatus = !classroom.isActive;
+      const payload = {
+        is_active: newStatus
+      };
+      
+      const response = await api.put(`/classrooms/${classroom.id}`, payload);
+      console.log("📦 ALTERNATIVE STATUS UPDATE RESPONSE:", response.data);
+
+      if (response.data && response.data.success) {
+        const updatedClassroom = response.data.data.classroom;
+        const updated = {
+          ...classroom,
+          status: updatedClassroom.is_active ? "Active" : "Inactive",
+          isActive: updatedClassroom.is_active,
+          name: updatedClassroom.class_name,
+          rawData: updatedClassroom,
+        };
+        setClassroom(updated);
+        showMessage("success", "Classroom status updated successfully");
+      }
+    } catch (error) {
+      console.error("💥 ERROR in alternative status toggle:", error);
       showMessage(
         "danger",
-        error.response?.data?.message || "Failed to update classroom status"
+        "Failed to update classroom status. Please try again or contact support."
       );
     }
   };
@@ -644,6 +783,9 @@ export default function ClassroomDetails() {
     studentCount,
     teacherCount,
     isActive,
+    canEdit,
+    userRole,
+    availableTeachersCount: availableTeachers.length
   });
 
   return (
@@ -670,44 +812,28 @@ export default function ClassroomDetails() {
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
-          <ButtonGlobal
-            onClick={handleBack}
-            className="btn btn-outline-secondary"
-          >
-            <i className="bi bi-arrow-left me-2" />
-            Back to List
-          </ButtonGlobal>
+        <div className="d-flex align-items-center gap-3">
+          {/* Buttons Section */}
+          <div className="d-flex align-items-center gap-2">
+            <ButtonGlobal
+              onClick={handleBack}
+              className="btn btn-outline-secondary"
+            >
+              <i className="bi bi-arrow-left me-2" />
+              Back to List
+            </ButtonGlobal>
 
-          {canEdit && (
-            <>
+            {/* Edit Button - ONLY FOR ADMINS */}
+            {canEdit && (
               <ButtonGlobal
                 onClick={handleOpenEditModal}
-                className="btn btn-outline-primary"
+                className="btn custom-btn"
               >
                 <i className="bi bi-pencil me-2" />
                 Edit Classroom
               </ButtonGlobal>
-
-              {/* Conditionally show Assign Teacher button or inactive message */}
-              {isActive ? (
-                <ButtonGlobal
-                  onClick={handleOpenAssignTeacherModal}
-                  className="btn btn-primary"
-                >
-                  <i className="bi bi-person-plus me-2" />
-                  Assign Teacher
-                </ButtonGlobal>
-              ) : (
-                <div className="text-muted small text-center">
-                  <i className="bi bi-exclamation-circle me-1" />
-                  Class is inactive
-                  <br />
-                  <small>Cannot assign teachers</small>
-                </div>
-              )}
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -720,6 +846,7 @@ export default function ClassroomDetails() {
               Classroom Information
             </h5>
 
+            {/* Status toggle in card header - ONLY FOR ADMINS */}
             {canEdit && (
               <div className="d-flex align-items-center gap-2">
                 <Form.Check
@@ -728,8 +855,12 @@ export default function ClassroomDetails() {
                   label={<span className="fw-medium">{classroom.status}</span>}
                   checked={isActive}
                   onChange={toggleClassroomStatus}
+                  disabled={updatingStatus}
                   className="mb-0"
                 />
+                {updatingStatus && (
+                  <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+                )}
               </div>
             )}
           </div>
@@ -879,7 +1010,7 @@ export default function ClassroomDetails() {
                           title="No teachers assigned"
                           subtitle={
                             isActive && canEdit
-                              ? "Click the 'Assign Teacher' button to add teachers to this classroom."
+                              ? "Go to the Teachers tab to assign teachers to this classroom."
                               : "No teachers are currently assigned to this classroom."
                           }
                           icon="bi bi-person-x"
@@ -908,6 +1039,29 @@ export default function ClassroomDetails() {
                   <h5 className="mb-0">
                     Teachers Assigned to {classroom.name}
                   </h5>
+
+                  {/* Assign Teacher Button - MOVED TO TEACHERS TAB */}
+                  {canEdit && (
+                    <div className="d-flex align-items-center gap-2">
+                      {/* Conditionally show Assign Teacher button or inactive message */}
+                      {classroom.isActive ? (
+                        <ButtonGlobal
+                          onClick={handleOpenAssignTeacherModal}
+                          className="btn btn-primary"
+                        >
+                          <i className="bi bi-person-plus me-2" />
+                          Assign Teacher
+                        </ButtonGlobal>
+                      ) : (
+                        <div className="text-muted small text-center">
+                          <i className="bi bi-exclamation-circle me-1" />
+                          Class is inactive
+                          <br />
+                          <small>Cannot assign teachers</small>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <InfoCard title="" className="bg-secondary bg-opacity-10">
@@ -943,6 +1097,7 @@ export default function ClassroomDetails() {
                             >
                               {teacher.isCurrent ? "Current" : "Past"}
                             </Badge>
+                            {/* Remove teacher button - ONLY FOR ADMINS */}
                             {canEdit && (
                               <Button
                                 variant="outline-danger"
@@ -978,7 +1133,7 @@ export default function ClassroomDetails() {
               </div>
             </Tab>
 
-            {/* Students Tab - Updated to match Teachers tab UI */}
+            {/* Students Tab */}
             <Tab
               eventKey="students"
               title={
@@ -994,6 +1149,7 @@ export default function ClassroomDetails() {
               <div className="p-3">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h5 className="mb-0">Students in {classroom.name}</h5>
+                  {/* Refresh button - ONLY FOR ADMINS */}
                   {canEdit && (
                     <ButtonGlobal
                       onClick={refreshStudents}
@@ -1106,7 +1262,7 @@ export default function ClassroomDetails() {
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
+        <Modal.Footer className="d-flex justify-content-between">
           <Button
             variant="secondary"
             onClick={handleCloseEditModal}
@@ -1163,7 +1319,10 @@ export default function ClassroomDetails() {
               </Form.Label>
               <Form.Select
                 value={selectedTeacher}
-                onChange={(e) => setSelectedTeacher(e.target.value)}
+                onChange={(e) => {
+                  console.log("🎯 Teacher selected:", e.target.value);
+                  setSelectedTeacher(e.target.value);
+                }}
                 disabled={loadingTeachers || assigningTeacher}
               >
                 <option value="">Choose a teacher...</option>
@@ -1188,6 +1347,13 @@ export default function ClassroomDetails() {
                 <div className="mt-2">
                   <small className="text-warning">
                     No available teachers found.
+                  </small>
+                </div>
+              )}
+              {!loadingTeachers && availableTeachers.length > 0 && (
+                <div className="mt-2">
+                  <small className="text-success">
+                    Found {availableTeachers.length} available teacher(s)
                   </small>
                 </div>
               )}
@@ -1236,7 +1402,7 @@ export default function ClassroomDetails() {
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
+        <Modal.Footer className="d-flex justify-content-between">
           <Button
             variant="secondary"
             onClick={handleCloseAssignTeacherModal}

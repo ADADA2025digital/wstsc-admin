@@ -43,6 +43,12 @@ const UserAccount = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Password strength state
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    feedback: ''
+  });
+
   // Fetch user profile data
   const fetchUserProfile = async () => {
     try {
@@ -76,6 +82,42 @@ const UserAccount = () => {
     await fetchUserProfile();
   };
 
+  // Password strength checker
+  const checkPasswordStrength = useCallback((password) => {
+    if (!password) {
+      setPasswordStrength({ score: 0, feedback: '' });
+      return;
+    }
+
+    let score = 0;
+    let feedback = [];
+    
+    // Length check
+    if (password.length >= 8) score += 1;
+    else feedback.push('at least 8 characters');
+    
+    // Uppercase check
+    if (/[A-Z]/.test(password)) score += 1;
+    else feedback.push('one uppercase letter');
+    
+    // Lowercase check
+    if (/[a-z]/.test(password)) score += 1;
+    else feedback.push('one lowercase letter');
+    
+    // Number check
+    if (/[0-9]/.test(password)) score += 1;
+    else feedback.push('one number');
+    
+    // Special character check
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    else feedback.push('one special character');
+    
+    setPasswordStrength({
+      score,
+      feedback: feedback.length > 0 ? `Consider adding: ${feedback.join(', ')}` : 'Strong password!'
+    });
+  }, []);
+
   // Toggle password form visibility
   const togglePasswordForm = () => {
     setShowPasswordForm(!showPasswordForm);
@@ -91,6 +133,7 @@ const UserAccount = () => {
         newPassword: "",
         confirmPassword: "",
       });
+      setPasswordStrength({ score: 0, feedback: '' });
       setPasswordSuccess(null);
       // Reset password visibility states
       setShowCurrentPassword(false);
@@ -106,6 +149,11 @@ const UserAccount = () => {
       [field]: value,
     }));
 
+    // Check password strength in real-time for new password
+    if (field === 'newPassword') {
+      checkPasswordStrength(value);
+    }
+
     // Clear error without causing unnecessary re-renders
     setPasswordErrors((prev) => {
       if (!prev[field]) return prev;
@@ -114,7 +162,42 @@ const UserAccount = () => {
         [field]: "",
       };
     });
-  }, []);
+  }, [checkPasswordStrength]);
+
+  // Generate strong password
+  const generateStrongPassword = () => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*';
+    
+    const allChars = uppercase + lowercase + numbers + symbols;
+    let password = '';
+    
+    // Ensure at least one of each type
+    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    
+    // Fill the rest
+    for (let i = 4; i < 12; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+    }
+    
+    // Shuffle the password
+    password = password.split('').sort(() => 0.5 - Math.random()).join('');
+    
+    setPasswordForm(prev => ({
+      ...prev,
+      newPassword: password,
+      confirmPassword: password
+    }));
+    
+    checkPasswordStrength(password);
+    setShowNewPassword(true);
+    setShowConfirmPassword(true);
+  };
 
   // Validate password form
   const validatePasswordForm = () => {
@@ -181,6 +264,7 @@ const UserAccount = () => {
           newPassword: "",
           confirmPassword: "",
         });
+        setPasswordStrength({ score: 0, feedback: '' });
         
         // Hide form after success
         setTimeout(() => {
@@ -203,9 +287,17 @@ const UserAccount = () => {
                           err.response?.data?.error || 
                           "Failed to update password. Please try again.";
       
+      // Check for data leak error
+      if (errorMessage.toLowerCase().includes('data leak') || 
+          errorMessage.toLowerCase().includes('have been pwned') ||
+          errorMessage.toLowerCase().includes('appeared in a leak')) {
+        setPasswordErrors({
+          newPassword: "This password has been found in data breaches. Please choose a more secure password that you haven't used elsewhere.",
+        });
+      } 
       // Check if it's a current password error
-      if (errorMessage.toLowerCase().includes("current") || 
-          errorMessage.toLowerCase().includes("old")) {
+      else if (errorMessage.toLowerCase().includes("current") || 
+               errorMessage.toLowerCase().includes("old")) {
         setPasswordErrors({
           currentPassword: errorMessage,
         });
@@ -742,8 +834,41 @@ const UserAccount = () => {
                               </div>
                             )}
                           </div>
+                          
+                          {/* Password Strength Indicator */}
+                          {passwordForm.newPassword && (
+                            <div className="mt-2">
+                              <div className="d-flex align-items-center mb-1">
+                                <small className="me-2">Password Strength:</small>
+                                <div className="progress flex-grow-1" style={{ height: '5px' }}>
+                                  <div 
+                                    className={`progress-bar ${
+                                      passwordStrength.score >= 4 ? 'bg-success' : 
+                                      passwordStrength.score >= 3 ? 'bg-warning' : 'bg-danger'
+                                    }`}
+                                    style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                              <small className={`form-text ${
+                                passwordStrength.score >= 4 ? 'text-success' : 
+                                passwordStrength.score >= 3 ? 'text-warning' : 'text-danger'
+                              }`}>
+                                {passwordStrength.feedback}
+                              </small>
+                            </div>
+                          )}
+
                           <div className="form-text">
-                            Password must be at least 6 characters long and different from current password
+                            <small>
+                              <strong>Password Requirements:</strong>
+                              <ul className="mb-0 ps-3">
+                                <li>At least 6 characters long</li>
+                                <li>Different from current password</li>
+                                <li>Not found in known data breaches</li>
+                                <li>Avoid commonly used passwords</li>
+                              </ul>
+                            </small>
                           </div>
                         </div>
 
@@ -804,6 +929,21 @@ const UserAccount = () => {
                         </div>
                       </div>
 
+                      {/* Generate Password Button */}
+                      <div className="row mt-3">
+                        <div className="col-12">
+                          <button
+                            type="button"
+                            className="btn btn-outline-info btn-sm"
+                            onClick={generateStrongPassword}
+                            disabled={isSubmitting}
+                          >
+                            <i className="bi bi-shuffle me-1"></i>
+                            Generate Strong Password
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="row mt-4">
                         <div className="col-12">
                           <div className="d-flex justify-content-end">
@@ -812,7 +952,7 @@ const UserAccount = () => {
                               className="btn custom-btn"
                               disabled={isSubmitting}
                             >
-                                                  <i className="bi bi-check2-all me-2"></i>
+                              <i className="bi bi-check2-all me-2"></i>
                               {isSubmitting ? (
                                 <>
                                   <span className="spinner-border spinner-border-sm me-2" />
@@ -832,11 +972,17 @@ const UserAccount = () => {
                         className="bi bi-shield-lock text-muted"
                         style={{ fontSize: "3rem" }}
                       ></i>
-                      <h5 className="mt-3">Password Management</h5>
+                      <h5 className="mt-3">Password Security</h5>
                       <p className="text-muted">
-                        Click the "Change Password" button to update your
-                        password. Your new password must be different from your current password.
+                        For your security, we check new passwords against known data breaches. 
+                        <br />
+                        <strong>Tips for a secure password:</strong>
                       </p>
+                      <ul className="list-unstyled text-muted small">
+                        <li><i className="bi bi-check text-success me-1"></i>Use at least 8 characters</li>
+                        <li><i className="bi bi-check text-success me-1"></i>Mix letters, numbers, and symbols</li>
+                        <li><i className="bi bi-check text-success me-1"></i>Avoid common words or patterns</li>
+                      </ul>
                     </div>
                   )}
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MedicalDetails from "../../Components/EnrolmentForm/MedicalDetails";
 import FamilyDetailsPhase2 from "../../Components/EnrolmentForm/FamilyDetailsPhase2";
 import FamilyDetailsPhase3 from "../../Components/EnrolmentForm/FamilyDetailsPhase3";
@@ -10,6 +10,7 @@ import { useEnrolmentForm } from "../../Context/EnrolmentFormContext";
 const EnrolmentForm = () => {
   const { error, success } = useEnrolmentForm();
   const [currentStep, setCurrentStep] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const steps = [
     { component: StudentDetails, title: "Student details" },
@@ -30,6 +31,23 @@ const EnrolmentForm = () => {
       title: "Personal information and declaration of accuracy",
     },
   ];
+
+  // Effect to handle showing and auto-hiding success message
+  useEffect(() => {
+    if (success) {
+      setShowSuccess(true);
+      
+      // Hide success message after 5 seconds
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+      }, 5000);
+      
+      // Cleanup timer on component unmount or when success changes
+      return () => clearTimeout(timer);
+    } else {
+      setShowSuccess(false);
+    }
+  }, [success]);
 
   const handleNext = () => {
     setCurrentStep((prev) => prev + 1);
@@ -116,7 +134,7 @@ const EnrolmentForm = () => {
           </div>
         )}
 
-        {success && (
+        {showSuccess && (
           <div className="container">
             <div className="alert alert-success" role="alert">
               Student enrollment submitted successfully!

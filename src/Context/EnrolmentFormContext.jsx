@@ -202,8 +202,11 @@ export const EnrolmentFormProvider = ({ children }) => {
 "street_name", "suburb", "state", "postal_code",
         "country", "address_type",
       ],
-      personal_declaration: ["second_parent_carer_name",
-"second_parent_carer_name_date"],
+      personal_declaration: [
+        "second_parent_carer_name",
+        "second_parent_carer_name_date",
+        "photo_video_consent", // Added photo_video_consent as optional
+      ],
       first_contact: ["home_phone", "work_phone"],
       second_contact: ["home_phone", "work_phone"],
       parent_not_living: ["home_phone", "work_phone"],
@@ -422,9 +425,25 @@ export const EnrolmentFormProvider = ({ children }) => {
 
       case "overseas_student":
       case "is_student_residential_address":
-      case "photo_video_consent":
-      case "medical_treatment_consent":
       case "does_student_reside_here":
+        return {
+          ...rules,
+          isBoolean: true,
+          message: "This field is required",
+          validateBoolean: (value) => value !== null && value !== undefined,
+        };
+
+      // Photo video consent is now optional
+      case "photo_video_consent":
+        return {
+          required: false, // Made optional
+          isBoolean: true,
+          message: "",
+          validateBoolean: (value) => value !== null && value !== undefined,
+        };
+
+      // Medical treatment consent remains required
+      case "medical_treatment_consent":
         return {
           ...rules,
           isBoolean: true,
@@ -577,8 +596,11 @@ formData.student.attendance_from) {
 "street_name", "suburb", "state", "postal_code",
         "country", "address_type",
       ],
-      personal_declaration: ["second_parent_carer_name",
-"second_parent_carer_name_date"],
+      personal_declaration: [
+        "second_parent_carer_name",
+        "second_parent_carer_name_date",
+        "photo_video_consent", // Added photo_video_consent as optional
+      ],
       first_contact: ["home_phone", "work_phone"],
       second_contact: ["home_phone", "work_phone"],
       parent_not_living: ["home_phone", "work_phone"],
@@ -1088,8 +1110,8 @@ sanitizedData.student.date_of_birth },
     personal_declaration: {
       first_parent_carer_name: "Michael Smith",
       first_parent_carer_name_date: "2024-01-30",
-      photo_video_consent: true,
-      medical_treatment_consent: true,
+      photo_video_consent: false, // Now optional, can be false
+      medical_treatment_consent: true, // Still required
     },
     medical_details: {
       asthma: "No",
@@ -1296,4 +1318,3 @@ err.message);
     </EnrolmentFormContext.Provider>
   );
 };
-

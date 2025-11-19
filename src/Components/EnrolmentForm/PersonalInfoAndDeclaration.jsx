@@ -102,12 +102,11 @@ export default function PersonalInfoAndDeclaration() {
     // ONLY validate the personal declaration section
     const isPersonalDeclarationValid = validateSection("personal_declaration");
 
-    // Check required fields for personal declaration (only first parent required)
+    // Check required fields for personal declaration (only first parent and medical consent required)
     const requiredFields = [
       "first_parent_carer_name",
       "first_parent_carer_name_date",
-      "photo_video_consent",
-      "medical_treatment_consent",
+      "medical_treatment_consent", // Only medical consent is required
     ];
     const missingFields = requiredFields.filter(
       (field) =>
@@ -221,7 +220,7 @@ export default function PersonalInfoAndDeclaration() {
             as a result of this enrolment form may be changed.
           </p>
 
-          {/* Medical Treatment Consent Checkbox */}
+          {/* Medical Treatment Consent Checkbox - REQUIRED */}
           <div className="mb-4">
             <div className="form-check">
               <input
@@ -248,6 +247,7 @@ export default function PersonalInfoAndDeclaration() {
                 principal or a senior staff member, if/where it is impossible to
                 contact me, to consent to emergency medical treatment as is
                 necessary by a qualified medical practitioner.
+                <span className="text-danger"> *</span>
               </label>
             </div>
             {showAllErrors &&
@@ -264,7 +264,7 @@ export default function PersonalInfoAndDeclaration() {
               )}
           </div>
 
-          {/* Photo and Video Consent Checkbox */}
+          {/* Photo and Video Consent Checkbox - OPTIONAL */}
           <div className="mb-4">
             <div className="form-check">
               <input
@@ -292,12 +292,12 @@ export default function PersonalInfoAndDeclaration() {
             {showAllErrors &&
               validateCheckbox(
                 formData.personal_declaration?.photo_video_consent,
-                true
+                false // Changed to false to make it optional
               ) && (
                 <div className="text-danger small mt-1">
                   {validateCheckbox(
                     formData.personal_declaration?.photo_video_consent,
-                    true
+                    false // Changed to false to make it optional
                   )}
                 </div>
               )}

@@ -30,8 +30,21 @@ const EnrolmentDetails = () => {
         const userData = localStorage.getItem("userData");
         if (userData) {
           const parsedUserData = JSON.parse(userData);
-          const role = parsedUserData.role?.role_name || "parent";
+          
+          // Check multiple possible locations for role
+          let role;
+          if (parsedUserData.primary_role?.role_name) {
+            role = parsedUserData.primary_role.role_name;
+          } else if (parsedUserData.role?.role_name) {
+            role = parsedUserData.role.role_name;
+          } else if (parsedUserData.role_name) {
+            role = parsedUserData.role_name;
+          } else {
+            role = "parent"; // default fallback
+          }
+          
           console.log("👤 User role detected:", role);
+          console.log("📋 Full user data structure:", parsedUserData);
           setUserRole(role);
         } else {
           console.warn(
@@ -190,25 +203,30 @@ const EnrolmentDetails = () => {
 
     try {
       setAcceptLoading(true);
+      setError(null); // Clear any previous errors
       console.log("🔄 Starting accept enrolment API call...");
 
-      // Determine endpoint based on user role for approval as well
-      let endpoint;
-      if (userRole === "admin") {
-        endpoint = `/admin/enrollments/${id}/approve`;
-      } else {
-        endpoint = `/my-enrollments/${id}/approve`;
-      }
-
+      // Use the exact endpoint from your API response
+      const endpoint = `/admin/enrollments/${id}/approve`;
       console.log("🎯 Using approval endpoint:", endpoint);
 
-      const response = await api.post(endpoint);
+      // Make POST request with empty body as shown in your API example
+      const response = await api.post(endpoint, {}, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure token is included
+        }
+      });
 
       console.log("✅ Accept enrolment API response:", response);
       console.log("📊 Response data:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment accepted successfully!");
+        
+        // Extract data from the API response matching your structure
+        const responseData = response.data.data.enrollment || response.data.data;
+        console.log("📋 Response enrollment data:", responseData);
 
         // Update local state with the complete API response data
         setStudentData((prevData) => {
@@ -217,14 +235,30 @@ const EnrolmentDetails = () => {
             student: {
               ...prevData.student,
               status: "approved",
-              approved_by: response.data.data?.approved_by || "Admin User",
-              approved_at:
-                response.data.data?.approved_at || new Date().toISOString(),
-            },
+              approved_by: responseData.approved_by || "Admin Two",
+              approved_at: responseData.approved_at || new Date().toISOString(),
+              // Include any other fields that might be returned
+              ...(responseData.enrid && { enrollment_id: responseData.enrid }),
+              ...(responseData.student_name && { 
+                first_given_name: responseData.student_name.split(' ')[0], 
+                family_name: responseData.student_name.split(' ')[1] 
+              }),
+              ...(responseData.class_name && { enrol_class_in_WSTSC: responseData.class_name })
+            }
           };
-          console.log("🔄 Updated student data:", updatedData);
+          console.log("🔄 Updated student data after acceptance:", updatedData);
           return updatedData;
         });
+
+        // Show success message
+        setError(null);
+        
+        // Optional: Show a temporary success message
+        setTimeout(() => {
+          // You could add a toast notification here
+          console.log("✅ Enrolment approval completed");
+        }, 1000);
+
       } else {
         throw new Error(response.data.message || "Failed to accept enrolment");
       }
@@ -238,9 +272,20 @@ const EnrolmentDetails = () => {
 
       setError(errorMessage);
 
+      // Log detailed error information
       if (err.response) {
         console.error("Error response data:", err.response.data);
         console.error("Error response status:", err.response.status);
+        console.error("Error response headers:", err.response.headers);
+      }
+      
+      // Handle specific HTTP status codes
+      if (err.response?.status === 401) {
+        console.error("Authentication error - token may be invalid");
+      } else if (err.response?.status === 403) {
+        console.error("Permission denied - user may not have admin privileges");
+      } else if (err.response?.status === 404) {
+        console.error("Enrolment not found - ID may be invalid");
       }
     } finally {
       setAcceptLoading(false);
@@ -278,19 +323,26 @@ const EnrolmentDetails = () => {
       setRejectionError("");
       console.log("🔄 Starting reject enrolment API call...");
 
-      // Determine endpoint based on user role for rejection as well
-      let endpoint;
-      if (userRole === "admin") {
-        endpoint = `/admin/enrollments/${id}/reject`;
-      } else {
-        endpoint = `/my-enrollments/${id}/reject`;
-      }
-
+      // Use the exact endpoint from your API documentation
+      const endpoint = `/admin/enrollments/${id}/reject`;
       console.log("🎯 Using rejection endpoint:", endpoint);
 
-      // Make the POST request to reject the enrolment
-      const response = await api.post(endpoint, {
+      // Try different request body formats to find what the server expects
+      let requestBody;
+      
+      // Option 1: Exact format from API documentation (most likely)
+      requestBody = {
         rejection_reason: rejectionReason.trim(),
+      };
+
+      console.log("📦 Request body (Option 1):", requestBody);
+
+      // Make the POST request to reject the enrolment with the rejection reason
+      const response = await api.post(endpoint, requestBody, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
 
       console.log("✅ Reject enrolment API response:", response);
@@ -298,6 +350,10 @@ const EnrolmentDetails = () => {
 
       if (response.data.success) {
         console.log("🎉 Enrolment rejected successfully!");
+        
+        // Extract the response data matching your API structure
+        const responseData = response.data.data?.enrollment || response.data.data;
+        console.log("📋 Response enrollment data after rejection:", responseData);
 
         // Update local state with the complete API response data
         setStudentData((prevData) => {
@@ -306,11 +362,16 @@ const EnrolmentDetails = () => {
             student: {
               ...prevData.student,
               status: "rejected",
-              rejected_by: response.data.data?.rejected_by || "Admin User",
-              rejected_at:
-                response.data.data?.rejected_at || new Date().toISOString(),
-              rejection_reason: rejectionReason.trim(),
-            },
+              rejected_by: responseData.rejected_by || "Admin Two",
+              rejected_at: responseData.rejected_at || new Date().toISOString(),
+              rejection_reason: responseData.rejection_reason || rejectionReason.trim(),
+              // Include any other fields that might be returned
+              ...(responseData.enrid && { enrollment_id: responseData.enrid }),
+              ...(responseData.student_name && { 
+                first_given_name: responseData.student_name.split(' ')[0], 
+                family_name: responseData.student_name.split(' ')[1] 
+              })
+            }
           };
           console.log("🔄 Updated student data after rejection:", updatedData);
           return updatedData;
@@ -318,25 +379,117 @@ const EnrolmentDetails = () => {
 
         // Close the modal
         handleCloseRejectModal();
+
+        // Show success message
+        setError(null);
+        
+        // Optional: Show a temporary success message
+        setTimeout(() => {
+          console.log("✅ Enrolment rejection completed");
+        }, 1000);
+
       } else {
         throw new Error(response.data.message || "Failed to reject enrolment");
       }
     } catch (err) {
       console.error("❌ Error rejecting enrolment:", err);
+      
+      // Enhanced error logging for 422 validation errors
+      if (err.response?.status === 422) {
+        console.error("🔍 Validation Error Details:");
+        console.error("🔍 Full error response:", err.response);
+        console.error("🔍 Error data:", err.response.data);
+        console.error("🔍 Validation errors:", err.response.data?.errors);
+        console.error("🔍 Error message:", err.response.data?.message);
+        
+        // Try to extract specific field errors
+        if (err.response.data?.errors) {
+          Object.keys(err.response.data.errors).forEach(field => {
+            console.error(`🔍 Field '${field}' errors:`, err.response.data.errors[field]);
+          });
+        }
+      }
 
       const errorMessage =
         err.response?.data?.message ||
+        (err.response?.data?.errors && 
+          Object.values(err.response.data.errors).flat().join(', ')) ||
         err.message ||
         "Failed to reject enrolment. Please try again.";
 
       setRejectionError(errorMessage);
 
+      // Log detailed error information
       if (err.response) {
         console.error("Error response data:", err.response.data);
         console.error("Error response status:", err.response.status);
+        console.error("Error response headers:", err.response.headers);
+      }
+      
+      // Handle specific HTTP status codes
+      if (err.response?.status === 401) {
+        console.error("Authentication error - token may be invalid");
+      } else if (err.response?.status === 403) {
+        console.error("Permission denied - user may not have admin privileges");
+      } else if (err.response?.status === 404) {
+        console.error("Enrolment not found - ID may be invalid");
+      } else if (err.response?.status === 422) {
+        console.error("Validation error - check rejection reason format and length");
+        
+        // If validation fails, try alternative request formats
+        await tryAlternativeRejectFormats();
       }
     } finally {
       setRejectLoading(false);
+    }
+  };
+
+  // Alternative method to try different request formats
+  const tryAlternativeRejectFormats = async () => {
+    console.log("🔄 Trying alternative request formats...");
+    
+    const alternativeFormats = [
+      {
+        name: "camelCase format",
+        body: { rejectionReason: rejectionReason.trim() }
+      },
+      {
+        name: "nested data format", 
+        body: { data: { rejection_reason: rejectionReason.trim() } }
+      },
+      {
+        name: "simple string format",
+        body: rejectionReason.trim()
+      },
+      {
+        name: "with additional fields",
+        body: { 
+          rejection_reason: rejectionReason.trim(),
+          reason: rejectionReason.trim()
+        }
+      }
+    ];
+
+    for (const format of alternativeFormats) {
+      try {
+        console.log(`🔄 Trying ${format.name}:`, format.body);
+        const endpoint = `/admin/enrollments/${id}/reject`;
+        
+        const response = await api.post(endpoint, format.body, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.data.success) {
+          console.log(`✅ Success with ${format.name}!`);
+          // Handle success...
+          break;
+        }
+      } catch (error) {
+        console.log(`❌ ${format.name} failed:`, error.response?.data);
+      }
     }
   };
 
@@ -382,8 +535,18 @@ const EnrolmentDetails = () => {
           <div className="d-flex align-items-start">
             <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
             <div>
-              <h4 className="alert-heading mb-1">Error Loading Student</h4>
+              <h4 className="alert-heading mb-1">
+                {error.includes('accept') ? 'Acceptance Error' : 'Error Loading Student'}
+              </h4>
               <p className="mb-3">{error}</p>
+              {error.includes('Authentication') && (
+                <button 
+                  onClick={() => window.location.href = '/login'} 
+                  className="btn btn-warning btn-sm me-2"
+                >
+                  Re-login
+                </button>
+              )}
               <button onClick={handleBack} className="btn btn-primary">
                 <i className="bi bi-arrow-left me-2"></i>
                 Back to Students
@@ -440,16 +603,37 @@ const EnrolmentDetails = () => {
           <h4 className="fw-bold mb-1">Enrolment Details</h4>
           <p className="text-muted mb-0">Enrolment ID: {id}</p>
 
+          {/* Success message after approval */}
+          {isApproved && (
+            <div className="alert alert-success mt-2 py-2" role="alert">
+              <i className="bi bi-check2-circle me-2"></i>
+              <strong>Enrolment Approved!</strong> 
+              {student?.approved_by && ` by ${student.approved_by}`}
+              {student?.approved_at && ` on ${formatDateToMMDDYYYY(student.approved_at)}`}
+            </div>
+          )}
+
+          {/* Success message after rejection */}
+          {isRejected && (
+            <div className="alert alert-danger mt-2 py-2" role="alert">
+              <i className="bi bi-x-circle me-2"></i>
+              <strong>Enrolment Rejected!</strong> 
+              {student?.rejected_by && ` by ${student.rejected_by}`}
+              {student?.rejected_at && ` on ${formatDateToMMDDYYYY(student.rejected_at)}`}
+              {student?.rejection_reason && ` - Reason: ${student.rejection_reason}`}
+            </div>
+          )}
+
           {/* Only show approval/rejection info for admin users */}
           {canApproveReject && (
             <>
-              {student?.approved_by && student?.approved_at && (
+              {student?.approved_by && student?.approved_at && !isApproved && (
                 <p className="text-muted small mb-0">
                   Approved by {student.approved_by} on{" "}
                   {formatDateToMMDDYYYY(student.approved_at)}
                 </p>
               )}
-              {student?.rejected_by && student?.rejected_at && (
+              {student?.rejected_by && student?.rejected_at && !isRejected && (
                 <p className="text-danger small mb-0">
                   Rejected by {student.rejected_by} on{" "}
                   {formatDateToMMDDYYYY(student.rejected_at)}
@@ -1081,7 +1265,7 @@ const EnrolmentDetails = () => {
                 id="rejectionReason"
                 className={`form-control ${rejectionError ? "is-invalid" : ""}`}
                 rows="3"
-                placeholder="Please provide a reason for rejecting this enrolment..."
+                placeholder="Please provide a detailed reason for rejecting this enrolment..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
               />
@@ -1089,8 +1273,7 @@ const EnrolmentDetails = () => {
                 <div className="invalid-feedback">{rejectionError}</div>
               )}
               <div className="form-text">
-                This reason will be recorded and visible in the enrolment
-                history.
+                Please provide a detailed reason (minimum 10 characters). This reason will be recorded and visible in the enrolment history.
               </div>
             </div>
           </Modal.Body>
@@ -1105,7 +1288,7 @@ const EnrolmentDetails = () => {
             <ButtonGlobal
               onClick={handleRejectEnrolment}
               className="btn btn-danger"
-              disabled={rejectLoading}
+              disabled={rejectLoading || !rejectionReason.trim() || rejectionReason.trim().length < 10}
             >
               {rejectLoading ? (
                 <>

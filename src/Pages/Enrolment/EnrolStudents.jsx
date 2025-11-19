@@ -31,293 +31,254 @@ const EnrolStudents = () => {
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
 
+  console.log("🔄 Component mounted - Current state:", {
+    loading,
+    studentsCount: students.length,
+    userRole,
+    userData: !!userData,
+    error
+  });
+
   // Get user data from localStorage on component mount
   useEffect(() => {
+    console.log("🔍 useEffect - Getting user data from localStorage");
     const userDataFromStorage = localStorage.getItem("userData");
+    console.log("📦 User data from storage:", userDataFromStorage ? "exists" : "null");
+    
     if (userDataFromStorage) {
       try {
         const parsedUserData = JSON.parse(userDataFromStorage);
+        console.log("👤 FULL Parsed user data:", parsedUserData);
+        
+        // FIXED: Access primary_role.role_name instead of role.role_name
+        const userRole = parsedUserData.primary_role?.role_name;
+        console.log("🎭 Extracted user role:", userRole);
+        
         setUserData(parsedUserData);
-        setUserRole(parsedUserData.role?.role_name);
+        setUserRole(userRole);
+        
+        console.log("✅ User role set to:", userRole);
       } catch (error) {
-        console.error("Error parsing user data:", error);
+        console.error("❌ Error parsing user data:", error);
       }
+    } else {
+      console.log("❌ No user data found in localStorage");
     }
   }, []);
 
   // Fetch enrollments from appropriate API based on user role
   const fetchStudents = async (isRefresh = false) => {
+    console.log("📡 fetchStudents called - isRefresh:", isRefresh);
+    console.log("👤 Current userRole:", userRole);
+    
     try {
       if (isRefresh) {
+        console.log("🔄 Setting refreshing to true");
         setRefreshing(true);
       } else {
+        console.log("⏳ Setting loading to true");
         setLoading(true);
       }
       setError(null);
 
-      console.log("Fetching enrollments from API...");
-      console.log("User role:", userRole);
+      console.log("🌐 Fetching enrollments from API...");
+      console.log("🎭 User role:", userRole);
 
       let allEnrollments = [];
       let currentPage = 1;
       let lastPage = 1;
 
       if (userRole === "admin") {
-        // Admin uses the student-enrollment endpoint
-        console.log("Admin: Using student-enrollment endpoint");
+        console.log("🛠️ Admin: Using student-enrollment endpoint");
 
-        const firstResponse = await api.get("/student-enrollment");
-        console.log("Admin API Response:", firstResponse.data);
+        const response = await api.get("/student-enrollment");
+        console.log("👑 Admin API Response:", response.data);
 
         // Extract data based on the admin API structure
-        if (firstResponse.data && firstResponse.data.students) {
-          const studentsData = firstResponse.data.students;
-
+        if (response.data && response.data.students) {
+          const studentsData = response.data.students;
+          
+          // Admin response has paginated structure with data array
           if (studentsData.data && Array.isArray(studentsData.data)) {
-            // Data is nested in students.data array
             allEnrollments = studentsData.data;
-            console.log(
-              "Admin enrollments data from students.data:",
-              allEnrollments
-            );
-
-            // Handle pagination for admin if needed
+            console.log("👑 Admin enrollments from students.data:", allEnrollments);
+            
+            // Handle pagination for admin
             if (studentsData.last_page && studentsData.last_page > 1) {
               lastPage = studentsData.last_page;
-              console.log(`Admin has ${lastPage} pages to fetch`);
+              console.log(`📄 Admin has ${lastPage} pages to fetch`);
 
-              // Fetch remaining pages
               const pagePromises = [];
               for (let page = 2; page <= lastPage; page++) {
                 pagePromises.push(api.get(`/student-enrollment?page=${page}`));
               }
 
               if (pagePromises.length > 0) {
+                console.log(`📥 Fetching ${pagePromises.length} additional admin pages`);
                 const responses = await Promise.all(pagePromises);
                 responses.forEach((response, index) => {
-                  if (
-                    response.data &&
-                    response.data.students &&
-                    response.data.students.data
-                  ) {
+                  if (response.data && response.data.students && response.data.students.data) {
                     allEnrollments = [
                       ...allEnrollments,
                       ...response.data.students.data,
                     ];
                     console.log(
-                      `Added ${
-                        response.data.students.data.length
-                      } enrollments from admin page ${index + 2}`
+                      `✅ Added ${response.data.students.data.length} enrollments from admin page ${index + 2}`
                     );
                   }
                 });
               }
             }
-          } else if (Array.isArray(studentsData)) {
-            // Direct array response
-            allEnrollments = studentsData;
-            console.log("Admin enrollments data direct array:", allEnrollments);
           }
-        } else if (firstResponse.data && Array.isArray(firstResponse.data)) {
-          // Direct array response at root level
-          allEnrollments = firstResponse.data;
-          console.log("Admin enrollments data root array:", allEnrollments);
         }
-
-        console.log("Final admin enrollments:", allEnrollments);
       } else {
-        // Parent/teacher uses the my-enrollments endpoint with pagination
-        console.log("Parent/Teacher: Using my-enrollments endpoint");
+        // Parent/teacher uses the my-enrollments endpoint
+        console.log("👨‍👩‍👧‍👦 Parent/Teacher: Using my-enrollments endpoint");
 
-        // Fetch first page to get pagination info
-        const firstResponse = await api.get("/my-enrollments");
-        console.log("First page API Response:", firstResponse.data);
+        const response = await api.get("/my-enrollments");
+        console.log("👪 Parent API Response:", response.data);
 
-        // Extract data based on the API structure
-        let enrollmentsData = [];
-        let paginationInfo = null;
-
-        if (firstResponse.data && firstResponse.data.data) {
-          // API structure with data wrapper
-          const responseData = firstResponse.data.data;
-
-          if (
-            responseData.enrollments &&
-            Array.isArray(responseData.enrollments)
-          ) {
-            enrollmentsData = responseData.enrollments;
-          } else if (Array.isArray(responseData)) {
-            // Direct array in data
-            enrollmentsData = responseData;
-          }
-
-          if (responseData.pagination) {
-            paginationInfo = responseData.pagination;
-            lastPage = responseData.pagination.last_page || 1;
-          }
-        } else if (
-          firstResponse.data &&
-          Array.isArray(firstResponse.data.enrollments)
-        ) {
-          // Alternative structure
-          enrollmentsData = firstResponse.data.enrollments;
-          if (firstResponse.data.pagination) {
-            paginationInfo = firstResponse.data.pagination;
-            lastPage = firstResponse.data.pagination.last_page || 1;
-          }
-        }
-
-        console.log("First page enrollments data:", enrollmentsData);
-        console.log("Pagination info:", paginationInfo);
-        console.log("Total pages:", lastPage);
-
-        allEnrollments = [...enrollmentsData];
-
-        // Fetch remaining pages if any
-        if (lastPage > 1) {
-          console.log(`Fetching additional ${lastPage - 1} pages...`);
-
-          const pagePromises = [];
-          for (let page = 2; page <= lastPage; page++) {
-            pagePromises.push(api.get(`/my-enrollments?page=${page}`));
-          }
-
-          const responses = await Promise.all(pagePromises);
-
-          responses.forEach((response, index) => {
-            console.log(
-              `Processing page ${index + 2} response:`,
-              response.data
-            );
-
-            let pageData = [];
-            if (
-              response.data &&
-              response.data.data &&
-              response.data.data.enrollments
-            ) {
-              pageData = response.data.data.enrollments;
-            } else if (response.data && response.data.enrollments) {
-              pageData = response.data.enrollments;
+        // Parent response structure: response.data.enrollments
+        if (response.data && response.data.data && response.data.data.enrollments) {
+          allEnrollments = response.data.data.enrollments;
+          console.log("👪 Parent enrollments from data.enrollments:", allEnrollments);
+          
+          // Handle pagination for parent if needed
+          if (response.data.data.pagination && response.data.data.pagination.last_page > 1) {
+            lastPage = response.data.data.pagination.last_page;
+            console.log(`📄 Parent has ${lastPage} pages to fetch`);
+            
+            const pagePromises = [];
+            for (let page = 2; page <= lastPage; page++) {
+              pagePromises.push(api.get(`/my-enrollments?page=${page}`));
             }
 
-            if (pageData.length > 0) {
-              allEnrollments = [...allEnrollments, ...pageData];
-              console.log(
-                `Added ${pageData.length} enrollments from page ${index + 2}`
-              );
+            if (pagePromises.length > 0) {
+              console.log(`📥 Fetching ${pagePromises.length} additional parent pages`);
+              const responses = await Promise.all(pagePromises);
+              responses.forEach((response, index) => {
+                if (response.data && response.data.data && response.data.data.enrollments) {
+                  allEnrollments = [
+                    ...allEnrollments,
+                    ...response.data.data.enrollments,
+                  ];
+                  console.log(
+                    `✅ Added ${response.data.data.enrollments.length} enrollments from parent page ${index + 2}`
+                  );
+                }
+              });
             }
-          });
+          }
+        } else {
+          console.log("❌ No enrollments found in parent API response structure");
         }
       }
 
-      console.log("All enrollments data after processing:", allEnrollments);
-      console.log("Total enrollments fetched:", allEnrollments.length);
+      console.log("📊 All enrollments data after processing:", allEnrollments);
+      console.log("🎯 Total enrollments fetched:", allEnrollments.length);
 
       if (allEnrollments.length === 0) {
+        console.log("📭 No enrollments found, setting empty state");
         setStudents([]);
         setLastRefreshTime(new Date());
         return;
       }
 
-      // Format enrollments data for the table
+      // Format enrollments data for the table - CORRECTED VERSION
       const formattedStudents = allEnrollments.map((enrollment, index) => {
-        // Handle different API response structures
-        const student =
-          userRole === "admin" ? enrollment : enrollment.student || {};
+        console.log(`🔍 Processing enrollment ${index}:`, enrollment);
 
+        let studentData = {};
+        let parentData = {};
+        let enrollmentId = "";
+
+        if (userRole === "admin") {
+          // Admin structure: enrollment is the student object with parent_carers array
+          studentData = enrollment;
+          parentData = {
+            parent_carers: enrollment.parent_carers || []
+          };
+          enrollmentId = enrollment.enrollment_id || enrollment.enrid || `admin-${index + 1}`;
+        } else {
+          // Parent structure: enrollment has student, parent_carer_1, parent_carer_2 objects
+          studentData = enrollment.student || {};
+          parentData = {
+            parent_carer_1: enrollment.parent_carer_1 || {},
+            parent_carer_2: enrollment.parent_carer_2 || {}
+          };
+          enrollmentId = studentData.enrollment_id || `parent-${index + 1}`;
+        }
+
+        // Extract parent information based on role
         let parentName = "N/A";
         let contactEmail = "N/A";
         let contactPhone = "N/A";
 
         if (userRole === "admin") {
-          // Admin API structure - data is in parent_carers array
-          const parentCarers = enrollment.parent_carers || [];
-          console.log(
-            "Admin - Parent carers array:",
-            enrollment.enrollment_id,
-            parentCarers
-          );
-
+          // Admin: Use first parent from parent_carers array
+          const parentCarers = parentData.parent_carers || [];
           if (parentCarers.length > 0) {
             const primaryParent = parentCarers[0];
-
-            parentName = primaryParent.first_name
-              ? `${primaryParent.first_name} ${
-                  primaryParent.last_name || ""
-                }`.trim()
-              : "N/A";
-
-            contactEmail = primaryParent.email || "N/A";
-            contactPhone = primaryParent.mobile_phone || "N/A";
-
-            // Fallback to second parent if needed
-            if (
-              parentCarers.length > 1 &&
-              (contactEmail === "N/A" || contactPhone === "N/A")
-            ) {
-              const secondaryParent = parentCarers[1];
-              if (contactEmail === "N/A" && secondaryParent.email) {
-                contactEmail = secondaryParent.email;
-              }
-              if (contactPhone === "N/A" && secondaryParent.mobile_phone) {
-                contactPhone = secondaryParent.mobile_phone;
-              }
-            }
+            parentName = `${primaryParent.first_name || primaryParent.carer_first_name || ""} ${
+              primaryParent.last_name || primaryParent.carer_last_name || ""
+            }`.trim() || "N/A";
+            contactEmail = primaryParent.email || primaryParent.carer_email || "N/A";
+            contactPhone = primaryParent.mobile_phone || primaryParent.carer_mobile_phone || "N/A";
           }
         } else {
-          // Parent API structure - data is in parent_carer_1 and parent_carer_2 objects
-          const parent1 = enrollment.parent_carer_1 || {};
-          const parent2 = enrollment.parent_carer_2 || {};
-
-          console.log("Parent - Parent data:", enrollment.enrollment_id, {
-            parent1,
-            parent2,
-          });
-
-          // Use parent_carer_1 as primary, fallback to parent_carer_2
+          // Parent: Use parent_carer_1 as primary, fallback to parent_carer_2
+          const parent1 = parentData.parent_carer_1 || {};
+          const parent2 = parentData.parent_carer_2 || {};
+          
           const primaryParent = parent1.first_name ? parent1 : parent2;
-
-          parentName = primaryParent.first_name
-            ? `${primaryParent.first_name} ${
-                primaryParent.last_name || ""
-              }`.trim()
-            : "N/A";
-
+          parentName = `${primaryParent.first_name || ""} ${primaryParent.last_name || ""}`.trim() || "N/A";
           contactEmail = parent1.email || parent2.email || "N/A";
           contactPhone = parent1.mobile_phone || parent2.mobile_phone || "N/A";
         }
 
-        // Handle different ID fields based on API structure and role
-        const enrollmentId =
-          enrollment.enrollment_id ||
-          enrollment.id ||
-          `enrollment-${index + 1}`;
+        // Extract student information
+        const fullName = `${studentData.first_given_name || studentData.student_first__name || studentData.first_name || ""} ${
+          studentData.family_name || studentData.student_family_name || studentData.last_name || ""
+        }`.trim();
 
-        return {
+        const gender = studentData.gender || studentData.student_gender || "";
+        
+        const dateOfBirth = formatDateToMMDDYYYY(
+          studentData.date_of_birth || studentData.student_dob
+        );
+
+        const enrollmentYear = studentData.mainstream_enrollment_year || 
+                             studentData.mainstream_grade || 
+                             studentData.enrollment_year || "";
+
+        const status = studentData.status || studentData.student_status || "pending";
+
+        const formattedStudent = {
           index: index + 1,
           id: enrollmentId,
-          full_name: `${student.first_given_name || student.first_name || ""} ${
-            student.family_name || student.last_name || ""
-          }`.trim(),
-          gender: student.gender || "",
-          date_of_birth: formatDateToMMDDYYYY(student.date_of_birth),
-          enrollment_year:
-            student.mainstream_enrollment_year || student.enrollment_year || "",
-          overseas_student: student.overseas_student || "No",
+          full_name: fullName || "Unknown Student",
+          gender: gender,
+          date_of_birth: dateOfBirth,
+          enrollment_year: enrollmentYear,
+          overseas_student: studentData.overseas_student || "No",
           parent_name: parentName,
           contact_email: contactEmail,
           contact_phone: contactPhone,
-          status: student.status || enrollment.status || "pending",
+          status: status,
           raw_data: enrollment,
         };
+
+        console.log(`✅ Formatted student ${index}:`, formattedStudent);
+        return formattedStudent;
       });
-      console.log("Total formatted students:", formattedStudents.length);
-      console.log("Formatted students data:", formattedStudents);
+
+      console.log("🎉 Final formatted students:", formattedStudents);
       setStudents(formattedStudents);
       setLastRefreshTime(new Date());
+      console.log("✅ State updated with students and refresh time");
+
     } catch (err) {
-      console.error("Fetch error details:", {
+      console.error("❌ Fetch error details:", {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
@@ -328,45 +289,61 @@ const EnrolStudents = () => {
         setError("Authentication required. Please check if you need to login.");
       } else if (err.response?.status === 404) {
         setError("Enrollments endpoint not found. Please check the API URL.");
-      } else if (
-        err.code === "NETWORK_ERROR" ||
-        err.message.includes("Network Error")
-      ) {
-        setError(
-          "Network error. Please check if the backend server is running."
-        );
+      } else if (err.code === "NETWORK_ERROR" || err.message.includes("Network Error")) {
+        setError("Network error. Please check if the backend server is running.");
       } else if (err.response?.status === 500) {
         setError("Server error. Please try again later.");
       } else {
         setError(
-          err.response?.data?.message ||
-            err.message ||
-            "Failed to fetch enrollments"
+          err.response?.data?.message || err.message || "Failed to fetch enrollments"
         );
       }
     } finally {
+      console.log("🏁 fetchStudents finally block - setting loading/refreshing to false");
       setLoading(false);
       setRefreshing(false);
+      console.log("✅ Final state after fetch:", {
+        loading: false,
+        refreshing: false,
+        studentsCount: students.length,
+        error
+      });
     }
   };
 
   useEffect(() => {
+    console.log("🔍 useEffect - userRole changed:", userRole);
+    console.log("📊 Current state:", { userRole, userData: !!userData, loading });
+    
     if (userRole) {
+      console.log("🚀 userRole is available, calling fetchStudents");
       fetchStudents();
+    } else {
+      console.log("⏸️ userRole not available yet, waiting...");
     }
   }, [userRole, userData]);
 
   useEffect(() => {
+    console.log("🔍 useEffect - DataTable initialization check");
+    console.log("📊 Conditions:", {
+      loading,
+      studentsCount: students.length,
+      hasDataTable: $.fn.DataTable.isDataTable("#studentTable")
+    });
+
     if (!loading && students.length > 0) {
-      console.log("Initializing DataTable with students:", students);
+      console.log("✅ Initializing DataTable - loading false and students exist");
+      console.log("📋 Students data:", students);
 
       // Destroy existing DataTable if it exists
       if ($.fn.DataTable.isDataTable("#studentTable")) {
+        console.log("🗑️ Destroying existing DataTable");
         $("#studentTable").DataTable().destroy();
         $("#studentTable").empty();
       }
 
       // Initialize DataTable
+      console.log("🆕 Creating new DataTable");
       const table = $("#studentTable").DataTable({
         data: students,
         destroy: true,
@@ -428,7 +405,7 @@ const EnrolStudents = () => {
                 default:
                   badgeClass += "bg-secondary";
               }
-              return `<span className="${badgeClass}">${data}</span>`;
+              return `<span class="${badgeClass}">${data}</span>`;
             },
           },
           {
@@ -439,8 +416,8 @@ const EnrolStudents = () => {
             orderable: false,
             render: function (data, type, row) {
               return `
-                <button className="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details" style="border: 1px solid #0d6efd; background: transparent; padding: 4px 8px; border-radius: 4px;">
-                  <i className="bi bi-eye" style="font-size: 16px; color: #0d6efd;"></i>
+                <button class="btn btn-outline-primary btn-sm view-btn" data-student-id="${row.id}" title="View Details" style="border: 1px solid #0d6efd; background: transparent; padding: 4px 8px; border-radius: 4px;">
+                  <i class="bi bi-eye" style="font-size: 16px; color: #0d6efd;"></i>
                 </button>
               `;
             },
@@ -456,43 +433,64 @@ const EnrolStudents = () => {
         pageLength: 10,
         lengthMenu: [10, 25, 50, 100],
         initComplete: function () {
-          console.log("DataTable initialized successfully");
+          console.log("✅ DataTable initialized successfully");
         },
       });
 
       // Corrected click event - using .view-btn instead of .view-icon
       $("#studentTable").on("click", ".view-btn", function () {
         const studentId = $(this).data("student-id");
-        console.log("View button clicked for enrollment:", studentId);
+        console.log("👁️ View button clicked for enrollment:", studentId);
         const student = students.find((s) => s.id === studentId);
         if (student) {
+          console.log("🚀 Navigating to enrollment details:", studentId);
           navigate(`/enrolment/${studentId}`, {
             state: { studentData: student.raw_data },
           });
+        } else {
+          console.log("❌ Student not found for ID:", studentId);
         }
       });
 
       return () => {
+        console.log("🧹 Cleanup: Destroying DataTable");
         if ($.fn.DataTable.isDataTable("#studentTable")) {
           table.destroy();
         }
       };
+    } else {
+      console.log("⏸️ Skipping DataTable init - conditions not met:", {
+        loading,
+        studentsCount: students.length
+      });
     }
   }, [students, loading, navigate]);
 
   const handleRefresh = () => {
+    console.log("🔄 Manual refresh triggered");
     fetchStudents(true);
   };
 
   const handleAddStudent = () => {
+    console.log("➕ Add Student clicked");
     navigate("/students/add");
   };
 
   const handleEnrolStudent = () => {
+    console.log("🎓 Enrol Student clicked");
     navigate("/enrol");
   };
 
+  console.log("🎨 Rendering component - Current state:", {
+    loading,
+    refreshing,
+    studentsCount: students.length,
+    error: !!error,
+    userRole
+  });
+
   if (loading) {
+    console.log("🌀 Rendering loading spinner");
     return (
       <div
         className="d-flex justify-content-center align-items-center"
@@ -501,10 +499,12 @@ const EnrolStudents = () => {
         <Spinner animation="border" role="status">
           <span className="visually-hidden">Loading...</span>
         </Spinner>
+        <div className="ms-3">Loading enrollments...</div>
       </div>
     );
   }
 
+  console.log("📄 Rendering main content");
   return (
     <div className="container-fluid px-4 py-3">
       <div className="d-flex justify-content-between align-items-center mb-4">

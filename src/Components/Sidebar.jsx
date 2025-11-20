@@ -15,51 +15,26 @@ const Sidebar = ({
   const [activeSection, setActiveSection] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const [userRole, setUserRole] = useState(null);
-  const [debugInfo, setDebugInfo] = useState("");
   const sidebarRef = useRef(null);
 
-  // Get user data from localStorage and fetch roles
+  // Get user data from localStorage
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        // Get user data from localStorage
         const userData = JSON.parse(localStorage.getItem("userData"));
-        // console.log("User data from localStorage:", userData);
+        console.log("User data from localStorage:", userData);
 
-        if (!userData || !userData.role) {
-          console.error("No user data or role found in localStorage");
-          setDebugInfo("No user data found in localStorage");
+        if (!userData || !userData.primary_role) {
+          console.error("No user data or primary_role found in localStorage");
           return;
         }
 
-        const userRoleName = userData.role.role_name;
-        // console.log("User role from localStorage:", userRoleName);
-        setDebugInfo(`User role: ${userRoleName}`);
+        const userRoleName = userData.primary_role.role_name;
+        console.log("User role from localStorage:", userRoleName);
+        setUserRole(userRoleName);
 
-        // Fetch available roles from API
-        const rolesResponse = await api.get("/roles");
-        // console.log("Roles API response:", rolesResponse.data);
-
-        if (rolesResponse.data && rolesResponse.data.success) {
-          const roles = rolesResponse.data.data;
-
-          // Verify if user's role exists in the system
-          const userRoleExists = roles.some(
-            (role) => role.role_name === userRoleName
-          );
-          // console.log("Does user role exist in system?", userRoleExists);
-
-          if (userRoleExists) {
-            setUserRole(userRoleName);
-            setDebugInfo((prev) => `${prev} | Role verified in system`);
-          } else {
-            console.error("User role not found in system roles");
-            setDebugInfo((prev) => `${prev} | Role NOT found in system`);
-          }
-        }
-      } catch (rolesError) {
-        console.error("Error fetching roles:", rolesError);
-        setDebugInfo("Error fetching roles from API");
+      } catch (error) {
+        console.error("Error fetching user role:", error);
       }
     };
 
@@ -96,62 +71,55 @@ const Sidebar = ({
 
   // Role-based sub-items configuration
   const getSubItems = (section) => {
-    // If role is not yet loaded, show all sub-items temporarily
+    // If role is not yet loaded, return empty array (sections will be hidden until role is loaded)
     if (userRole === null) {
-      // console.log("Role not loaded yet, showing all sub-items for:", section);
-      switch (section) {
-        case "enrolment":
+      return [];
+    }
+
+    console.log(`Getting sub-items for ${section} as ${userRole}`);
+
+    switch (section) {
+      case "enrolment":
+        // Admin: hide "Enrol the student"
+        if (isAdmin) {
+          return [{ label: "View All Enrolments", to: "/enrolments" }];
+        }
+        // Parent: show all enrolment sub-items
+        if (isParent) {
           return [
             { label: "View All Enrolments", to: "/enrolments" },
             { label: "Enrol the student", to: "/enrol" },
           ];
-        case "classroom":
-          return [
-            { label: "View all classrooms", to: "/classrooms" },
-            { label: "View status Classrooms", to: "/classroom-status" },
-          ];
-        case "students":
-          return [{ label: "View all students", to: "/students" }];
-        case "persons":
-          return [{ label: "View all persons", to: "/persons" }];
-        default:
-          return [];
-      }
-    }
-
-    // console.log(`Getting sub-items for ${section} as ${userRole}`);
-
-    // After role verification, apply restrictions
-    switch (section) {
-      case "enrolment":
-        // Admin should not see "Enrol the student"
-        if (isAdmin) {
-          return [{ label: "View All Enrolments", to: "/enrolments" }];
         }
-        // Parent and other roles see both
-        return [
-          { label: "View All Enrolments", to: "/enrolments" },
-          { label: "Enrol the student", to: "/enrol" },
-        ];
+        return [];
 
       case "classroom":
         // For teacher or parent, hide "View status Classrooms"
         if (isTeacher || isParent) {
           return [{ label: "View all classrooms", to: "/classrooms" }];
         }
-        // Admin sees all
-        return [
-          { label: "View all classrooms", to: "/classrooms" },
-          { label: "View status Classrooms", to: "/classroom-status" },
-        ];
+        // Admin sees all classroom sub-items
+        if (isAdmin) {
+          return [
+            { label: "View all classrooms", to: "/classrooms" },
+            { label: "View status Classrooms", to: "/classroom-status" },
+          ];
+        }
+        return [];
 
       case "students":
-        // All roles see the same student sub-items
-        return [{ label: "View all students", to: "/students" }];
+        // All roles that can see students get the same sub-items
+        if (isAdmin || isTeacher || isParent) {
+          return [{ label: "View all students", to: "/students" }];
+        }
+        return [];
 
       case "persons":
-        // All roles see the same persons sub-items
-        return [{ label: "View all persons", to: "/persons" }];
+        // Only admin can see persons
+        if (isAdmin) {
+          return [{ label: "View all persons", to: "/persons" }];
+        }
+        return [];
 
       default:
         return [];
@@ -160,13 +128,12 @@ const Sidebar = ({
 
   // Check if section should be visible
   const shouldShowSection = (section) => {
-    // If role is not yet loaded, show all sections temporarily
+    // If role is not yet loaded, hide all sections except dashboard
     if (userRole === null) {
-      // console.log("Role not loaded, showing section:", section);
-      return true;
+      return section === "dashboard";
     }
 
-    // console.log(`Checking visibility for ${section} as ${userRole}`);
+    console.log(`Checking visibility for ${section} as ${userRole}`);
 
     switch (section) {
       case "dashboard":
@@ -185,7 +152,7 @@ const Sidebar = ({
         return isAdmin || isTeacher || isParent;
 
       case "persons":
-        // Show only for admin (based on your requirements)
+        // Show only for admin
         return isAdmin;
 
       default:

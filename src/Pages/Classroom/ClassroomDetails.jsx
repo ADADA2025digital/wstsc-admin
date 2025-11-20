@@ -369,6 +369,164 @@ export default function ClassroomDetails() {
     }
   };
 
+  // Toggle classroom status using PATCH method - SIMPLIFIED AND WORKING
+  const toggleClassroomStatus = async () => {
+    if (!classroom?.id || !canEdit) {
+      console.log("🚫 CANNOT TOGGLE: Missing classroom ID or edit permissions", {
+        classroomId: classroom?.id,
+        canEdit,
+        userRole
+      });
+      showMessage("warning", "You don't have permission to update classroom status");
+      return;
+    }
+
+    console.log("🔄 ========== TOGGLE CLASSROOM STATUS DEBUG START ==========");
+    console.log("🎯 TOGGLE STATUS INITIATED for Classroom:", {
+      classroomId: classroom.id,
+      classroomName: classroom.name,
+      currentStatus: classroom.isActive,
+      currentStatusText: classroom.status,
+      expectedNewStatus: !classroom.isActive
+    });
+
+    setUpdatingStatus(true);
+    
+    try {
+      console.log("🚀 SENDING PATCH REQUEST to:", `/classrooms/${classroom.id}/toggle-status`);
+      console.log("📦 REQUEST DETAILS:", {
+        method: 'PATCH',
+        url: `/classrooms/${classroom.id}/toggle-status`,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer [REDACTED]'
+        },
+        data: {} // Empty object as per your working API example
+      });
+
+      const startTime = Date.now();
+      
+      // Use the exact same PATCH call that works in your API example
+      const response = await api.patch(
+        `/classrooms/${classroom.id}/toggle-status`,
+        {} // Empty object - no need for data in body
+      );
+      
+      const endTime = Date.now();
+      
+      console.log("⏱️ API RESPONSE TIME:", `${endTime - startTime}ms`);
+      console.log("📦 TOGGLE STATUS API RESPONSE:", response);
+      console.log("🔢 RESPONSE STATUS:", response.status);
+      console.log("💾 RESPONSE DATA:", response.data);
+
+      if (response.data && response.data.success) {
+        console.log("✅ TOGGLE STATUS SUCCESSFUL");
+        
+        // Extract data from response exactly as in your working example
+        const updatedClassroom = response.data.data.classroom;
+        const previousStatus = response.data.data.previous_status;
+        const newStatus = response.data.data.new_status;
+        const statusText = response.data.data.status_text;
+        
+        console.log("🔄 STATUS CHANGE DETAILS:", {
+          previousStatus,
+          newStatus,
+          statusText,
+          previousStatusText: previousStatus ? 'Active' : 'Inactive',
+          newStatusText: newStatus ? 'Active' : 'Inactive',
+          updatedClassroomData: updatedClassroom
+        });
+
+        // Update the classroom state with the exact data from API response
+        const updated = {
+          ...classroom,
+          status: statusText || (updatedClassroom.is_active ? "Active" : "Inactive"),
+          isActive: updatedClassroom.is_active,
+          name: updatedClassroom.class_name,
+          classId: updatedClassroom.class_id,
+          rawData: updatedClassroom,
+        };
+        
+        console.log("🗂️ UPDATED CLASSROOM STATE:", updated);
+        setClassroom(updated);
+        
+        showMessage("success", response.data.message || "Classroom status updated successfully");
+        console.log("🎉 STATUS TOGGLE COMPLETED SUCCESSFULLY");
+        
+      } else {
+        console.error("❌ TOGGLE STATUS API FAILED - Response not successful");
+        console.error("Response success flag:", response.data?.success);
+        console.error("Response message:", response.data?.message);
+        console.error("Response data structure:", response.data);
+        
+        throw new Error(response.data?.message || "API response indicated failure");
+      }
+      
+    } catch (error) {
+      console.error("💥 TOGGLE STATUS FAILED - ERROR CAUGHT:");
+      console.error("🚨 ERROR OBJECT:", error);
+      console.error("📛 ERROR NAME:", error.name);
+      console.error("📝 ERROR MESSAGE:", error.message);
+      console.error("🔗 ERROR CODE:", error.code);
+      
+      // Detailed error analysis
+      if (error.response) {
+        console.error("📋 SERVER RESPONSE ERROR DETAILS:");
+        console.error("  Status:", error.response.status);
+        console.error("  Status Text:", error.response.statusText);
+        console.error("  Headers:", error.response.headers);
+        console.error("  Data:", error.response.data);
+        
+        if (error.response.data && error.response.data.errors) {
+          console.error("  Validation Errors:", error.response.data.errors);
+        }
+      } else if (error.request) {
+        console.error("🌐 NETWORK ERROR - No response received:");
+        console.error("  Request:", error.request);
+        console.error("  This usually indicates:");
+        console.error("  - CORS issues");
+        console.error("  - Network connectivity problems");
+        console.error("  - Server not responding");
+      } else {
+        console.error("⚡ SETUP ERROR - Request configuration issue:");
+        console.error("  Message:", error.message);
+      }
+      
+      // Show appropriate error message to user
+      let errorMessage = "Failed to update classroom status";
+      
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication failed. Please log in again.";
+        console.error("🔐 AUTHENTICATION ERROR - Token may be invalid");
+      } else if (error.response?.status === 403) {
+        errorMessage = "You don't have permission to update classroom status.";
+        console.error("🚫 AUTHORIZATION ERROR - User lacks permission");
+      } else if (error.response?.status === 404) {
+        errorMessage = "Classroom not found. It may have been deleted.";
+        console.error("🔍 NOT FOUND ERROR - Classroom ID invalid");
+      } else if (error.response?.status === 405) {
+        errorMessage = "PATCH method not allowed for this endpoint.";
+        console.error("🔄 METHOD NOT ALLOWED - PATCH not supported");
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = "Network error. Please check your connection.";
+        console.error("📡 NETWORK CONNECTION ERROR");
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = "Request timeout. Please try again.";
+        console.error("⏰ REQUEST TIMEOUT");
+      } else {
+        errorMessage = error.response?.data?.message || error.message || "Failed to update classroom status";
+      }
+      
+      console.error("📝 FINAL ERROR MESSAGE TO USER:", errorMessage);
+      showMessage("danger", errorMessage);
+      
+    } finally {
+      setUpdatingStatus(false);
+      console.log("⏳ Updating status state set to false");
+      console.log("🔚 ========== TOGGLE CLASSROOM STATUS DEBUG END ==========");
+    }
+  };
+
   useEffect(() => {
     console.log("🚀 useEffect TRIGGERED - Fetching classroom data from API");
     console.log("🔍 Classroom ID from params:", classroomId);
@@ -622,119 +780,6 @@ export default function ClassroomDetails() {
     } finally {
       setAssigningTeacher(false);
       console.log("🔚 ========== ASSIGN TEACHER DEBUG END ==========");
-    }
-  };
-
-  // Test function to debug teacher assignment
-  const testTeacherAssignment = async () => {
-    console.log("🧪 TESTING TEACHER ASSIGNMENT API MANUALLY");
-    
-    // Test with known good data from your API response
-    const testPayload = {
-      class_id: classroom.classId,
-      teacher_id: 1, // Using teacher ID 1 from your API response
-      crtid_date: new Date().toISOString().split('T')[0],
-      end_date: null,
-      notes: "Test assignment via debug"
-    };
-    
-    console.log("🧪 TEST PAYLOAD:", testPayload);
-    
-    try {
-      const response = await api.post("/classroom-teachers", testPayload);
-      console.log("✅ TEST SUCCESS:", response.data);
-      showMessage("success", "Test assignment successful!");
-    } catch (error) {
-      console.error("❌ TEST FAILED:", error.response?.data);
-      showMessage("danger", "Test assignment failed: " + (error.response?.data?.message || error.message));
-    }
-  };
-
-  // Toggle classroom status
-  const toggleClassroomStatus = async () => {
-    if (!classroom?.id || !canEdit) {
-      console.log("🚫 CANNOT TOGGLE: Missing classroom ID or edit permissions");
-      return;
-    }
-
-    console.log("🔄 TOGGLING CLASSROOM STATUS for ID:", classroom.id);
-
-    setUpdatingStatus(true);
-    try {
-      const response = await api.patch(
-        `/classrooms/${classroom.id}/toggle-status`,
-        {},
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      );
-      console.log("📦 TOGGLE STATUS API RESPONSE:", response.data);
-
-      if (response.data.success) {
-        const updatedClassroom = response.data.data.classroom;
-        const updated = {
-          ...classroom,
-          status: updatedClassroom.is_active ? "Active" : "Inactive",
-          isActive: updatedClassroom.is_active,
-          name: updatedClassroom.class_name,
-          rawData: updatedClassroom,
-        };
-        setClassroom(updated);
-        showMessage("success", "Classroom status updated successfully");
-      }
-    } catch (error) {
-      console.error("💥 ERROR toggling classroom status:", error);
-      console.error("Error response:", error.response?.data);
-      
-      // If PATCH fails due to CORS, try alternative approach
-      if (error.code === 'ERR_NETWORK' || error.response?.status === 405) {
-        console.log("🔄 Trying alternative approach for status toggle...");
-        await toggleClassroomStatusAlternative();
-      } else {
-        showMessage(
-          "danger",
-          error.response?.data?.message || "Failed to update classroom status"
-        );
-      }
-    } finally {
-      setUpdatingStatus(false);
-    }
-  };
-
-  // Alternative approach for status toggle using PUT with different endpoint
-  const toggleClassroomStatusAlternative = async () => {
-    try {
-      console.log("🔄 USING ALTERNATIVE STATUS TOGGLE APPROACH");
-      
-      // Use PUT to update the classroom with the opposite status
-      const newStatus = !classroom.isActive;
-      const payload = {
-        is_active: newStatus
-      };
-      
-      const response = await api.put(`/classrooms/${classroom.id}`, payload);
-      console.log("📦 ALTERNATIVE STATUS UPDATE RESPONSE:", response.data);
-
-      if (response.data && response.data.success) {
-        const updatedClassroom = response.data.data.classroom;
-        const updated = {
-          ...classroom,
-          status: updatedClassroom.is_active ? "Active" : "Inactive",
-          isActive: updatedClassroom.is_active,
-          name: updatedClassroom.class_name,
-          rawData: updatedClassroom,
-        };
-        setClassroom(updated);
-        showMessage("success", "Classroom status updated successfully");
-      }
-    } catch (error) {
-      console.error("💥 ERROR in alternative status toggle:", error);
-      showMessage(
-        "danger",
-        "Failed to update classroom status. Please try again or contact support."
-      );
     }
   };
 

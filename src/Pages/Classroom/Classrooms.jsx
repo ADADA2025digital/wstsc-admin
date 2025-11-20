@@ -69,26 +69,77 @@ export default function ClassroomsList() {
         }));
         setClassrooms(classroomsData);
       } else if (userRole === "teacher") {
-        // Teacher: Get teacher-specific classrooms
-        const teacherResponse = await api.get(`/teachers/user/${userId}`);
-        const teacherId = teacherResponse.data.data.tid;
+        // Teacher: Get teacher-specific classrooms using the correct endpoint
+        console.log("Fetching teacher classrooms for user ID:", userId);
         
-        if (teacherId) {
-          response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
-          const classroomsData = response.data.data.classrooms.map(item => ({
-            id: item.classroom.class_id,
-            c_id: item.classroom.class_id,
-            name: item.classroom.class_name,
-            code: item.classroom.class_id,
-            status: item.classroom.is_active ? "Active" : "Inactive",
-            students: 0,
-            teachers: 1,
-            is_active: item.classroom.is_active,
-            created_at: item.created_at,
-          }));
-          setClassrooms(classroomsData);
-        } else {
-          throw new Error("Teacher ID not found");
+        // Use the exact endpoint from your API: /classroom-teachers/teacher/{teacherId}/classrooms
+        // First, we need to get the teacher ID for the current user
+        try {
+          const teacherResponse = await api.get(`/teachers/user/${userId}`);
+          console.log("Teacher response:", teacherResponse.data);
+          
+          const teacherId = teacherResponse.data.data?.tid;
+          
+          if (teacherId) {
+            console.log("Found teacher ID:", teacherId);
+            
+            // Use the classroom-teachers endpoint as shown in your API
+            response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
+            console.log("Teacher classrooms response:", response.data);
+            
+            // Map the response data correctly based on your API structure
+            const classroomsData = response.data.data.classrooms.map(item => {
+              // The classroom data might be nested differently in the response
+              const classroom = item.classroom || item;
+              
+              return {
+                id: classroom.c_id || classroom.class_id,
+                c_id: classroom.c_id || classroom.class_id,
+                name: classroom.class_name,
+                code: classroom.class_id,
+                status: classroom.is_active ? "Active" : "Inactive",
+                students: classroom.current_students_count || 0,
+                teachers: classroom.current_teachers_count || 1,
+                is_active: classroom.is_active,
+                created_at: classroom.created_at,
+              };
+            });
+            
+            console.log("Mapped teacher classrooms:", classroomsData);
+            setClassrooms(classroomsData);
+          } else {
+            console.warn("Teacher ID not found for user:", userId);
+            setClassrooms([]);
+          }
+        } catch (teacherError) {
+          console.error("Error fetching teacher data:", teacherError);
+          
+          // Fallback: Try direct approach if teacher endpoint fails
+          try {
+            console.log("Trying direct teacher classrooms endpoint...");
+            response = await api.get(`/classroom-teachers/teacher/${userId}/classrooms`);
+            console.log("Direct teacher classrooms response:", response.data);
+            
+            const classroomsData = response.data.data.classrooms.map(item => {
+              const classroom = item.classroom || item;
+              return {
+                id: classroom.c_id || classroom.class_id,
+                c_id: classroom.c_id || classroom.class_id,
+                name: classroom.class_name,
+                code: classroom.class_id,
+                status: classroom.is_active ? "Active" : "Inactive",
+                students: classroom.current_students_count || 0,
+                teachers: classroom.current_teachers_count || 1,
+                is_active: classroom.is_active,
+                created_at: classroom.created_at,
+              };
+            });
+            
+            setClassrooms(classroomsData);
+          } catch (directError) {
+            console.error("Direct teacher classrooms also failed:", directError);
+            setClassrooms([]);
+          }
         }
       } else {
         // Parent: Get parent's classrooms
@@ -364,6 +415,136 @@ export default function ClassroomsList() {
     );
   }
 
+  // Teacher view - simplified classroom cards with view access only
+  if (isTeacher) {
+    return (
+      <div className="container-fluid px-4 py-3">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="alert alert-success alert-dismissible fade show mb-4" role="alert">
+            <i className="bi bi-check-circle-fill me-2"></i>
+            {successMessage}
+            <button 
+              type="button" 
+              className="btn-close" 
+              onClick={() => setSuccessMessage(null)}
+            ></button>
+          </div>
+        )}
+
+        <div className="row align-items-center mb-4">
+          <div className="col-md-4">
+            <h4 className="H4-heading fw-bold m-0">
+              Classrooms
+              <small className="text-muted ms-2 fs-6">
+                (Your Assigned Classrooms)
+              </small>
+            </h4>
+          </div>
+
+          <div className="col-md-8">
+            <div className="d-flex gap-3 align-items-center">
+              <div className="input-group flex-grow-1">
+                <span className="input-group-text">
+                  <i className="bi bi-search" />
+                </span>
+                <input
+                  className="form-control"
+                  placeholder="Search your classrooms..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+
+              <button
+                className="btn btn-outline-secondary flex-shrink-0"
+                onClick={handleRefresh}
+                style={{ minWidth: "100px" }}
+              >
+                <i className="bi bi-arrow-clockwise me-2"></i>
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-4 rounded-3 shadow">
+          <div className="row mb-3">
+            <div className="col-md-6">
+              <p className="mb-0">
+                Showing {filtered.length} of {classrooms.length} assigned
+                classrooms
+              </p>
+            </div>
+          </div>
+
+          {/* Cards grid for teacher's assigned classrooms */}
+          <div className="row g-3">
+            {filtered.map((cls) => (
+              <div className="col-12 col-sm-6 col-md-4 col-lg-3" key={cls.id}>
+                <div className="card h-100 border shadow-sm">
+                  <div className="card-body d-flex flex-column">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <div className="flex-grow-1 me-2">
+                        <h6
+                          className="card-title mb-1 text-truncate"
+                          title={cls.name}
+                        >
+                          {cls.name}
+                        </h6>
+                      </div>
+                      <span
+                        className={`badge ${
+                          cls.is_active ? "bg-success" : "bg-warning"
+                        }`}
+                        title="Status"
+                      >
+                        {cls.is_active ? "Active" : "Pending"}
+                      </span>
+                    </div>
+
+                    <div className="text-muted small mb-3">
+                      <div>
+                        <i className="bi bi-hash me-1" /> Code:{" "}
+                        <strong>{cls.code}</strong>
+                      </div>
+                      <div>
+                        <i className="bi bi-people me-1" /> Students:{" "}
+                        <strong>{cls.students}</strong>
+                      </div>
+                      {cls.teachers > 0 && (
+                        <div>
+                          <i className="bi bi-person-badge me-1" /> Teachers:{" "}
+                          <strong>{cls.teachers}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {filtered.length === 0 && (
+              <div className="col-12">
+                <div className="text-center text-muted py-5">
+                  <i
+                    className="bi bi-door-closed"
+                    style={{ fontSize: "2rem" }}
+                  />
+                  <p className="mb-0 mt-2">
+                    {query
+                      ? "No classrooms match your search."
+                      : "No classrooms assigned to you at the moment."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Parent view - simplified classroom cards without actions
   if (isParent) {
     return (
@@ -506,7 +687,7 @@ export default function ClassroomsList() {
     );
   }
 
-  // Admin/Teacher view
+  // Admin view
   return (
     <>
       <div className="container-fluid px-4 py-3">
@@ -529,13 +710,7 @@ export default function ClassroomsList() {
               Classrooms
               {userRole && (
                 <small className="ms-2 fs-6">
-                  (
-                  {userRole === "teacher"
-                    ? "Your Assigned Classrooms"
-                    : userRole === "parent"
-                    ? "Child's Classrooms"
-                    : "All Classrooms"}
-                  )
+                  (All Classrooms)
                 </small>
               )}
             </h4>
@@ -587,7 +762,6 @@ export default function ClassroomsList() {
             <div className="col-md-6">
               <p className="mb-0">
                 Showing {filtered.length} of {classrooms.length} classrooms
-                {userRole === "teacher" && " assigned to you"}
                 {totalStudents > 0 && (
                   <span className="text-muted ms-2">
                     • Total Students: <strong>{totalStudents}</strong>
@@ -653,28 +827,26 @@ export default function ClassroomsList() {
                       )}
                     </div>
 
-                    {/* Actions - Show for admin users only, remove for teacher users */}
-                    {!isTeacher && (
-                      <div className="mt-auto d-flex justify-content-end gap-1">
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => handleView(cls)}
-                          title="View"
-                        >
-                          <i className="bi bi-eye" />
-                        </button>
+                    {/* Actions - Show for admin users only */}
+                    <div className="mt-auto d-flex justify-content-end gap-1">
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleView(cls)}
+                        title="View"
+                      >
+                        <i className="bi bi-eye" />
+                      </button>
 
-                        {canCreateClassroom && (
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => askDelete(cls)}
-                            title="Delete"
-                          >
-                            <i className="bi bi-trash" />
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      {canCreateClassroom && (
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => askDelete(cls)}
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -690,8 +862,6 @@ export default function ClassroomsList() {
                   <p className="mb-0 mt-2">
                     {query
                       ? "No classrooms match your search."
-                      : userRole === "teacher"
-                      ? "No classrooms assigned to you at the moment."
                       : "No classrooms found."}
                   </p>
                 </div>

@@ -59,18 +59,15 @@ export default function ClassroomDetails() {
   // Status toggle loading state
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  // Get user role from localStorage - CORRECTED VERSION
+  // Get user role from localStorage
   const getUserRole = () => {
     try {
       const userData = localStorage.getItem("userData");
       
       if (userData) {
         const parsed = JSON.parse(userData);
-        
-        // Your role is in primary_role.role_name
         const role = parsed.primary_role?.role_name;
         console.log("🎯 EXTRACTED ROLE:", role);
-        
         return role || "student";
       }
       return "student";
@@ -88,6 +85,30 @@ export default function ClassroomDetails() {
     canEdit,
     isAdmin: userRole === "admin"
   });
+
+  // Debug function to check API response structure
+  const debugApiResponse = (response) => {
+    console.log("🔍 DEBUG API RESPONSE STRUCTURE:");
+    console.log("Success:", response.data?.success);
+    console.log("Message:", response.data?.message);
+    console.log("Has data:", !!response.data?.data);
+    
+    if (response.data?.data) {
+      console.log("Data keys:", Object.keys(response.data.data));
+      console.log("Has assignments:", !!response.data.data.assignments);
+      
+      if (response.data.data.assignments) {
+        console.log("Number of assignments:", response.data.data.assignments.length);
+        
+        // Log first assignment structure
+        if (response.data.data.assignments.length > 0) {
+          console.log("First assignment structure:", response.data.data.assignments[0]);
+          console.log("First assignment class_id:", response.data.data.assignments[0].class_id);
+          console.log("First assignment teacher:", response.data.data.assignments[0].teacher);
+        }
+      }
+    }
+  };
 
   // Fetch classroom by ID
   const fetchClassroomById = async (classroomId) => {
@@ -144,7 +165,7 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Fetch assigned teachers
+  // Fetch assigned teachers - FIXED VERSION
   const fetchAssignedTeachers = async (classroomClassId) => {
     try {
       console.log(
@@ -153,22 +174,20 @@ export default function ClassroomDetails() {
       );
 
       const response = await api.get("/classroom-teachers");
-      console.log("📦 RAW API RESPONSE - Teacher Assignments:", response.data);
+      
+      // Debug the response structure
+      debugApiResponse(response);
 
       if (response.data && response.data.success) {
         const allAssignments = response.data.data.assignments || [];
         console.log("📋 ALL ASSIGNMENTS FROM API:", allAssignments);
 
-        // Filter assignments for this specific classroom
+        // SIMPLIFIED FILTERING - Just check class_id directly
         const classroomAssignments = allAssignments.filter((assignment) => {
-          const matchesClassId = assignment.class_id === classroomClassId;
-          const matchesClassroomClassId =
-            assignment.classroom?.class_id === classroomClassId;
-          const matches = matchesClassId || matchesClassroomClassId;
-
+          const matches = assignment.class_id === classroomClassId;
+          
           console.log(`🔍 FILTERING - Assignment:`, {
             assignmentClassId: assignment.class_id,
-            assignmentClassroomClassId: assignment.classroom?.class_id,
             ourClassroomId: classroomClassId,
             matches: matches,
           });
@@ -181,15 +200,17 @@ export default function ClassroomDetails() {
         const teachers = classroomAssignments.map((assignment) => {
           const teacher = assignment.teacher;
           const teacherData = {
-            id: teacher.user_id,
-            name:
-              teacher.name || teacher.person?.full_name || "Unknown Teacher",
+            id: teacher.tid,
+            name: teacher.name || teacher.person?.full_name || "Unknown Teacher",
             email: teacher.email,
-            assignmentId: assignment.assignment_id,
-            assignmentDate: assignment.assignment_date,
+            assignmentId: assignment.crtid,
+            assignmentDate: assignment.crtid_date,
             endDate: assignment.end_date,
             isCurrent: assignment.is_current,
             status: assignment.status,
+            // Include additional teacher details for debugging
+            rawTeacherData: teacher,
+            rawAssignmentData: assignment
           };
           console.log("👤 PROCESSED TEACHER DATA:", teacherData);
           return teacherData;
@@ -259,10 +280,11 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Fetch available teachers - ENHANCED DEBUGGING VERSION
+  // Fetch available teachers - ENHANCED DEBUGGING
   const fetchAvailableTeachers = async () => {
     try {
       setLoadingTeachers(true);
+      console.log("🔍 ========== FETCH AVAILABLE TEACHERS DEBUG START ==========");
       console.log("🔍 START: Fetching available teachers from API");
       console.log("🌐 API Endpoint: /classroom-teachers/available-teachers");
 
@@ -270,8 +292,7 @@ export default function ClassroomDetails() {
       
       console.log("📦 AVAILABLE TEACHERS API RESPONSE:", response);
       console.log("📊 Response Status:", response.status);
-      console.log("📋 Response Headers:", response.headers);
-      console.log("📄 Response Data:", response.data);
+      console.log("📋 Response Data:", response.data);
 
       if (response.data && response.data.success) {
         const teachers = response.data.data.teachers || [];
@@ -279,9 +300,12 @@ export default function ClassroomDetails() {
         console.log("📊 Number of teachers received:", teachers.length);
         
         // Log each teacher's structure for debugging
+        console.log("👥 DETAILED TEACHER STRUCTURES:");
         teachers.forEach((teacher, index) => {
           console.log(`👤 Teacher ${index + 1}:`, {
             uid: teacher.uid,
+            user_id: teacher.user_id, // Check if this exists
+            tid: teacher.tid, // Check if teacher ID exists here
             name: teacher.name,
             email: teacher.email,
             phone: teacher.phone,
@@ -293,16 +317,23 @@ export default function ClassroomDetails() {
         });
         
         // Map the API response to match your frontend expectations
-        const mappedTeachers = teachers.map(teacher => ({
-          user_id: teacher.uid, // Map uid to user_id
-          name: teacher.name,
-          email: teacher.email,
-          phone: teacher.phone,
-          profile_picture: teacher.profile_picture,
-          photo_url: teacher.photo_url,
-          role: teacher.role,
-          person: teacher.person
-        }));
+        const mappedTeachers = teachers.map(teacher => {
+          // Try different possible ID fields - PRIORITIZE tid since that's what's used in assignments
+          const teacherId = teacher.tid || teacher.user_id || teacher.uid;
+          console.log(`🆔 Teacher ${teacher.name}: tid=${teacher.tid}, user_id=${teacher.user_id}, uid=${teacher.uid}, using=${teacherId}`);
+          
+          return {
+            user_id: teacherId,
+            tid: teacher.tid, // Include tid separately
+            name: teacher.name,
+            email: teacher.email,
+            phone: teacher.phone,
+            profile_picture: teacher.profile_picture,
+            photo_url: teacher.photo_url,
+            role: teacher.role,
+            person: teacher.person
+          };
+        });
         
         console.log("🗺️ MAPPED AVAILABLE TEACHERS LIST:", mappedTeachers);
         console.log("📊 Number of mapped teachers:", mappedTeachers.length);
@@ -324,7 +355,6 @@ export default function ClassroomDetails() {
       console.error("🚨 Error response:", error.response);
       console.error("🚨 Error response data:", error.response?.data);
       console.error("🚨 Error response status:", error.response?.status);
-      console.error("🚨 Error response headers:", error.response?.headers);
       
       showMessage(
         "danger",
@@ -335,6 +365,7 @@ export default function ClassroomDetails() {
     } finally {
       setLoadingTeachers(false);
       console.log("⏳ Loading teachers state set to false");
+      console.log("🔚 ========== FETCH AVAILABLE TEACHERS DEBUG END ==========");
     }
   };
 
@@ -399,7 +430,7 @@ export default function ClassroomDetails() {
     setEditedClassName("");
   };
 
-  // Update classroom name - CORRECTED API CALL
+  // Update classroom name
   const handleUpdateClassroom = async () => {
     if (!canEdit || !editedClassName.trim() || !classroom?.id) return;
 
@@ -464,7 +495,7 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Open assign teacher modal - ENHANCED DEBUGGING
+  // Open assign teacher modal
   const handleOpenAssignTeacherModal = () => {
     if (!canEdit) return;
     console.log("📋 OPENING ASSIGN TEACHER MODAL");
@@ -493,70 +524,133 @@ export default function ClassroomDetails() {
     setNotes("");
   };
 
-  // Assign teacher - ENHANCED DEBUGGING
+  // Assign teacher - ENHANCED DEBUGGING VERSION
   const handleAssignTeacher = async () => {
     if (!canEdit || !selectedTeacher || !assignmentDate || !classroom?.classId)
       return;
 
     const teacherId = parseInt(selectedTeacher);
+    
+    console.log("🔍 ========== ASSIGN TEACHER DEBUG START ==========");
     console.log("📤 ASSIGNING TEACHER - Debug Info:", {
       canEdit,
       selectedTeacher,
       teacherId,
       assignmentDate,
+      endDate,
+      notes,
       classroomClassId: classroom.classId,
       availableTeachersCount: availableTeachers.length,
-      availableTeachers: availableTeachers
+      availableTeachers: availableTeachers.map(t => ({ id: t.user_id, name: t.name, email: t.email }))
     });
 
-    console.log("📤 ASSIGNING TEACHER - Payload:", {
-      class_id: classroom.classId,
-      teacher_id: teacherId,
-      assignment_date: assignmentDate,
-      end_date: endDate || null,
-      notes: notes || "",
-    });
+    // Find the selected teacher in availableTeachers for debugging
+    const selectedTeacherData = availableTeachers.find(t => t.user_id === teacherId);
+    console.log("👤 SELECTED TEACHER DATA:", selectedTeacherData);
 
     setAssigningTeacher(true);
     try {
+      // CORRECTED PAYLOAD - Try using tid if available, otherwise use user_id
+      const teacherIdToUse = selectedTeacherData?.tid || teacherId;
+      
       const payload = {
         class_id: classroom.classId,
-        teacher_id: teacherId,
-        assignment_date: assignmentDate,
+        teacher_id: teacherIdToUse, // Use tid if available
+        crtid_date: assignmentDate,
         end_date: endDate || null,
         notes: notes || "",
       };
       
       console.log("🚀 SENDING POST REQUEST to /classroom-teachers");
-      console.log("📦 PAYLOAD:", payload);
+      console.log("📦 CORRECTED PAYLOAD:", JSON.stringify(payload, null, 2));
+      console.log("🔑 Teacher ID being used:", teacherIdToUse);
+      console.log("🌐 Full URL: https://wstsc.org.au/backend/api/classroom-teachers");
       
       const response = await api.post("/classroom-teachers", payload);
-      console.log("📦 ASSIGN TEACHER API RESPONSE:", response.data);
+      console.log("✅ ASSIGN TEACHER API SUCCESS RESPONSE:", response.data);
 
       if (response.data.success) {
+        console.log("🎉 Teacher assignment successful!");
         showMessage("success", "Teacher assigned successfully");
         console.log("🔄 Refetching assigned teachers after assignment");
         await fetchAssignedTeachers(classroom.classId);
         handleCloseAssignTeacherModal();
       } else {
         console.error("❌ ASSIGN TEACHER API FAILED - Response not successful");
+        console.error("Response data:", response.data);
         throw new Error(response.data.message || "Failed to assign teacher");
       }
     } catch (error) {
       console.error("💥 ERROR assigning teacher:", error);
-      console.error("Error response:", error.response?.data);
-      showMessage(
-        "danger",
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to assign teacher"
-      );
+      
+      // Detailed error analysis
+      console.error("🚨 ERROR DETAILS:");
+      console.error("- Error name:", error.name);
+      console.error("- Error code:", error.code);
+      console.error("- Error message:", error.message);
+      
+      if (error.response) {
+        console.error("📋 ERROR RESPONSE DATA:", error.response.data);
+        console.error("🔢 ERROR RESPONSE STATUS:", error.response.status);
+        console.error("📋 ERROR RESPONSE HEADERS:", error.response.headers);
+        
+        if (error.response.data && error.response.data.errors) {
+          console.error("❌ VALIDATION ERRORS:", error.response.data.errors);
+          
+          // Log each validation error in detail
+          Object.entries(error.response.data.errors).forEach(([field, errors]) => {
+            console.error(`   ${field}:`, errors);
+          });
+        }
+      } else if (error.request) {
+        console.error("🌐 NETWORK ERROR - No response received:", error.request);
+      } else {
+        console.error("⚡ SETUP ERROR:", error.message);
+      }
+      
+      // More detailed error handling
+      if (error.response?.data?.errors) {
+        const errorMessages = Object.values(error.response.data.errors).flat();
+        const fullErrorMessage = errorMessages.join(", ");
+        console.error("📝 FINAL ERROR MESSAGE TO USER:", fullErrorMessage);
+        showMessage("danger", fullErrorMessage);
+      } else {
+        const errorMsg = error.response?.data?.message || error.message || "Failed to assign teacher";
+        console.error("📝 FINAL ERROR MESSAGE TO USER:", errorMsg);
+        showMessage("danger", errorMsg);
+      }
     } finally {
       setAssigningTeacher(false);
+      console.log("🔚 ========== ASSIGN TEACHER DEBUG END ==========");
     }
   };
 
-  // Toggle classroom status - FIXED CORS ISSUE WITH PROXY APPROACH
+  // Test function to debug teacher assignment
+  const testTeacherAssignment = async () => {
+    console.log("🧪 TESTING TEACHER ASSIGNMENT API MANUALLY");
+    
+    // Test with known good data from your API response
+    const testPayload = {
+      class_id: classroom.classId,
+      teacher_id: 1, // Using teacher ID 1 from your API response
+      crtid_date: new Date().toISOString().split('T')[0],
+      end_date: null,
+      notes: "Test assignment via debug"
+    };
+    
+    console.log("🧪 TEST PAYLOAD:", testPayload);
+    
+    try {
+      const response = await api.post("/classroom-teachers", testPayload);
+      console.log("✅ TEST SUCCESS:", response.data);
+      showMessage("success", "Test assignment successful!");
+    } catch (error) {
+      console.error("❌ TEST FAILED:", error.response?.data);
+      showMessage("danger", "Test assignment failed: " + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Toggle classroom status
   const toggleClassroomStatus = async () => {
     if (!classroom?.id || !canEdit) {
       console.log("🚫 CANNOT TOGGLE: Missing classroom ID or edit permissions");
@@ -567,7 +661,6 @@ export default function ClassroomDetails() {
 
     setUpdatingStatus(true);
     try {
-      // Create a custom axios instance for this request to handle CORS
       const response = await api.patch(
         `/classrooms/${classroom.id}/toggle-status`,
         {},
@@ -669,7 +762,7 @@ export default function ClassroomDetails() {
     setRemovingTeacher(false);
   };
 
-  // Remove teacher assignment
+  // Remove teacher assignment - CORRECTED VERSION
   const handleRemoveTeacher = async () => {
     if (!canEdit || !teacherToRemove) return;
 
@@ -677,6 +770,7 @@ export default function ClassroomDetails() {
 
     setRemovingTeacher(true);
     try {
+      // Use crtid instead of assignment_id
       const response = await api.delete(
         `/classroom-teachers/${teacherToRemove.assignmentId}`
       );

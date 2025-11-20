@@ -76,7 +76,7 @@ const Sidebar = ({
       return [];
     }
 
-    console.log(`Getting sub-items for ${section} as ${userRole}`);
+    // console.log(`Getting sub-items for ${section} as ${userRole}`);
 
     switch (section) {
       case "enrolment":
@@ -133,7 +133,7 @@ const Sidebar = ({
       return section === "dashboard";
     }
 
-    console.log(`Checking visibility for ${section} as ${userRole}`);
+    // console.log(`Checking visibility for ${section} as ${userRole}`);
 
     switch (section) {
       case "dashboard":

@@ -293,7 +293,7 @@ const PersonDetails = () => {
         </Card.Header>
         <Card.Body className="p-4">
           <Row className="g-4">
-            <Col md={3}>
+            <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Full Name</span>
                 <span className="fs-6 fw-medium text-dark">
@@ -301,13 +301,13 @@ const PersonDetails = () => {
                 </span>
               </div>
             </Col>
-            <Col md={3}>
+            <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Email</span>
                 <span className="fs-6 text-dark">{personData.email || "—"}</span>
               </div>
             </Col>
-            <Col md={3}>
+            <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Phone</span>
                 <span className="fs-6 text-dark">
@@ -315,7 +315,7 @@ const PersonDetails = () => {
                 </span>
               </div>
             </Col>
-            <Col md={3}>
+            <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Role</span>
                 <span className="fs-6">
@@ -326,7 +326,7 @@ const PersonDetails = () => {
               </div>
             </Col>
 
-            <Col md={3}>
+            <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Status</span>
                 <span className="fs-6">
@@ -337,18 +337,6 @@ const PersonDetails = () => {
                     {personData.status}
                   </Badge>
                 </span>
-              </div>
-            </Col>
-            <Col md={3}>
-              <div className="d-flex flex-column">
-                <span className="small fw-semibold text-muted">User ID</span>
-                <span className="fs-6 text-dark">{personData.id}</span>
-              </div>
-            </Col>
-            <Col md={3}>
-              <div className="d-flex flex-column">
-                <span className="small fw-semibold text-muted">Role ID</span>
-                <span className="fs-6 text-dark">{personData.role_id || "—"}</span>
               </div>
             </Col>
           </Row>
@@ -383,10 +371,6 @@ const PersonDetails = () => {
                           <span className="small text-muted">Full Name</span>
                           <p className="mb-0 fw-medium text-dark">{personData.full_name}</p>
                         </div>
-                        <div>
-                          <span className="small text-muted">User ID</span>
-                          <p className="mb-0 text-dark">{personData.id}</p>
-                        </div>
                       </div>
                     </InfoCard>
                   </Col>
@@ -417,12 +401,6 @@ const PersonDetails = () => {
                           <span className="small text-muted">Role Name</span>
                           <p className="mb-0 text-dark text-capitalize">{personData.role_name}</p>
                         </div>
-                        {personData.role_id && (
-                          <div>
-                            <span className="small text-muted">Role ID</span>
-                            <p className="mb-0 text-dark">{personData.role_id}</p>
-                          </div>
-                        )}
                       </div>
                     </InfoCard>
                   </Col>
@@ -454,10 +432,6 @@ const PersonDetails = () => {
                   <Col md={6}>
                     <InfoCard title="System Information" className="bg-light">
                       <div className="d-flex flex-column gap-3">
-                        <div>
-                          <span className="small text-muted">User ID</span>
-                          <p className="mb-0 text-dark">{personData.id}</p>
-                        </div>
                         {personData.created_at && (
                           <div>
                             <span className="small text-muted">Account Created</span>
@@ -509,14 +483,6 @@ const PersonDetails = () => {
                             <span className="small text-muted">Role Name</span>
                             <span className="fs-6 text-dark text-capitalize">
                               {personData.role_name}
-                            </span>
-                          </div>
-                        </Col>
-                        <Col md={4}>
-                          <div className="d-flex flex-column">
-                            <span className="small text-muted">Role ID</span>
-                            <span className="fs-6 text-dark">
-                              {personData.role_id || "—"}
                             </span>
                           </div>
                         </Col>

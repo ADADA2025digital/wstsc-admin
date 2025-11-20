@@ -253,7 +253,10 @@ const EditProfile = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [apiMessage, setApiMessage] = useState({ type: "", text: "" });
   const [fieldErrors, setFieldErrors] = useState({});
-  const [validationAlert, setValidationAlert] = useState({ show: false, message: "" });
+  const [validationAlert, setValidationAlert] = useState({
+    show: false,
+    message: "",
+  });
 
   // Location data states
   const [countriesList, setCountriesList] = useState([]);
@@ -280,7 +283,7 @@ const EditProfile = () => {
     postal_code: "",
     country: "",
     suburb: "",
-    address_type: "home"
+    address_type: "home",
   });
 
   // Profile picture state
@@ -328,11 +331,11 @@ const EditProfile = () => {
   const fetchUserProfile = async () => {
     setIsLoadingProfile(true);
     try {
-      const response = await api.get('/profile/person');
+      const response = await api.get("/profile/person");
 
       if (response.data.success && response.data.data.profile) {
         const profile = response.data.data.profile;
-        
+
         // Map API response to form data
         const mappedData = {
           first_name: profile.first_name || "",
@@ -353,7 +356,7 @@ const EditProfile = () => {
           postal_code: profile.address?.postal_code || "",
           country: profile.address?.country || "",
           suburb: "", // Not in API response
-          address_type: profile.address?.address_type || "home"
+          address_type: profile.address?.address_type || "home",
         };
 
         setFormData(mappedData);
@@ -369,7 +372,12 @@ const EditProfile = () => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      showMessage("danger", `Error loading profile: ${error.response?.data?.message || error.message}`);
+      showMessage(
+        "danger",
+        `Error loading profile: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     } finally {
       setIsLoadingProfile(false);
     }
@@ -631,18 +639,24 @@ const EditProfile = () => {
         state: formData.state,
         postal_code: formData.postal_code,
         country: formData.country,
-        address_type: formData.address_type
+        address_type: formData.address_type,
       };
 
       // Debug: log the data being sent
-      console.log('Sending update data:', updateData);
+      console.log("Sending update data:", updateData);
 
-      const response = await api.put('/profile/update', updateData);
+      const response = await api.put("/profile/update", updateData);
 
       if (response.data.success) {
-        showMessage("success", response.data.message || "Profile updated successfully!");
-        setOriginalData({...formData});
-        
+        showMessage(
+          "success",
+          response.data.message || "Profile updated successfully!"
+        );
+        setOriginalData({ ...formData });
+
+        // Mark profile as completed in local storage
+        localStorage.setItem("profile_completed", "true");
+
         // Navigate back after success
         setTimeout(() => navigate(-1), 2000);
       } else {
@@ -650,7 +664,7 @@ const EditProfile = () => {
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      
+
       let errorMessage = "Error updating profile. Please try again.";
 
       // Handle validation errors (422 status)
@@ -659,23 +673,23 @@ const EditProfile = () => {
         if (validationErrors) {
           // Set field-specific errors
           setFieldErrors(validationErrors);
-          
+
           // Extract all validation error messages for the alert
           errorMessage = Object.values(validationErrors)
             .flat()
-            .map(error => typeof error === 'string' ? error : String(error))
-            .join(', ');
-          
+            .map((error) => (typeof error === "string" ? error : String(error)))
+            .join(", ");
+
           // Show validation alert without timer
           setValidationAlert({
             show: true,
-            message: errorMessage
+            message: errorMessage,
           });
         } else if (error.response.data.message) {
           errorMessage = error.response.data.message;
           showMessage("danger", errorMessage);
         }
-      } 
+      }
       // Handle other API errors
       else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -709,7 +723,10 @@ const EditProfile = () => {
   if (isLoadingProfile) {
     return (
       <div className="container-fluid px-4 py-3">
-        <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ height: "50vh" }}
+        >
           <div className="text-center">
             <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
@@ -810,11 +827,15 @@ const EditProfile = () => {
                                 onChange={handleInputChange}
                                 required
                                 placeholder="Enter your first name"
-                                className={`rounded-0 ${getFieldError('first_name') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("first_name")
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
                               />
-                              {getFieldError('first_name') && (
+                              {getFieldError("first_name") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('first_name')}
+                                  {getFieldError("first_name")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -829,11 +850,15 @@ const EditProfile = () => {
                                 value={formData.middle_name}
                                 onChange={handleInputChange}
                                 placeholder="Enter your middle name"
-                                className={`rounded-0 ${getFieldError('middle_name') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("middle_name")
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
                               />
-                              {getFieldError('middle_name') && (
+                              {getFieldError("middle_name") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('middle_name')}
+                                  {getFieldError("middle_name")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -849,11 +874,13 @@ const EditProfile = () => {
                                 onChange={handleInputChange}
                                 required
                                 placeholder="Enter your last name"
-                                className={`rounded-0 ${getFieldError('last_name') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("last_name") ? "is-invalid" : ""
+                                }`}
                               />
-                              {getFieldError('last_name') && (
+                              {getFieldError("last_name") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('last_name')}
+                                  {getFieldError("last_name")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -888,16 +915,18 @@ const EditProfile = () => {
                                 name="gender"
                                 value={formData.gender}
                                 onChange={handleInputChange}
-                                className={`rounded-0 ${getFieldError('gender') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("gender") ? "is-invalid" : ""
+                                }`}
                               >
                                 <option value="">Select Gender</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                                 <option value="other">Other</option>
                               </Form.Select>
-                              {getFieldError('gender') && (
+                              {getFieldError("gender") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('gender')}
+                                  {getFieldError("gender")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -911,11 +940,15 @@ const EditProfile = () => {
                                 name="date_of_birth"
                                 value={formData.date_of_birth}
                                 onChange={handleInputChange}
-                                className={`rounded-0 ${getFieldError('date_of_birth') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("date_of_birth")
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
                               />
-                              {getFieldError('date_of_birth') && (
+                              {getFieldError("date_of_birth") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('date_of_birth')}
+                                  {getFieldError("date_of_birth")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -928,7 +961,11 @@ const EditProfile = () => {
                                 name="nationality"
                                 value={formData.nationality}
                                 onChange={handleInputChange}
-                                className={`rounded-0 ${getFieldError('nationality') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("nationality")
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
                               >
                                 <option value="">
                                   Select your nationality
@@ -939,9 +976,9 @@ const EditProfile = () => {
                                   </option>
                                 ))}
                               </Form.Select>
-                              {getFieldError('nationality') && (
+                              {getFieldError("nationality") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('nationality')}
+                                  {getFieldError("nationality")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -954,7 +991,11 @@ const EditProfile = () => {
                                 name="marital_status"
                                 value={formData.marital_status}
                                 onChange={handleInputChange}
-                                className={`rounded-0 ${getFieldError('marital_status') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("marital_status")
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
                               >
                                 <option value="">Select Status</option>
                                 <option value="single">Single</option>
@@ -962,9 +1003,9 @@ const EditProfile = () => {
                                 <option value="divorced">Divorced</option>
                                 <option value="widowed">Widowed</option>
                               </Form.Select>
-                              {getFieldError('marital_status') && (
+                              {getFieldError("marital_status") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('marital_status')}
+                                  {getFieldError("marital_status")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -979,11 +1020,15 @@ const EditProfile = () => {
                                 value={formData.occupation}
                                 onChange={handleInputChange}
                                 placeholder="e.g., Senior Developer"
-                                className={`rounded-0 ${getFieldError('occupation') ? 'is-invalid' : ''}`}
+                                className={`rounded-0 ${
+                                  getFieldError("occupation")
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
                               />
-                              {getFieldError('occupation') && (
+                              {getFieldError("occupation") && (
                                 <Form.Control.Feedback type="invalid">
-                                  {getFieldError('occupation')}
+                                  {getFieldError("occupation")}
                                 </Form.Control.Feedback>
                               )}
                             </Form.Group>
@@ -1013,11 +1058,13 @@ const EditProfile = () => {
                               onChange={handleInputChange}
                               required
                               placeholder="+61412345678"
-                              className={`rounded-0 ${getFieldError('phone') ? 'is-invalid' : ''}`}
+                              className={`rounded-0 ${
+                                getFieldError("phone") ? "is-invalid" : ""
+                              }`}
                             />
-                            {getFieldError('phone') && (
+                            {getFieldError("phone") && (
                               <Form.Control.Feedback type="invalid">
-                                {getFieldError('phone')}
+                                {getFieldError("phone")}
                               </Form.Control.Feedback>
                             )}
                           </Form.Group>
@@ -1032,11 +1079,15 @@ const EditProfile = () => {
                               value={formData.alternate_phone}
                               onChange={handleInputChange}
                               placeholder="+61298765432"
-                              className={`rounded-0 ${getFieldError('alternate_phone') ? 'is-invalid' : ''}`}
+                              className={`rounded-0 ${
+                                getFieldError("alternate_phone")
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
                             />
-                            {getFieldError('alternate_phone') && (
+                            {getFieldError("alternate_phone") && (
                               <Form.Control.Feedback type="invalid">
-                                {getFieldError('alternate_phone')}
+                                {getFieldError("alternate_phone")}
                               </Form.Control.Feedback>
                             )}
                           </Form.Group>
@@ -1057,11 +1108,15 @@ const EditProfile = () => {
                               value={formData.address_line1}
                               onChange={handleInputChange}
                               placeholder="456 Collins Street"
-                              className={`rounded-0 ${getFieldError('address_line1') ? 'is-invalid' : ''}`}
+                              className={`rounded-0 ${
+                                getFieldError("address_line1")
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
                             />
-                            {getFieldError('address_line1') && (
+                            {getFieldError("address_line1") && (
                               <Form.Control.Feedback type="invalid">
-                                {getFieldError('address_line1')}
+                                {getFieldError("address_line1")}
                               </Form.Control.Feedback>
                             )}
                           </Form.Group>
@@ -1076,11 +1131,15 @@ const EditProfile = () => {
                               value={formData.address_line2}
                               onChange={handleInputChange}
                               placeholder="Apartment 4B"
-                              className={`rounded-0 ${getFieldError('address_line2') ? 'is-invalid' : ''}`}
+                              className={`rounded-0 ${
+                                getFieldError("address_line2")
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
                             />
-                            {getFieldError('address_line2') && (
+                            {getFieldError("address_line2") && (
                               <Form.Control.Feedback type="invalid">
-                                {getFieldError('address_line2')}
+                                {getFieldError("address_line2")}
                               </Form.Control.Feedback>
                             )}
                           </Form.Group>
@@ -1097,9 +1156,11 @@ const EditProfile = () => {
                             }
                             placeholder="Select Country"
                             options={countriesList}
-                            className={`rounded-0 ${getFieldError('country') ? 'is-invalid' : ''}`}
-                            isInvalid={!!getFieldError('country')}
-                            errorMessage={getFieldError('country')}
+                            className={`rounded-0 ${
+                              getFieldError("country") ? "is-invalid" : ""
+                            }`}
+                            isInvalid={!!getFieldError("country")}
+                            errorMessage={getFieldError("country")}
                           />
                         </div>
 
@@ -1119,9 +1180,11 @@ const EditProfile = () => {
                             }
                             options={statesList}
                             disabled={!formData.country}
-                            className={`rounded-0 ${getFieldError('state') ? 'is-invalid' : ''}`}
-                            isInvalid={!!getFieldError('state')}
-                            errorMessage={getFieldError('state')}
+                            className={`rounded-0 ${
+                              getFieldError("state") ? "is-invalid" : ""
+                            }`}
+                            isInvalid={!!getFieldError("state")}
+                            errorMessage={getFieldError("state")}
                           />
                         </div>
 
@@ -1141,9 +1204,11 @@ const EditProfile = () => {
                             }
                             options={citiesList}
                             disabled={!formData.state}
-                            className={`rounded-0 ${getFieldError('city') ? 'is-invalid' : ''}`}
-                            isInvalid={!!getFieldError('city')}
-                            errorMessage={getFieldError('city')}
+                            className={`rounded-0 ${
+                              getFieldError("city") ? "is-invalid" : ""
+                            }`}
+                            isInvalid={!!getFieldError("city")}
+                            errorMessage={getFieldError("city")}
                           />
                         </div>
 
@@ -1158,11 +1223,13 @@ const EditProfile = () => {
                               onChange={handleInputChange}
                               placeholder="Enter suburb"
                               disabled={!formData.city}
-                              className={`rounded-0 ${getFieldError('suburb') ? 'is-invalid' : ''}`}
+                              className={`rounded-0 ${
+                                getFieldError("suburb") ? "is-invalid" : ""
+                              }`}
                             />
-                            {getFieldError('suburb') && (
+                            {getFieldError("suburb") && (
                               <Form.Control.Feedback type="invalid">
-                                {getFieldError('suburb')}
+                                {getFieldError("suburb")}
                               </Form.Control.Feedback>
                             )}
                             <Form.Text className="text-muted">
@@ -1179,12 +1246,14 @@ const EditProfile = () => {
                               name="postal_code"
                               value={formData.postal_code}
                               onChange={handleInputChange}
-                              className={`rounded-0 ${getFieldError('postal_code') ? 'is-invalid' : ''}`}
+                              className={`rounded-0 ${
+                                getFieldError("postal_code") ? "is-invalid" : ""
+                              }`}
                               placeholder="3000"
                             />
-                            {getFieldError('postal_code') && (
+                            {getFieldError("postal_code") && (
                               <Form.Control.Feedback type="invalid">
-                                {getFieldError('postal_code')}
+                                {getFieldError("postal_code")}
                               </Form.Control.Feedback>
                             )}
                           </Form.Group>

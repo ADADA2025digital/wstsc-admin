@@ -582,7 +582,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
         (window.location.search ? "&" : "?") +
         "profileUpdated=true"
     );
-    window.location.href = `/edit-profile?return=${returnUrl}`;
+    window.location.href = `/update-profile?return=${returnUrl}`;
   };
 
   // Handle Continue Anyway action

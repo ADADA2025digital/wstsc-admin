@@ -27,6 +27,8 @@ import PrincipalDetails from "./Pages/Principal/PrincipalDetails";
 import Loader from "./Pages/Loader";
 import PersonsList from "./Pages/Persons/PersonsList";
 import PersonDetails from "./Pages/Persons/PersonDetails";
+import RouteGuard from "./Components/RouteGuard";
+import AuthGuard from "./Components/AuthGuard";
 
 function App() {
   return (
@@ -37,12 +39,18 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/setup-password" element={<SetupPassword />} />
 
-        {/* Protected routes */}
-        <Route path="/" element={<RootLayout />}>
-          <Route path="/" element={<Home />} />
+        {/* Protected routes that require completed profile */}
+        <Route 
+          path="/" 
+          element={
+            <RouteGuard requireProfileComplete={true}>
+              <RootLayout />
+            </RouteGuard>
+          }
+        >
+          <Route index element={<Home />} />
           <Route path="/useraccount" element={<UserAccount />} />
-          <Route path="/edit-profile" element={<EditProfile />} />
-
+          
           <Route path="/persons" element={<PersonsList />} />
           <Route path="/persons/:name" element={<PersonDetails />} />
 
@@ -65,6 +73,19 @@ function App() {
 
           <Route path="/principal" element={<PrincipalDetails />} />
         </Route>
+
+        {/* Update profile route - requires auth but NOT completed profile */}
+        <Route 
+          path="/update-profile" 
+          element={
+            <AuthGuard>
+              <EditProfile />
+            </AuthGuard>
+          } 
+        />
+
+        {/* Optional: Add a catch-all route for 404 */}
+        <Route path="*" element={<div>404 - Page Not Found</div>} />
       </Routes>
     </Router>
   );

@@ -10,6 +10,8 @@ import {
   Tab,
   Tabs,
   Form,
+  Modal,
+  Button,
 } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
@@ -25,8 +27,17 @@ const PersonDetails = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("");
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   useEffect(() => {
+    console.log("🔍 useEffect triggered", {
+      locationState: location.state,
+      name: name
+    });
+    
     if (location.state?.personData) {
       console.log("📍 Using location.state.personData:", location.state.personData);
       const transformedData = transformPersonData(location.state.personData);
@@ -35,6 +46,8 @@ const PersonDetails = () => {
     } else {
       fetchPersonDetails();
     }
+    // Fetch available roles when component mounts
+    fetchAvailableRoles();
   }, [name, location.state]);
 
   const fetchPersonDetails = async () => {
@@ -44,6 +57,8 @@ const PersonDetails = () => {
       
       const personId = location.state?.personId;
       
+      console.log("🆔 Person ID from location state:", personId);
+
       if (!personId) {
         setError("Person ID not found");
         return;
@@ -51,6 +66,7 @@ const PersonDetails = () => {
 
       console.log("🔄 Fetching person details for ID:", personId);
       const response = await api.get(`/admin/users/${personId}`);
+      console.log("📥 Person details API response:", response);
       
       if (response.data.success) {
         const apiData = response.data.data.user;
@@ -62,10 +78,75 @@ const PersonDetails = () => {
         setError(response.data.message || "Failed to fetch person details");
       }
     } catch (err) {
-      console.error("Error fetching person details:", err);
+      console.error("❌ Error fetching person details:", err);
+      console.error("❌ Error details:", {
+        message: err.message,
+        response: err.response,
+        config: err.config
+      });
       setError("Failed to fetch person details: " + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch available roles from API
+  const fetchAvailableRoles = async () => {
+    try {
+      console.log("🔄 Fetching available roles...");
+      // Try different possible endpoints for roles
+      const endpoints = [
+        '/admin/roles',
+        '/api/admin/roles',
+        '/roles'
+      ];
+
+      let rolesResponse = null;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔍 Trying roles endpoint: ${endpoint}`);
+          rolesResponse = await api.get(endpoint);
+          console.log(`✅ Roles API response from ${endpoint}:`, rolesResponse);
+          break; // If successful, break the loop
+        } catch (err) {
+          console.log(`❌ Failed to fetch from ${endpoint}:`, err.message);
+          continue;
+        }
+      }
+
+      if (rolesResponse && rolesResponse.data.success) {
+        const roles = rolesResponse.data.data.roles || rolesResponse.data.data;
+        console.log("✅ Available roles:", roles);
+        setAvailableRoles(roles);
+      } else {
+        // If no roles endpoint is available, use default roles
+        console.log("⚠️ Using default roles as fallback");
+        const defaultRoles = [
+          { roleid: 1, role_name: "admin", display_name: "Admin" },
+          { roleid: 2, role_name: "staff", display_name: "Staff" },
+          { roleid: 3, role_name: "teacher", display_name: "Teacher" },
+          { roleid: 4, role_name: "parent", display_name: "Parent" },
+          { roleid: 5, role_name: "student", display_name: "Student" }
+        ];
+        setAvailableRoles(defaultRoles);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching roles:", err);
+      console.error("❌ Roles error details:", {
+        message: err.message,
+        response: err.response,
+        config: err.config
+      });
+      // Use default roles as fallback
+      const defaultRoles = [
+        { roleid: 1, role_name: "admin", display_name: "Admin" },
+        { roleid: 2, role_name: "staff", display_name: "Staff" },
+        { roleid: 3, role_name: "teacher", display_name: "Teacher" },
+        { roleid: 4, role_name: "parent", display_name: "Parent" },
+        { roleid: 5, role_name: "student", display_name: "Student" }
+      ];
+      setAvailableRoles(defaultRoles);
     }
   };
 
@@ -111,14 +192,14 @@ const PersonDetails = () => {
   // Function to toggle person status
   const handleStatusToggle = async (newStatus) => {
     if (!personData) {
-      console.error("No person data available");
+      console.error("❌ No person data available");
       return;
     }
 
     const personId = personData.person_id || personData.id;
 
     if (!personId) {
-      console.error("No valid person ID found in person data");
+      console.error("❌ No valid person ID found in person data");
       alert("Cannot update status: Person ID not available");
       return;
     }
@@ -130,6 +211,8 @@ const PersonDetails = () => {
       const response = await api.patch(`/admin/users/${personId}/toggle-status`, {
         is_active: newStatus
       });
+      
+      console.log("✅ Status update response:", response);
       
       if (response.data.success) {
         // Update person data with new status
@@ -145,6 +228,11 @@ const PersonDetails = () => {
       }
     } catch (err) {
       console.error("❌ Error updating person status:", err);
+      console.error("❌ Status update error details:", {
+        message: err.message,
+        response: err.response,
+        config: err.config
+      });
       alert("Failed to update status: " + (err.response?.data?.message || err.message));
       
       // Revert the toggle if the API call failed
@@ -154,6 +242,114 @@ const PersonDetails = () => {
       }));
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  // Function to open role update modal
+  const handleOpenRoleModal = () => {
+    console.log("📝 Opening role modal, current role_id:", personData.role_id);
+    setSelectedRole(personData.role_id?.toString() || "");
+    setShowRoleModal(true);
+  };
+
+  // Function to update user role
+  const handleRoleUpdate = async () => {
+    console.log("🔄 Starting role update process...");
+    
+    if (!personData) {
+      console.error("❌ No person data available");
+      return;
+    }
+
+    if (!selectedRole) {
+      console.error("❌ No role selected");
+      alert("Please select a role");
+      return;
+    }
+
+    const personId = personData.person_id || personData.id;
+
+    if (!personId) {
+      console.error("❌ No valid person ID found in person data");
+      alert("Cannot update role: Person ID not available");
+      return;
+    }
+
+    console.log("🎯 Role update details:", {
+      personId: personId,
+      selectedRole: selectedRole,
+      selectedRoleInt: parseInt(selectedRole),
+      availableRoles: availableRoles
+    });
+
+    try {
+      setUpdatingRole(true);
+      
+      console.log("🔄 Updating role for person ID:", personId, "to role ID:", selectedRole);
+      
+      // Try different possible endpoints for role update
+      const endpoints = [
+        `/admin/persons/${personId}`,
+        `/api/admin/persons/${personId}`,
+        `/admin/users/${personId}/role`,
+        `/api/admin/users/${personId}/role`
+      ];
+
+      let updateResponse = null;
+      let lastError = null;
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔍 Trying role update endpoint: ${endpoint}`);
+          updateResponse = await api.put(endpoint, {
+            role_id: parseInt(selectedRole)
+          });
+          console.log(`✅ Role update successful from ${endpoint}:`, updateResponse);
+          break; // If successful, break the loop
+        } catch (err) {
+          console.log(`❌ Failed to update role via ${endpoint}:`, err.message);
+          lastError = err;
+          continue;
+        }
+      }
+
+      if (!updateResponse && lastError) {
+        throw lastError;
+      }
+
+      if (updateResponse.data.success) {
+        // Find the selected role details
+        const selectedRoleData = availableRoles.find(role => role.roleid === parseInt(selectedRole));
+        console.log("✅ Selected role data:", selectedRoleData);
+        
+        // Update person data with new role
+        setPersonData(prevData => ({
+          ...prevData,
+          role: selectedRoleData?.display_name || "Unknown Role",
+          role_name: selectedRoleData?.role_name || "unknown",
+          role_id: parseInt(selectedRole),
+          role_data: selectedRoleData || {}
+        }));
+        
+        setShowRoleModal(false);
+        console.log("✅ Role updated successfully to:", selectedRoleData?.display_name);
+        
+        // Show success message
+        alert("Role updated successfully!");
+      } else {
+        throw new Error(updateResponse.data.message || "Failed to update role");
+      }
+    } catch (err) {
+      console.error("❌ Error updating role:", err);
+      console.error("❌ Role update error details:", {
+        message: err.message,
+        response: err.response,
+        config: err.config,
+        endpoint: err.config?.url
+      });
+      alert("Failed to update role: " + (err.response?.data?.message || err.message));
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -237,6 +433,7 @@ const PersonDetails = () => {
   }
 
   console.log("🎯 RENDER - Current person data:", personData);
+  console.log("🎯 Available roles:", availableRoles);
 
   return (
     <div className="container-fluid px-4 py-3">
@@ -318,11 +515,19 @@ const PersonDetails = () => {
             <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Role</span>
-                <span className="fs-6">
+                <div className="d-flex align-items-center gap-2">
                   <Badge className={getRoleBadgeClass(personData.role_name)}>
                     {personData.role}
                   </Badge>
-                </span>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={handleOpenRoleModal}
+                    className="py-0"
+                  >
+                    <i className="bi bi-pencil"></i>
+                  </Button>
+                </div>
               </div>
             </Col>
 
@@ -380,11 +585,19 @@ const PersonDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small text-muted">Role</span>
-                          <p className="mb-0">
+                          <div className="d-flex align-items-center gap-2">
                             <Badge className={getRoleBadgeClass(personData.role_name)}>
                               {personData.role}
                             </Badge>
-                          </p>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={handleOpenRoleModal}
+                            >
+                              <i className="bi bi-pencil me-1"></i>
+                              Change
+                            </Button>
+                          </div>
                         </div>
                         <div>
                           <span className="small text-muted">Status</span>
@@ -400,6 +613,10 @@ const PersonDetails = () => {
                         <div>
                           <span className="small text-muted">Role Name</span>
                           <p className="mb-0 text-dark text-capitalize">{personData.role_name}</p>
+                        </div>
+                        <div>
+                          <span className="small text-muted">Role ID</span>
+                          <p className="mb-0 text-dark">{personData.role_id}</p>
                         </div>
                       </div>
                     </InfoCard>
@@ -486,6 +703,25 @@ const PersonDetails = () => {
                             </span>
                           </div>
                         </Col>
+                        <Col md={4}>
+                          <div className="d-flex flex-column">
+                            <span className="small text-muted">Role ID</span>
+                            <span className="fs-6 text-dark">{personData.role_id}</span>
+                          </div>
+                        </Col>
+                        <Col md={4}>
+                          <div className="d-flex flex-column">
+                            <span className="small text-muted">Actions</span>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleOpenRoleModal}
+                            >
+                              <i className="bi bi-pencil me-1"></i>
+                              Update Role
+                            </Button>
+                          </div>
+                        </Col>
                       </Row>
                       
                       {personData.role_name === "parent" && (
@@ -508,6 +744,64 @@ const PersonDetails = () => {
           </Tabs>
         </Card.Body>
       </Card>
+
+      {/* Role Update Modal */}
+      <Modal show={showRoleModal} onHide={() => setShowRoleModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Update User Role</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Select Role</Form.Label>
+              <Form.Select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+              >
+                <option value="">Choose a role...</option>
+                {availableRoles.map((role) => (
+                  <option key={role.roleid} value={role.roleid}>
+                    {role.display_name} ({role.role_name}) - ID: {role.roleid}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <div className="alert alert-info">
+              <small>
+                <i className="bi bi-info-circle me-2"></i>
+                Changing the role will affect the user's permissions and access rights.
+                Current role: {personData.role} (ID: {personData.role_id})
+              </small>
+            </div>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowRoleModal(false)}
+            disabled={updatingRole}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleRoleUpdate}
+            disabled={!selectedRole || updatingRole}
+          >
+            {updatingRole ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-check-lg me-2"></i>
+                Update Role
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

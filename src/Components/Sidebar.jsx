@@ -93,7 +93,6 @@ const Sidebar = ({
   const isTeacher = userRole === "teacher";
   const isParent = userRole === "parent";
   const isAdmin = userRole === "admin";
-  const isRestrictedUser = isTeacher || isParent;
 
   // Role-based sub-items configuration
   const getSubItems = (section) => {
@@ -129,33 +128,29 @@ const Sidebar = ({
         if (isAdmin) {
           return [{ label: "View All Enrolments", to: "/enrolments" }];
         }
+        // Parent and other roles see both
         return [
           { label: "View All Enrolments", to: "/enrolments" },
           { label: "Enrol the student", to: "/enrol" },
         ];
 
       case "classroom":
-        // Classroom section: For teacher or parent, hide "View status Classrooms"
-        if (isRestrictedUser) {
+        // For teacher or parent, hide "View status Classrooms"
+        if (isTeacher || isParent) {
           return [{ label: "View all classrooms", to: "/classrooms" }];
-        } else {
-          return [
-            { label: "View all classrooms", to: "/classrooms" },
-            { label: "View status Classrooms", to: "/classroom-status" },
-          ];
         }
+        // Admin sees all
+        return [
+          { label: "View all classrooms", to: "/classrooms" },
+          { label: "View status Classrooms", to: "/classroom-status" },
+        ];
 
       case "students":
-        // Students section: For teacher or parent, hide "View status Students"
-        if (isRestrictedUser) {
-          return [{ label: "View all students", to: "/students" }];
-        } else {
-          return [{ label: "View all students", to: "/students" }];
-        }
+        // All roles see the same student sub-items
+        return [{ label: "View all students", to: "/students" }];
 
       case "persons":
-        // Persons section: For teacher or parent, restrict access if needed
-        // Currently showing for all roles, but you can add restrictions here
+        // All roles see the same persons sub-items
         return [{ label: "View all persons", to: "/persons" }];
 
       default:
@@ -175,18 +170,26 @@ const Sidebar = ({
 
     switch (section) {
       case "dashboard":
-        return true; // Always visible
+        return true; // Always visible for all users
+
       case "enrolment":
-        // Hide enrollment section completely for teachers
-        return !isTeacher;
+        // Show for admin and parent, hide for teacher
+        return isAdmin || isParent;
+
       case "classroom":
-        return true; // Always visible (sub-items are restricted)
+        // Show for admin, teacher, and parent
+        return isAdmin || isTeacher || isParent;
+
       case "students":
-        return true; // Always visible (sub-items are restricted)
+        // Show for admin, teacher, and parent
+        return isAdmin || isTeacher || isParent;
+
       case "persons":
-        return true; // Always visible for now, can add role restrictions later
+        // Show only for admin (based on your requirements)
+        return isAdmin;
+
       default:
-        return true;
+        return false;
     }
   };
 
@@ -200,7 +203,7 @@ const Sidebar = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="sidebar-body flex-grow-1 overflow-y-auto px-3 pt-3">
-        {/* Dashboard - Always visible */}
+        {/* Dashboard - Always visible for all users */}
         {shouldShowSection("dashboard") && (
           <ul className="nav flex-column">
             <li className="nav-item">
@@ -218,7 +221,7 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Enrolment - Hidden for teachers */}
+        {/* Enrolment - Show for admin and parent, hide for teacher */}
         {shouldShowSection("enrolment") && (
           <ul className="nav flex-column">
             <SideBarLink
@@ -233,7 +236,7 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Classroom - Always visible, sub-items restricted */}
+        {/* Classroom - Show for admin, teacher, and parent */}
         {shouldShowSection("classroom") && (
           <ul className="nav flex-column">
             <SideBarLink
@@ -248,11 +251,11 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Persons - New section for person management */}
+        {/* Persons - Show only for admin */}
         {shouldShowSection("persons") && (
           <ul className="nav flex-column">
             <SideBarLink
-              iconType="bi-person-badge" // Using a person badge icon, you can change this
+              iconType="bi-person-badge"
               label="Persons"
               isExpanded={activeSection === "Persons"}
               onToggle={() => handleToggle("Persons")}
@@ -263,7 +266,7 @@ const Sidebar = ({
           </ul>
         )}
 
-        {/* Students - Always visible, sub-items restricted */}
+        {/* Students - Show for admin, teacher, and parent */}
         {shouldShowSection("students") && (
           <ul className="nav flex-column">
             <SideBarLink

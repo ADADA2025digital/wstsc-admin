@@ -541,11 +541,11 @@ const EnrolStudents = () => {
               </ButtonGlobal>
             )}
             {userRole === "parent" && students.length > 0 && (
-              <ButtonGlobal
+              <button
                 onClick={handleEnrolStudent}
-                className="btn btn-primary"
-                text="New Enrollment"
-              />
+                className="btn custom-btn"
+              >New Enrollment
+              </button>
             )}
           </div>
         </div>

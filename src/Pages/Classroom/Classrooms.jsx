@@ -142,24 +142,79 @@ export default function ClassroomsList() {
           }
         }
       } else {
-        // Parent: Get parent's classrooms
+        // Parent: Get parent's children classrooms using the my-enrollments endpoint
         try {
-          response = await api.get(`/parent-classrooms/user/${userId}`);
-          const classroomsData = response.data.data.classrooms.map(cls => ({
-            id: cls.c_id,
-            c_id: cls.c_id,
-            name: cls.class_name,
-            code: cls.class_id,
-            status: cls.is_active ? "Active" : "Inactive",
-            students: cls.current_students_count || 0,
-            teachers: cls.current_teachers_count || 0,
-            is_active: cls.is_active,
-            created_at: cls.created_at,
+          console.log("Fetching parent enrollments for user ID:", userId);
+          
+          // Use the my-enrollments endpoint as shown in your API
+          response = await api.get("/my-enrollments");
+          console.log("Parent enrollments response:", response.data);
+          
+          // Extract classrooms from enrollments
+          const enrollments = response.data.data?.enrollments || [];
+          
+          // Create a map to avoid duplicate classrooms (same class code)
+          const classroomMap = new Map();
+          
+          enrollments.forEach(enrollment => {
+            const classInfo = enrollment.student;
+            
+            if (classInfo?.enrol_class_in_WSTSC && classInfo?.status === "approved") {
+              const classCode = classInfo.enrol_class_in_WSTSC;
+              
+              // If we haven't seen this classroom before, add it
+              if (!classroomMap.has(classCode)) {
+                classroomMap.set(classCode, {
+                  id: classCode, // Use class code as ID for parent view
+                  c_id: classCode,
+                  name: `${classCode} Classroom`,
+                  code: classCode,
+                  status: "Active",
+                  students: 0,
+                  teachers: 1,
+                  is_active: true,
+                  created_at: classInfo.enrolment_date || classInfo.submitted_at,
+                  students_info: []
+                });
+              }
+              
+              // Add student info to the classroom
+              const classroom = classroomMap.get(classCode);
+              classroom.students_info.push({
+                student_id: classInfo.student_id,
+                first_name: classInfo.first_given_name,
+                preferred_name: classInfo.preferred_first_name,
+                family_name: classInfo.family_name,
+                gender: classInfo.gender,
+                date_of_birth: classInfo.date_of_birth,
+                mainstream_school: classInfo.mainstream_school_name,
+                enrollment_year: classInfo.mainstream_enrollment_year,
+                enrollment_status: classInfo.status
+              });
+            }
+          });
+          
+          // Convert map to array and update student counts
+          const classroomsData = Array.from(classroomMap.values()).map(classroom => ({
+            ...classroom,
+            students: classroom.students_info.length
           }));
+          
+          console.log("Mapped parent classrooms:", classroomsData);
           setClassrooms(classroomsData);
+          
         } catch (parentError) {
-          console.log("Parent classrooms endpoint not implemented yet");
-          setClassrooms([]);
+          console.error("Error fetching parent enrollments:", parentError);
+          
+          // Enhanced error handling for parent endpoint
+          if (parentError.response?.status === 404) {
+            console.log("Parent enrollments endpoint returned 404, no enrollments found");
+            setClassrooms([]);
+          } else if (parentError.response?.status === 401) {
+            setError("Authentication failed. Please log in again.");
+          } else {
+            setError("Failed to load your children's classrooms. Please try again.");
+          }
         }
       }
     } catch (err) {
@@ -194,7 +249,7 @@ export default function ClassroomsList() {
     0
   );
 
-  // FIXED: Handle view for both parent and admin - navigate to same path
+  // Handle view for both parent and admin - navigate to same path
   const handleView = (cls) => {
     console.log("👁️ Navigating to classroom:", cls);
     
@@ -602,8 +657,7 @@ export default function ClassroomsList() {
           <div className="row mb-3">
             <div className="col-md-6">
               <p className="mb-0">
-                Showing {filtered.length} of {classrooms.length} assigned
-                classrooms
+                Showing {filtered.length} of {classrooms.length} classrooms with your children
               </p>
             </div>
           </div>
@@ -622,6 +676,9 @@ export default function ClassroomsList() {
                         >
                           {cls.name}
                         </h6>
+                        <small className="text-muted">
+                          Class Code: {cls.code}
+                        </small>
                       </div>
                       <span
                         className={`badge ${
@@ -634,32 +691,22 @@ export default function ClassroomsList() {
                     </div>
 
                     <div className="text-muted small mb-3">
-                      <div>
-                        <i className="bi bi-hash me-1" /> Code:{" "}
-                        <strong>{cls.code}</strong>
+                      <div className="mb-2">
+                        <i className="bi bi-people me-1" /> 
+                        <strong>Your Children in this Class:</strong>
                       </div>
-                      <div>
-                        <i className="bi bi-people me-1" /> Your Children:{" "}
-                        <strong>{cls.students}</strong>
-                      </div>
-                      {cls.teachers > 0 && (
-                        <div>
-                          <i className="bi bi-person-badge me-1" /> Teachers:{" "}
-                          <strong>{cls.teachers}</strong>
+                      {cls.students_info?.map((student, index) => (
+                        <div key={index} className="mb-1">
+                          <i className="bi bi-person me-1" />
+                          {student.preferred_name || student.first_name} {student.family_name}
+                          {student.enrollment_year && (
+                            <small className="text-muted ms-1">
+                              ({student.enrollment_year})
+                            </small>
+                          )}
                         </div>
-                      )}
-                    </div>
-
-                    {/* Add view button for parents */}
-                    <div className="mt-auto d-flex justify-content-end gap-1 pt-2">
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => handleView(cls)}
-                        title="View Classroom Details"
-                      >
-                        <i className="bi bi-eye me-1" />
-                        View
-                      </button>
+                      ))}
+                    
                     </div>
                   </div>
                 </div>
@@ -670,14 +717,17 @@ export default function ClassroomsList() {
               <div className="col-12">
                 <div className="text-center text-muted py-5">
                   <i
-                    className="bi bi-door-closed"
+                    className="bi bi-backpack"
                     style={{ fontSize: "2rem" }}
                   />
                   <p className="mb-0 mt-2">
                     {query
                       ? "No classrooms match your search."
-                      : "No assigned classrooms found."}
+                      : "No classroom enrollments found for your children."}
                   </p>
+                  <small className="text-muted">
+                    {!query && "If you recently enrolled your children, please check back later for updates."}
+                  </small>
                 </div>
               </div>
             )}

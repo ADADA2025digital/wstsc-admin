@@ -615,9 +615,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
         "marital_status",
         "occupation",
         "street_name",
-        "suburb",
         "state",
         "postal_code",
+        // "suburb" REMOVED - now optional
       ];
       return requiredFields.includes(field);
     }
@@ -643,9 +643,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
       "marital_status",
       "occupation",
       "street_name",
-      "suburb",
       "state",
       "postal_code",
+      // "suburb" REMOVED - now optional
     ];
 
     const fieldsToCheck =
@@ -691,9 +691,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
       "marital_status",
       "occupation",
       "street_name",
-      "suburb",
       "state",
       "postal_code",
+      // "suburb" REMOVED - now optional
     ];
 
     requiredFieldsCarer1.forEach((field) => {
@@ -706,6 +706,23 @@ export default function FamilyDetailsPhase2({ onNext }) {
           value,
           error: getError("parent_carer_1", field),
         });
+      }
+    });
+
+    // Validate optional fields for carer 1 (only if they have values)
+    const optionalFieldsCarer1 = ["suburb", "middle_name", "alternative_phone", "address_type", "street_number"];
+    optionalFieldsCarer1.forEach((field) => {
+      const value = formData.parent_carer_1[field];
+      // Only validate if field has value (all fields are optional)
+      if (value && value !== "") {
+        if (!validateField("parent_carer_1", field, value)) {
+          hasParent1Errors = true;
+          parent1FailedFields.push({
+            field,
+            value,
+            error: getError("parent_carer_1", field),
+          });
+        }
       }
     });
 
@@ -1200,7 +1217,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
               }
               onBlur={() => handleBlur("parent_carer_1", "suburb")}
               error={getError("parent_carer_1", "suburb")}
-              required={shouldShowRequired("parent_carer_1", "suburb")}
+              required={shouldShowRequired("parent_carer_1", "suburb")} // Now false - optional
               options={suburbOptions.parent_carer_1}
             />
           </div>

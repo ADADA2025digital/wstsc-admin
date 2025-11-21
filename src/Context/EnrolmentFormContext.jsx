@@ -370,7 +370,10 @@ export const EnrolmentFormProvider = ({ children }) => {
           validateDate: (value) => {
             const date = new Date(value);
             const today = new Date();
-            return !isNaN(date.getTime()) && date < today;
+            // Set both dates to start of day for accurate comparison
+            const dobDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            return !isNaN(date.getTime()) && dobDate < currentDate;
           }
         };
 
@@ -380,8 +383,7 @@ export const EnrolmentFormProvider = ({ children }) => {
           message: "This field is required",
           validateDate: (value) => {
             const date = new Date(value);
-            const today = new Date();
-            return !isNaN(date.getTime()) && date <= today;
+            return !isNaN(date.getTime()); // Only validate that it's a valid date, no future restriction
           }
         };
 
@@ -393,7 +395,10 @@ export const EnrolmentFormProvider = ({ children }) => {
           validateDate: (value) => {
             const date = new Date(value);
             const today = new Date();
-            return !isNaN(date.getTime()) && date <= today;
+            // Set both dates to start of day for accurate comparison
+            const declarationDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            return !isNaN(date.getTime()) && declarationDate <= currentDate;
           }
         };
 
@@ -512,11 +517,14 @@ export const EnrolmentFormProvider = ({ children }) => {
         isValid = false;
       }
 
-      // Past date validation
+      // Past date validation (only for date of birth)
       if (rules.isPastDate && value) {
         const date = new Date(value);
         const today = new Date();
-        if (isNaN(date.getTime()) || date >= today) {
+        // Set both dates to start of day for accurate comparison
+        const inputDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (isNaN(date.getTime()) || inputDate >= currentDate) {
           errorMessage = rules.message;
           isValid = false;
         }

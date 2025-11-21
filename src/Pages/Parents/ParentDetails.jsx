@@ -28,14 +28,33 @@ const ParentDetails = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  // Debug initial state
+  console.log("🔍 INITIAL STATE:", {
+    name,
+    locationState: location.state,
+    hasParentData: !!parentData,
+    loading,
+    error
+  });
+
   useEffect(() => {
+    console.log("🔄 useEffect triggered", {
+      hasLocationState: !!location.state,
+      locationState: location.state
+    });
+
     if (location.state?.parentData) {
+      console.log("📥 Using parentData from location state", location.state.parentData);
       const transformedData = transformParentData(location.state.parentData);
       setParentData(transformedData);
       setLoading(false);
       // Fetch children data after parent data is set
-      fetchChildrenData(location.state.parentData.user_id);
+      if (location.state.parentData.user_id) {
+        console.log("👨‍👧 Fetching children data with user_id:", location.state.parentData.user_id);
+        fetchChildrenData(location.state.parentData.user_id);
+      }
     } else {
+      console.log("🌐 Fetching parent details from API");
       fetchParentDetails();
     }
   }, [name, location.state]);
@@ -45,29 +64,51 @@ const ParentDetails = () => {
       setLoading(true);
       setError(null);
       
+      console.log("🔎 Finding parent ID...");
       const parentId = location.state?.parentId || getParentIdFromName(name);
       
+      console.log("📋 Parent ID found:", parentId);
+      
       if (!parentId) {
-        setError("Parent ID not found");
+        const errorMsg = "Parent ID not found. Please check the URL or navigate from parents list.";
+        console.error("❌", errorMsg);
+        setError(errorMsg);
+        setLoading(false);
         return;
       }
 
+      console.log("🚀 Making API call to:", `/admin/parents/${parentId}`);
       const response = await api.get(`/admin/parents/${parentId}`);
       
-      if (response.data.success) {
+      console.log("📨 API Response:", response);
+      
+      if (response.data && response.data.success) {
         const apiData = response.data.data.parent;
+        console.log("✅ API Data received:", apiData);
+        
         const transformedData = transformParentData(apiData);
+        console.log("🔄 Transformed data:", transformedData);
+        
         setParentData(transformedData);
-        console.log("✅ Fetched and transformed parent data:", transformedData);
         
         // Fetch children data after parent data is set
-        fetchChildrenData(apiData.user_id || parentId);
+        const userId = apiData.user_id || parentId;
+        console.log("👨‍👧 Setting up children fetch with user_id:", userId);
+        fetchChildrenData(userId);
       } else {
-        setError(response.data.message || "Failed to fetch parent details");
+        const errorMsg = response.data?.message || "Failed to fetch parent details - API returned unsuccessful";
+        console.error("❌", errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
-      console.error("Error fetching parent details:", err);
-      setError("Failed to fetch parent details: " + (err.response?.data?.message || err.message));
+      console.error("💥 Error fetching parent details:", {
+        error: err,
+        response: err.response,
+        message: err.message
+      });
+      
+      const errorMessage = err.response?.data?.message || err.message || "Network error";
+      setError(`Failed to fetch parent details: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -75,29 +116,41 @@ const ParentDetails = () => {
 
   // Fetch children data from the student-details API
   const fetchChildrenData = async (parentId) => {
-    if (!parentId) return;
+    if (!parentId) {
+      console.warn("⚠️ No parentId provided for fetching children data");
+      return;
+    }
     
     try {
       setChildrenLoading(true);
-      console.log(`Fetching children data for parent ${parentId}...`);
+      console.log(`👨‍👧 Fetching children data for parent ${parentId}...`);
       
       const response = await api.get(`/admin/parent/${parentId}/student-details`);
+      console.log("📨 Children API Response:", response);
       
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         const students = response.data.data.students || [];
-        console.log("✅ Fetched children data:", students);
+        console.log("✅ Children data received:", students);
         
+        if (students.length === 0) {
+          console.log("ℹ️ No children found for this parent");
+          setChildrenData([]);
+          return;
+        }
+
         // Transform the children data to match our table structure
-        const transformedChildren = students.map(student => {
-          const studentInfo = student.student_info;
+        const transformedChildren = students.map((student, index) => {
+          console.log(`👶 Processing child ${index + 1}:`, student);
+          
+          const studentInfo = student.student_info || {};
           const currentClass = student.current_classes?.[0] || {};
           
-          return {
-            id: studentInfo.enrollment_id,
+          const transformedChild = {
+            id: studentInfo.enrollment_id || `child-${index}`,
             enrollment_id: studentInfo.enrollment_id,
             first_name: studentInfo.first_given_name,
             last_name: studentInfo.family_name,
-            full_name: `${studentInfo.first_given_name} ${studentInfo.family_name}`,
+            full_name: `${studentInfo.first_given_name || ''} ${studentInfo.family_name || ''}`.trim(),
             preferred_name: studentInfo.preferred_first_name,
             gender: studentInfo.gender,
             date_of_birth: studentInfo.date_of_birth,
@@ -115,15 +168,23 @@ const ParentDetails = () => {
             emergency_contacts: student.emergency_contacts || [],
             summary: student.summary || {}
           };
+          
+          console.log(`🔄 Transformed child ${index + 1}:`, transformedChild);
+          return transformedChild;
         });
         
+        console.log("🎉 Final transformed children:", transformedChildren);
         setChildrenData(transformedChildren);
       } else {
-        console.warn("No children data found or API returned unsuccessful");
+        console.warn("⚠️ No children data found or API returned unsuccessful", response.data);
         setChildrenData([]);
       }
     } catch (err) {
-      console.error("Error fetching children data:", err);
+      console.error("💥 Error fetching children data:", {
+        error: err,
+        response: err.response,
+        message: err.message
+      });
       // Don't set error state for children data - just log it
       setChildrenData([]);
     } finally {
@@ -133,21 +194,29 @@ const ParentDetails = () => {
 
   // Helper function to transform API data
   const transformParentData = (apiData) => {
-    console.log("🔍 Transforming parent data:", apiData);
+    console.log("🔄 Transforming parent data input:", apiData);
     
+    if (!apiData) {
+      console.error("❌ No API data provided to transform");
+      return null;
+    }
+
     // Use the direct properties from apiData since they're available
     const isActive = apiData.status === "Active";
     
-    console.log("✅ Derived is_active from status:", apiData.status, "->", isActive);
+    console.log("✅ Derived is_active from status:", {
+      originalStatus: apiData.status,
+      derivedIsActive: isActive
+    });
     
-    return {
+    const transformedData = {
       id: apiData.id,
       user_id: apiData.user_id || apiData.id,
       person_id: apiData.id, // Use parent ID as person ID for the API call
       first_name: apiData.first_name || "",
       last_name: apiData.last_name || "",
       middle_name: apiData.middle_name || "",
-      full_name: apiData.full_name || "",
+      full_name: apiData.full_name || `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
       gender: apiData.gender || "",
       date_of_birth: apiData.date_of_birth || "",
       nationality: apiData.nationality || "",
@@ -174,24 +243,31 @@ const ParentDetails = () => {
       updated_at: apiData.updated_at,
       last_login: apiData.last_login
     };
+    
+    console.log("🎯 Final transformed parent data:", transformedData);
+    return transformedData;
   };
 
   const getParentIdFromName = (parentName) => {
-    console.log("Need to implement getParentIdFromName for:", parentName);
+    console.log("🔍 Need to implement getParentIdFromName for:", parentName);
+    // If you need to extract ID from name, implement this logic
+    // For now, return null and rely on location.state
     return null;
   };
 
   // Function to toggle parent status
   const handleStatusToggle = async (newStatus) => {
+    console.log("🔄 Status toggle requested:", { newStatus, currentData: parentData });
+    
     if (!parentData) {
-      console.error("No parent data available");
+      console.error("❌ No parent data available for status toggle");
       return;
     }
 
     const personId = parentData.person_id || parentData.id;
 
     if (!personId) {
-      console.error("No valid person ID found in parent data");
+      console.error("❌ No valid person ID found in parent data:", parentData);
       alert("Cannot update status: Person ID not available");
       return;
     }
@@ -199,13 +275,15 @@ const ParentDetails = () => {
     try {
       setUpdatingStatus(true);
       
-      console.log("🔄 Toggling status for person ID:", personId);
-      const response = await api.patch(`/admin/persons/${personId}/toggle-status`);
+      console.log("🚀 Making status toggle API call for person ID:", personId);
+      const response = await api.put(`/admin/persons/${personId}/toggle-status`);
       
-      if (response.data.success) {
+      console.log("📨 Status toggle response:", response);
+      
+      if (response.data && response.data.success) {
         const updatedPerson = response.data.data.person;
         
-        console.log("✅ Status update response:", updatedPerson);
+        console.log("✅ Status update successful:", updatedPerson);
         
         // Update parent data with consistent status
         setParentData(prevData => ({
@@ -214,12 +292,16 @@ const ParentDetails = () => {
           is_active: updatedPerson.new_status
         }));
         
-        console.log("✅ Status updated successfully to:", updatedPerson.status_text);
+        console.log("✅ Local state updated with new status:", updatedPerson.status_text);
       } else {
-        throw new Error(response.data.message || "Failed to update status");
+        throw new Error(response.data?.message || "Failed to update status");
       }
     } catch (err) {
-      console.error("❌ Error updating parent status:", err);
+      console.error("❌ Error updating parent status:", {
+        error: err,
+        response: err.response,
+        message: err.message
+      });
       alert("Failed to update status: " + (err.response?.data?.message || err.message));
       
       // Revert the toggle if the API call failed
@@ -232,10 +314,31 @@ const ParentDetails = () => {
     }
   };
 
-  const handleBack = () => navigate("/parents");
+  const handleBack = () => {
+    console.log("🔙 Navigating back to parents list");
+    navigate("/parents");
+  };
+
+  // Debug current state on render
+  console.log("🎯 RENDER STATE:", {
+    loading,
+    error,
+    parentData: parentData ? {
+      id: parentData.id,
+      full_name: parentData.full_name,
+      status: parentData.status,
+      is_active: parentData.is_active
+    } : null,
+    childrenData: {
+      count: childrenData.length,
+      data: childrenData
+    },
+    childrenLoading
+  });
 
   // Loading state
   if (loading) {
+    console.log("⏳ Rendering loading state");
     return (
       <div className="container-fluid px-4 py-3">
         <div
@@ -253,6 +356,7 @@ const ParentDetails = () => {
 
   // Error state
   if (error) {
+    console.log("💥 Rendering error state:", error);
     return (
       <div className="container-fluid px-4 py-3">
         <Alert variant="danger" className="mb-4">
@@ -261,10 +365,16 @@ const ParentDetails = () => {
             <div>
               <h4 className="alert-heading mb-1">Error Loading Parent</h4>
               <p className="mb-3">{error}</p>
-              <button onClick={handleBack} className="btn btn-primary">
-                <i className="bi bi-arrow-left me-2"></i>
-                Back to Parents
-              </button>
+              <div className="mt-3">
+                <button onClick={handleBack} className="btn btn-primary me-2">
+                  <i className="bi bi-arrow-left me-2"></i>
+                  Back to Parents
+                </button>
+                <button onClick={fetchParentDetails} className="btn btn-outline-primary">
+                  <i className="bi bi-arrow-clockwise me-2"></i>
+                  Retry
+                </button>
+              </div>
             </div>
           </div>
         </Alert>
@@ -274,6 +384,7 @@ const ParentDetails = () => {
 
   // No data state
   if (!parentData) {
+    console.log("📭 Rendering no data state");
     return (
       <div className="container-fluid px-4 py-3">
         <Alert variant="warning" className="mb-4">
@@ -282,10 +393,16 @@ const ParentDetails = () => {
             <div>
               <h4 className="alert-heading mb-1">No Data Found</h4>
               <p className="mb-3">No parent data available for {decodeURIComponent(name)}.</p>
-              <button onClick={handleBack} className="btn btn-primary">
-                <i className="bi bi-arrow-left me-2"></i>
-                Back to Parents
-              </button>
+              <div className="mt-3">
+                <button onClick={handleBack} className="btn btn-primary me-2">
+                  <i className="bi bi-arrow-left me-2"></i>
+                  Back to Parents
+                </button>
+                <button onClick={fetchParentDetails} className="btn btn-outline-primary">
+                  <i className="bi bi-arrow-clockwise me-2"></i>
+                  Retry
+                </button>
+              </div>
             </div>
           </div>
         </Alert>
@@ -293,13 +410,7 @@ const ParentDetails = () => {
     );
   }
 
-  // Debug current state on render
-  console.log("🎯 RENDER - Current parent status:", {
-    is_active: parentData.is_active,
-    status: parentData.status,
-    full_name: parentData.full_name
-  });
-
+  console.log("🎨 Rendering parent details UI");
   return (
     <div className="container-fluid px-4 py-3">
       {/* Header Section */}
@@ -359,7 +470,7 @@ const ParentDetails = () => {
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Full Name</span>
                 <span className="fs-6 fw-medium">
-                  {parentData.full_name}
+                  {parentData.full_name || "No name provided"}
                 </span>
               </div>
             </Col>
@@ -373,7 +484,7 @@ const ParentDetails = () => {
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Date of Birth</span>
                 <span className="fs-6">
-                  {formatDateToMMDDYYYY(parentData.date_of_birth)}
+                  {formatDateToMMDDYYYY(parentData.date_of_birth) || "—"}
                 </span>
               </div>
             </Col>
@@ -418,7 +529,7 @@ const ParentDetails = () => {
             <Col md={3}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Parent ID</span>
-                <span className="fs-6">{parentData.id}</span>
+                <span className="fs-6">{parentData.id || "—"}</span>
               </div>
             </Col>
           </Row>
@@ -443,11 +554,11 @@ const ParentDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">First Name</span>
-                          <p className="mb-0 fw-medium">{parentData.first_name}</p>
+                          <p className="mb-0 fw-medium">{parentData.first_name || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Last Name</span>
-                          <p className="mb-0 fw-medium">{parentData.last_name}</p>
+                          <p className="mb-0 fw-medium">{parentData.last_name || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Middle Name</span>
@@ -455,12 +566,12 @@ const ParentDetails = () => {
                         </div>
                         <div>
                           <span className="small">Gender</span>
-                          <p className="mb-0">{parentData.gender}</p>
+                          <p className="mb-0">{parentData.gender || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Date of Birth</span>
                           <p className="mb-0">
-                            {formatDateToMMDDYYYY(parentData.date_of_birth)}
+                            {formatDateToMMDDYYYY(parentData.date_of_birth) || "—"}
                           </p>
                         </div>
                       </div>
@@ -472,15 +583,15 @@ const ParentDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         <div>
                           <span className="small">Nationality</span>
-                          <p className="mb-0 fw-medium">{parentData.nationality}</p>
+                          <p className="mb-0 fw-medium">{parentData.nationality || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Marital Status</span>
-                          <p className="mb-0">{parentData.marital_status}</p>
+                          <p className="mb-0">{parentData.marital_status || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Occupation</span>
-                          <p className="mb-0">{parentData.occupation}</p>
+                          <p className="mb-0">{parentData.occupation || "—"}</p>
                         </div>
                         <div>
                           <span className="small">Status</span>
@@ -561,6 +672,11 @@ const ParentDetails = () => {
             <Tab eventKey="children" title={
               <div className="d-flex align-items-center">
                 Children Information
+                {childrenData.length > 0 && (
+                  <Badge bg="primary" className="ms-2">
+                    {childrenData.length}
+                  </Badge>
+                )}
               </div>
             }>
               <div className="p-3">
@@ -588,10 +704,10 @@ const ParentDetails = () => {
                             </thead>
                             <tbody>
                               {childrenData.map((child) => (
-                                <tr key={child.enrollment_id}>
+                                <tr key={child.enrollment_id || child.id}>
                                   <td>
                                     <div>
-                                      <strong>{child.full_name}</strong>
+                                      <strong>{child.full_name || "Unnamed"}</strong>
                                       {child.preferred_name && (
                                         <div className="small text-muted">
                                           Preferred: {child.preferred_name}
@@ -599,11 +715,15 @@ const ParentDetails = () => {
                                       )}
                                     </div>
                                   </td>
-                                  <td>{formatDateToMMDDYYYY(child.date_of_birth)}</td>
+                                  <td>{formatDateToMMDDYYYY(child.date_of_birth) || "—"}</td>
                                   <td>
-                                    <Badge bg="info" className="text-capitalize">
-                                      {child.gender}
-                                    </Badge>
+                                    {child.gender ? (
+                                      <Badge bg="info" className="text-capitalize">
+                                        {child.gender}
+                                      </Badge>
+                                    ) : (
+                                      "—"
+                                    )}
                                   </td>
                                   <td>{child.mainstream_school_name || "—"}</td>
                                   <td>
@@ -617,15 +737,19 @@ const ParentDetails = () => {
                                   </td>
                                   <td>{child.mainstream_enrollment_year || "—"}</td>
                                   <td>
-                                    <Badge 
-                                      bg={
-                                        child.status === 'approved' ? 'success' : 
-                                        child.status === 'pending' ? 'warning' : 'secondary'
-                                      }
-                                      className="text-capitalize"
-                                    >
-                                      {child.status}
-                                    </Badge>
+                                    {child.status ? (
+                                      <Badge 
+                                        bg={
+                                          child.status === 'approved' ? 'success' : 
+                                          child.status === 'pending' ? 'warning' : 'secondary'
+                                        }
+                                        className="text-capitalize"
+                                      >
+                                        {child.status}
+                                      </Badge>
+                                    ) : (
+                                      "—"
+                                    )}
                                   </td>
                                 </tr>
                               ))}

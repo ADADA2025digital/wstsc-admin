@@ -141,7 +141,7 @@ const ClassroomsStatus = () => {
       setUpdatingStatus(classroom.class_id);
 
       // Use PATCH request to toggle status - using c_id in the URL
-      const response = await api.patch(
+      const response = await api.put(
         `/classrooms/${classroom.c_id}/toggle-status`
       );
 

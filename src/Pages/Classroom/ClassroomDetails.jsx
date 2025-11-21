@@ -408,7 +408,7 @@ export default function ClassroomDetails() {
       const startTime = Date.now();
       
       // Use the exact same PATCH call that works in your API example
-      const response = await api.patch(
+      const response = await api.put(
         `/classrooms/${classroom.id}/toggle-status`,
         {} // Empty object - no need for data in body
       );

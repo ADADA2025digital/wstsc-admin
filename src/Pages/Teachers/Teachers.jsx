@@ -478,7 +478,7 @@ export default function TeachersTable() {
         newStatus: newStatus
       });
       
-      const response = await api.patch(`/admin/persons/${teacherId}/status`, {
+      const response = await api.put(`/admin/persons/${teacherId}/status`, {
         is_active: newStatus === "Active",
       });
 

@@ -203,7 +203,7 @@ export default function ParentTable() {
 
   const updateParentStatus = async (parentId, newStatus) => {
     try {
-      const response = await api.patch(
+      const response = await api.put(
         `/admin/persons/${parentId}/toggle-status`,
         {
           is_active: newStatus === "Active",

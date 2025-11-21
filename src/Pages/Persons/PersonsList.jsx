@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import $ from "jquery";
 import api from "../../config/axiosConfig";
-import Form from "react-bootstrap/Form";
 import CreatePersonModal from "../../Components/CreatePersonModal";
 import Loader from "../Loader";
 
@@ -31,13 +30,11 @@ export default function PersonsList() {
       console.log("API Response:", response.data);
 
       if (response.data.success) {
-        // CORRECTED: Use 'persons' instead of 'users'
         const personsData = response.data.data.persons || [];
         console.log("Processed persons data:", personsData);
 
         // Transform API data to match table structure
         const formattedPersons = personsData.map((person, index) => {
-          // Safely extract properties with fallbacks
           const user = person.user || {};
           const roleData = user.role || {};
           const displayName = roleData.display_name || "Unknown Role";
@@ -45,7 +42,7 @@ export default function PersonsList() {
 
           return {
             index: index + 1,
-            id: user.uid || person.peid, // Use peid as fallback ID
+            id: person.peid, // Use peid as the main ID for API calls
             user_id: user.uid,
             name: user.name || person.full_name || "Unknown Name",
             email: user.email || person.person_email || "No email",
@@ -53,7 +50,7 @@ export default function PersonsList() {
             status: user.status === "active" ? "Active" : "Inactive",
             role: displayName,
             role_name: roleName,
-            // Store original data for updates
+            // Store original data for details page
             originalData: person,
           };
         });
@@ -66,8 +63,6 @@ export default function PersonsList() {
     } catch (err) {
       console.error("Error fetching persons:", err);
       setError(err.response?.data?.message || "Failed to load persons");
-
-      // Fallback to empty array to prevent DataTables errors
       setPersons([]);
     } finally {
       setLoading(false);
@@ -83,79 +78,93 @@ export default function PersonsList() {
   };
 
   const handlePersonCreated = (newPerson) => {
-    // Close the modal FIRST
     setShowCreateModal(false);
-
-    // Show success message with person details
     setSuccessMessage(
       `Person ${newPerson.person_first_name} ${newPerson.person_last_name} created successfully!`
     );
-
-    // Refresh the persons list
     fetchPersons();
-    setError(""); // Clear any existing errors
+    setError("");
 
-    // Clear success message after 5 seconds
     setTimeout(() => {
       setSuccessMessage("");
     }, 5000);
   };
 
-  // In the handleViewPerson function, update the navigate call:
   const handleViewPerson = (person) => {
-    // Navigate to person details page using name parameter
+    console.log("📍 Navigating to person details:", {
+      personId: person.id,
+      personName: person.name,
+      originalData: person.originalData
+    });
+
+    // Ensure we're passing both ID and data
     navigate(`/persons/${encodeURIComponent(person.name)}`, {
       state: {
-        personId: person.id,
-        personData: person.originalData, // Pass the original person data
+        personId: person.id, // This should be peid from your API
+        personData: person.originalData, // The full original data
       },
     });
   };
 
-  const updatePersonStatus = async (personId, newStatus) => {
+  // UPDATED: Fixed toggle status function
+  const updatePersonStatus = async (personId) => {
     try {
-      const response = await api.patch(
+      console.log(`Toggling status for person: ${personId}`);
+      
+      // Send empty object or no data since API doesn't require request body
+      const response = await api.put(
         `/admin/persons/${personId}/toggle-status`,
-        {
-          is_active: newStatus === "Active",
-        }
+        {} // Empty object or remove this parameter entirely
       );
 
+      console.log("Toggle status response:", response.data);
+
       if (!response.data.success) {
-        throw new Error("Failed to update status");
+        throw new Error(response.data.message || "Failed to update status");
       }
 
-      return true;
+      return response.data;
     } catch (err) {
       console.error("Error updating person status:", err);
       setError(err.response?.data?.message || "Failed to update person status");
-      return false;
+      throw err;
     }
   };
 
-  const handleStatusChange = async (personId, newStatus) => {
+  // UPDATED: Fixed status change handler
+  const handleStatusChange = async (personId, currentStatus) => {
     try {
-      const success = await updatePersonStatus(personId, newStatus);
-      if (success) {
+      const response = await updatePersonStatus(personId);
+      
+      if (response && response.data) {
+        const { person } = response.data;
+        const newStatus = person.is_active ? "Active" : "Inactive";
+        
         // Update local state
-        const updatedPersons = persons.map((person) =>
-          person.id === personId ? { ...person, status: newStatus } : person
+        const updatedPersons = persons.map((p) =>
+          p.id === personId ? { 
+            ...p, 
+            status: newStatus,
+            // Also update other fields if returned in response
+            name: person.full_name || p.name,
+            email: person.person_email || p.email
+          } : p
         );
+        
         setPersons(updatedPersons);
         return true;
       }
       return false;
     } catch (error) {
       console.error("Error handling status change:", error);
-      setError("Failed to update person status");
       return false;
     }
   };
 
-  // Custom render function for Status column
+  // UPDATED: Fixed render function to use current status properly
   const renderStatusToggle = (data, type, row) => {
     if (type === "display") {
-      const isActive = row.status === "Active";
+      const isActive = data === "Active";
       return `
         <div class="d-flex align-items-center justify-content-center">
           <div class="form-check form-switch mb-0">
@@ -164,13 +173,14 @@ export default function PersonsList() {
               type="checkbox" 
               ${isActive ? "checked" : ""}
               data-person-id="${row.id}"
+              data-current-status="${data}"
               style="cursor: pointer;"
             />
             <label class="form-check-label small fw-medium ${
               isActive ? "text-success" : "text-danger"
             }" 
                    style="cursor: pointer; margin-left: 0.5rem;">
-              ${row.status}
+              ${data}
             </label>
           </div>
           <div id="spinner-${
@@ -291,21 +301,19 @@ export default function PersonsList() {
           infoFiltered: "(filtered from _MAX_ total persons)",
         },
         createdRow: function (row, data, dataIndex) {
-          // Add row-specific styling
           if (data.status === "Inactive") {
             $(row).addClass("table-secondary");
           }
         },
       });
 
-      // Handle status toggle events
+      // UPDATED: Fixed status toggle event handler
       $("#personsTable tbody").on(
         "change",
         ".status-toggle-input",
         async function () {
           const personId = $(this).data("person-id");
-          const isChecked = $(this).is(":checked");
-          const newStatus = isChecked ? "Active" : "Inactive";
+          const currentStatus = $(this).data("current-status");
           const $label = $(this).siblings("label");
           const $spinner = $(`#spinner-${personId}`);
 
@@ -316,30 +324,17 @@ export default function PersonsList() {
           $label.text("Updating...");
 
           try {
-            const success = await handleStatusChange(personId, newStatus);
+            const success = await handleStatusChange(personId, currentStatus);
             if (success) {
-              $label.text(newStatus);
-              $label
-                .removeClass("text-success text-danger")
-                .addClass(
-                  newStatus === "Active" ? "text-success" : "text-danger"
-                );
-
-              // Update row styling
-              const $row = $(this).closest("tr");
-              if (newStatus === "Inactive") {
-                $row.addClass("table-secondary");
-              } else {
-                $row.removeClass("table-secondary");
-              }
+              console.log("Status updated successfully");
             } else {
-              // Revert on error
-              $(this).prop("checked", !isChecked);
+              // Revert checkbox on error
+              $(this).prop("checked", !$(this).is(":checked"));
               $label.text(originalText);
             }
           } catch (error) {
             console.error("Error updating status:", error);
-            $(this).prop("checked", !isChecked);
+            $(this).prop("checked", !$(this).is(":checked"));
             $label.text(originalText);
           } finally {
             $(this).prop("disabled", false);
@@ -358,9 +353,7 @@ export default function PersonsList() {
       });
     } catch (error) {
       console.error("Error initializing DataTable:", error);
-      setError(
-        "Failed to initialize table. Please check the console for details."
-      );
+      setError("Failed to initialize table. Please check the console for details.");
     }
   };
 
@@ -400,10 +393,7 @@ export default function PersonsList() {
       </div>
 
       {error && (
-        <div
-          className="alert alert-danger alert-dismissible fade show"
-          role="alert"
-        >
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
           <i className="bi bi-exclamation-triangle me-2"></i>
           {error}
           <button
@@ -415,10 +405,7 @@ export default function PersonsList() {
       )}
 
       {successMessage && (
-        <div
-          className="alert alert-success alert-dismissible fade show"
-          role="alert"
-        >
+        <div className="alert alert-success alert-dismissible fade show" role="alert">
           <i className="bi bi-check-circle me-2"></i>
           {successMessage}
           <button

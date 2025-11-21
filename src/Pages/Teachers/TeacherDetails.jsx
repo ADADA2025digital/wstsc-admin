@@ -311,12 +311,12 @@ const TeacherDetails = () => {
       
       if (idType === "person_id") {
         // Use person_id endpoint
-        response = await api.patch(
+        response = await api.put(
           `/admin/persons/${targetId}/toggle-status`
         );
       } else {
         // Use user_id endpoint (fallback)
-        response = await api.patch(
+        response = await api.put(
           `/admin/teachers/${targetId}/toggle-status`
         );
       }
@@ -344,7 +344,7 @@ const TeacherDetails = () => {
       if (idType === "person_id" && teacherData.user_id) {
         console.log("🔄 Trying alternative endpoint with user_id...");
         try {
-          const altResponse = await api.patch(
+          const altResponse = await api.put(
             `/admin/teachers/${teacherData.user_id}/toggle-status`
           );
           

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
+import Loader from "../../Pages/Loader";
 
 const STATUS_OPTIONS = ["Active", "Inactive"];
 
@@ -442,18 +443,7 @@ export default function ClassroomsList() {
   };
 
   if (loading) {
-    return (
-      <div className="container-fluid px-4 py-3">
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-          <div className="text-center">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-2">Loading classrooms...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader />; // Use your custom Loader component here
   }
 
   if (error) {

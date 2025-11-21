@@ -15,6 +15,7 @@ import {
   Tab,
 } from "react-bootstrap";
 import api from "../../config/axiosConfig";
+import Loader from "../../Pages/Loader";
 
 const StudentDetails = () => {
   const { id } = useParams();
@@ -499,14 +500,7 @@ const StudentDetails = () => {
   });
 
   if (loading) {
-    return (
-      <Container fluid className="px-4 py-3">
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
-          <Spinner animation="border" variant="primary" />
-          <span className="ms-2">Loading student data...</span>
-        </div>
-      </Container>
-    );
+    return <Loader />;
   }
 
   if (error || !currentStudent) {

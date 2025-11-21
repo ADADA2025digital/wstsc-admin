@@ -14,6 +14,7 @@ import {
   Form,
 } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
+import Loader from "../../Pages/Loader";
 import { formatDateToMMDDYYYY } from "../../config/utils";
 import api from "../../config/axiosConfig";
 
@@ -169,21 +170,9 @@ const ClassroomsStatus = () => {
     }
   };
 
-  // Loading state
+  // Loading state - UPDATED TO USE CUSTOM LOADER
   if (loading) {
-    return (
-      <div className="container-fluid px-4 py-3">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ height: "50vh" }}
-        >
-          <div className="text-center">
-            <Spinner animation="border" variant="primary" />
-            <p className="mt-3 text-muted">Loading classrooms...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader />;
   }
 
   const ClassroomTable = ({ classrooms, isActive }) => (

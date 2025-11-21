@@ -5,6 +5,7 @@ import ButtonGlobal from "../Components/Button";
 import api from "../config/axiosConfig";
 import { formatDisplayDate } from "../config/utils";
 import { useNavigate } from "react-router-dom";
+import Loader from "../Pages/Loader";
 
 // Move TabContent component outside the main component
 const TabContent = ({ children, active }) => {
@@ -311,9 +312,9 @@ const UserAccount = () => {
     }
   };
 
-  // Remove the loading spinner section entirely
+  // Show loader while loading
   if (loading) {
-    return null; // Return nothing while loading
+    return <Loader />;
   }
 
   if (error) {

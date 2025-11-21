@@ -5,6 +5,7 @@ import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
 import api from "../../config/axiosConfig";
+import Loader from "../../Pages/Loader";
 
 const EnrolmentDetails = () => {
   const { id } = useParams();
@@ -548,36 +549,12 @@ const EnrolmentDetails = () => {
 
   // Show loading while determining user role
   if (!userRole) {
-    return (
-      <div className="container-fluid px-4 py-3">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ height: "50vh" }}
-        >
-          <div className="text-center">
-            <div className="spinner-border text-primary" role="status"></div>
-            <p className="mt-3 text-muted">Loading user information...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader />; // Use your custom Loader component
   }
 
   // Loading state
   if (loading) {
-    return (
-      <div className="container-fluid px-4 py-3">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ height: "50vh" }}
-        >
-          <div className="text-center">
-            <div className="spinner-border text-primary" role="status"></div>
-            <p className="mt-3 text-muted">Loading student details...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader />; // Use your custom Loader component
   }
 
   // Error state

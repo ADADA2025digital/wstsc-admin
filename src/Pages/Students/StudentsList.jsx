@@ -15,7 +15,7 @@ import {
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
-import Cookies from "js-cookie";
+import Loader from "../../Pages/Loader";
 
 const StudentsList = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(new Date());
@@ -72,6 +72,75 @@ const StudentsList = () => {
     return yearMatch ? yearMatch[0] : enrollmentYear;
   };
 
+  // Extract parent name from student data
+  const extractParentName = (student) => {
+    if (!student) return "N/A";
+
+    // Method 1: Direct parent name field
+    if (student.parent_name) {
+      return student.parent_name;
+    }
+
+    // Method 2: Parent carer object
+    if (student.parent_carer_1) {
+      const parent = student.parent_carer_1;
+      if (typeof parent === 'string') {
+        return parent;
+      } else if (parent && typeof parent === 'object') {
+        if (parent.name) return parent.name;
+        if (parent.full_name) return parent.full_name;
+        if (parent.first_name && parent.last_name) return `${parent.first_name} ${parent.last_name}`;
+        if (parent.firstName && parent.lastName) return `${parent.firstName} ${parent.lastName}`;
+      }
+    }
+
+    // Method 3: Approved by field
+    if (student.approved_by) {
+      const approvedBy = student.approved_by;
+      if (typeof approvedBy === 'string') {
+        return approvedBy;
+      } else if (approvedBy && typeof approvedBy === 'object') {
+        if (approvedBy.name) return approvedBy.name;
+        if (approvedBy.full_name) return approvedBy.full_name;
+        if (approvedBy.first_name && approvedBy.last_name) return `${approvedBy.first_name} ${approvedBy.last_name}`;
+      }
+    }
+
+    // Method 4: Parents array
+    if (student.parents && Array.isArray(student.parents) && student.parents.length > 0) {
+      const primaryParent = student.parents[0];
+      if (primaryParent.name) return primaryParent.name;
+      if (primaryParent.full_name) return primaryParent.full_name;
+      if (primaryParent.first_name && primaryParent.last_name) return `${primaryParent.first_name} ${primaryParent.last_name}`;
+    }
+
+    // Method 5: Primary parent field
+    if (student.primary_parent) {
+      const primaryParent = student.primary_parent;
+      if (typeof primaryParent === 'string') {
+        return primaryParent;
+      } else if (primaryParent && typeof primaryParent === 'object') {
+        if (primaryParent.name) return primaryParent.name;
+        if (primaryParent.full_name) return primaryParent.full_name;
+        if (primaryParent.first_name && primaryParent.last_name) return `${primaryParent.first_name} ${primaryParent.last_name}`;
+      }
+    }
+
+    // Method 6: Emergency contact as fallback
+    if (student.emergency_contact) {
+      const emergencyContact = student.emergency_contact;
+      if (typeof emergencyContact === 'string') {
+        return emergencyContact;
+      } else if (emergencyContact && typeof emergencyContact === 'object') {
+        if (emergencyContact.name) return emergencyContact.name;
+        if (emergencyContact.full_name) return emergencyContact.full_name;
+        if (emergencyContact.first_name && emergencyContact.last_name) return `${emergencyContact.first_name} ${emergencyContact.last_name}`;
+      }
+    }
+
+    return "N/A";
+  };
+
   // Fetch students based on user role
   const fetchStudents = async () => {
     try {
@@ -86,19 +155,49 @@ const StudentsList = () => {
         console.log("Admin students response:", response.data);
         
         if (response.data.success && response.data.data.students) {
-          const formattedStudents = response.data.data.students.map((student, index) => ({
-            id: student.studid,
-            student_id: student.studid,
-            full_name: student.student_name,
-            preferred_name: student.preferred_name || "",
-            gender: student.gender?.charAt(0).toUpperCase() + student.gender?.slice(1) || "Not specified",
-            date_of_birth: formatDate(student.date_of_birth),
-            enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
-            status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
-            classroom: student.class_grade || "Not assigned",
-            parent_name: student.approved_by?.name || "N/A",
-            raw_data: student
-          }));
+          // Debug: Check the structure of the first student to find parent fields
+          if (response.data.data.students.length > 0) {
+            const firstStudent = response.data.data.students[0];
+            console.log("=== DEBUG FIRST STUDENT ===");
+            console.log("Student ID:", firstStudent.studid);
+            console.log("Student Name:", firstStudent.student_name);
+            
+            // Find all keys that might contain parent info
+            const parentRelatedKeys = Object.keys(firstStudent).filter(key => 
+              key.toLowerCase().includes('parent') || 
+              key.toLowerCase().includes('carer') ||
+              key.toLowerCase().includes('approved') ||
+              key.toLowerCase().includes('emergency')
+            );
+            
+            console.log("Parent-related keys:", parentRelatedKeys);
+            
+            // Log the values of parent-related keys
+            parentRelatedKeys.forEach(key => {
+              console.log(`Key "${key}":`, firstStudent[key]);
+            });
+            console.log("=== END DEBUG ===");
+          }
+          
+          const formattedStudents = response.data.data.students.map((student, index) => {
+            const parentName = extractParentName(student);
+            
+            console.log(`Student ${student.studid} - Parent Name:`, parentName);
+            
+            return {
+              id: student.studid,
+              student_id: student.studid,
+              full_name: student.student_name,
+              preferred_name: student.preferred_name || "",
+              gender: student.gender?.charAt(0).toUpperCase() + student.gender?.slice(1) || "Not specified",
+              date_of_birth: formatDate(student.date_of_birth),
+              enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
+              status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
+              classroom: student.class_grade || "Not assigned",
+              parent_name: parentName,
+              raw_data: student
+            };
+          });
           setStudents(formattedStudents);
         }
       } else {
@@ -111,6 +210,8 @@ const StudentsList = () => {
             const student = enrollment.student;
             const parent = enrollment.parent_carer_1;
             
+            const parentName = parent ? `${parent.first_name} ${parent.last_name}` : "N/A";
+            
             return {
               id: student.student_id,
               student_id: student.student_id,
@@ -121,7 +222,7 @@ const StudentsList = () => {
               enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
               status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
               classroom: student.enrol_class_in_WSTSC || "Not assigned",
-              parent_name: parent ? `${parent.first_name} ${parent.last_name}` : "N/A",
+              parent_name: parentName,
               raw_data: {
                 ...student,
                 parent_carer_1: parent,
@@ -528,17 +629,9 @@ const StudentsList = () => {
     </div>
   );
 
+  // Loading state - UPDATED TO USE CUSTOM LOADER
   if (loading) {
-    return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "50vh" }}
-      >
-        <Spinner animation="border" role="status" variant="primary">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </div>
-    );
+    return <Loader />;
   }
 
   // Show parent/teacher view for non-admin users

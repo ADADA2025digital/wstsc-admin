@@ -6,7 +6,6 @@ import "datatables.net-responsive-dt";
 import "datatables.net";
 import {
   Breadcrumb,
-  Spinner,
   Alert,
   OverlayTrigger,
   Tooltip,
@@ -20,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
 
 import { getCookie, formatDateToMMDDYYYY } from "../../config/utils";
+import Loader from "../../Pages/Loader"; 
 
 const EnrolStudents = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
@@ -490,18 +490,8 @@ const EnrolStudents = () => {
   });
 
   if (loading) {
-    console.log("🌀 Rendering loading spinner");
-    return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "50vh" }}
-      >
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-        <div className="ms-3">Loading enrollments...</div>
-      </div>
-    );
+    console.log("🌀 Rendering custom Loader component");
+    return <Loader />;
   }
 
   console.log("📄 Rendering main content");

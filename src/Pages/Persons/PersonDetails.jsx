@@ -189,6 +189,36 @@ const PersonDetails = () => {
     };
   };
 
+  // Function to refetch person details
+  const refetchPersonDetails = async (personId) => {
+    try {
+      console.log("🔄 Refetching updated person details for ID:", personId);
+      
+      // Try both ID formats for fetching
+      let response;
+      try {
+        // First try with numeric ID
+        response = await api.get(`/admin/users/${personId}`);
+      } catch (err) {
+        // If that fails, try with formatted ID
+        const formattedId = `P${personId.toString().padStart(5, '0')}`;
+        console.log(`🔄 Trying with formatted ID: ${formattedId}`);
+        response = await api.get(`/admin/users/${formattedId}`);
+      }
+      
+      if (response.data.success) {
+        const apiData = response.data.data.user;
+        const transformedData = transformPersonData(apiData);
+        setPersonData(transformedData);
+        console.log("✅ Refetched and updated person data:", transformedData);
+        return transformedData;
+      }
+    } catch (err) {
+      console.error("❌ Error refetching person details:", err);
+      throw err;
+    }
+  };
+
   // Function to toggle person status
   const handleStatusToggle = async (newStatus) => {
     if (!personData) {
@@ -215,12 +245,8 @@ const PersonDetails = () => {
       console.log("✅ Status update response:", response);
       
       if (response.data.success) {
-        // Update person data with new status
-        setPersonData(prevData => ({
-          ...prevData,
-          status: newStatus ? "Active" : "Inactive",
-          is_active: newStatus
-        }));
+        // Refetch the data to ensure UI matches database
+        await refetchPersonDetails(personId);
         
         console.log("✅ Status updated successfully to:", newStatus ? "Active" : "Inactive");
       } else {
@@ -252,9 +278,9 @@ const PersonDetails = () => {
     setShowRoleModal(true);
   };
 
-  // Function to update user role
+  // Function to update user role - UPDATED WITH CORRECT ENDPOINT
   const handleRoleUpdate = async () => {
-    console.log("🔄 Starting role update process...");
+    console.log("🔄 ========== STARTING ROLE UPDATE PROCESS ==========");
     
     if (!personData) {
       console.error("❌ No person data available");
@@ -267,89 +293,165 @@ const PersonDetails = () => {
       return;
     }
 
+    // Get the correct person ID format (P33413 format from your API)
     const personId = personData.person_id || personData.id;
-
-    if (!personId) {
-      console.error("❌ No valid person ID found in person data");
-      alert("Cannot update role: Person ID not available");
-      return;
+    
+    // Check if we need to format the ID with 'P' prefix
+    let formattedPersonId = personId;
+    if (typeof personId === 'number' || !personId.startsWith('P')) {
+      // Format as P33413 style - pad with leading zeros to 5 digits
+      formattedPersonId = `P${personId.toString().padStart(5, '0')}`;
     }
 
-    console.log("🎯 Role update details:", {
-      personId: personId,
+    console.log("🎯 ROLE UPDATE DETAILS:", {
+      originalPersonId: personId,
+      formattedPersonId: formattedPersonId,
       selectedRole: selectedRole,
       selectedRoleInt: parseInt(selectedRole),
-      availableRoles: availableRoles
+      personData: personData
     });
 
     try {
       setUpdatingRole(true);
       
-      console.log("🔄 Updating role for person ID:", personId, "to role ID:", selectedRole);
+      console.log("🔄 Updating role for person ID:", formattedPersonId, "to role ID:", selectedRole);
       
-      // Try different possible endpoints for role update
+      // ✅ CORRECT ENDPOINT BASED ON POSTMAN TEST
       const endpoints = [
-        `/admin/persons/${personId}`,
-        `/api/admin/persons/${personId}`,
-        `/admin/users/${personId}/role`,
-        `/api/admin/users/${personId}/role`
+        `/api/admin/persons/${formattedPersonId}`,  // Primary - confirmed working from Postman
+        `/admin/persons/${formattedPersonId}`,      // Fallback without /api
       ];
+
+      console.log("🔍 ENDPOINTS TO TRY:", endpoints);
 
       let updateResponse = null;
       let lastError = null;
+      let successfulEndpoint = null;
 
       for (const endpoint of endpoints) {
         try {
-          console.log(`🔍 Trying role update endpoint: ${endpoint}`);
+          console.log(`\n🔍 TRYING ENDPOINT: ${endpoint}`);
+          console.log(`📤 REQUEST DETAILS:`, {
+            method: 'PUT',
+            url: endpoint,
+            data: { role_id: parseInt(selectedRole) },
+            fullUrl: `${window.location.origin}${endpoint}`
+          });
+          
           updateResponse = await api.put(endpoint, {
             role_id: parseInt(selectedRole)
           });
-          console.log(`✅ Role update successful from ${endpoint}:`, updateResponse);
+          
+          successfulEndpoint = endpoint;
+          console.log(`✅ SUCCESS from ${endpoint}:`, updateResponse);
+          console.log(`✅ RESPONSE DATA:`, updateResponse.data);
           break; // If successful, break the loop
         } catch (err) {
-          console.log(`❌ Failed to update role via ${endpoint}:`, err.message);
+          console.log(`❌ FAILED for ${endpoint}:`, err.message);
+          console.log(`❌ ERROR DETAILS:`, {
+            status: err.response?.status,
+            statusText: err.response?.statusText,
+            data: err.response?.data,
+            config: {
+              url: err.config?.url,
+              method: err.config?.method,
+              data: err.config?.data
+            }
+          });
           lastError = err;
           continue;
         }
       }
 
       if (!updateResponse && lastError) {
+        console.log("💥 ALL ENDPOINTS FAILED. LAST ERROR:", lastError);
         throw lastError;
       }
 
       if (updateResponse.data.success) {
-        // Find the selected role details
-        const selectedRoleData = availableRoles.find(role => role.roleid === parseInt(selectedRole));
-        console.log("✅ Selected role data:", selectedRoleData);
+        console.log("🎉 ROLE UPDATE SUCCESSFUL!");
+        console.log("✅ FULL API RESPONSE:", updateResponse.data);
         
-        // Update person data with new role
-        setPersonData(prevData => ({
-          ...prevData,
-          role: selectedRoleData?.display_name || "Unknown Role",
-          role_name: selectedRoleData?.role_name || "unknown",
-          role_id: parseInt(selectedRole),
-          role_data: selectedRoleData || {}
-        }));
+        // ✅ USE THE RESPONSE DATA TO UPDATE UI (as seen in Postman response)
+        const updatedPersonData = updateResponse.data.data.person;
+        
+        if (updatedPersonData && updatedPersonData.user) {
+          console.log("✅ UPDATED PERSON DATA FROM API:", updatedPersonData);
+          
+          // Transform the updated data to match our component structure
+          const transformedData = {
+            id: updatedPersonData.user.uid,
+            user_id: updatedPersonData.user.uid,
+            person_id: updatedPersonData.user.uid,
+            first_name: updatedPersonData.first_name,
+            last_name: updatedPersonData.last_name,
+            full_name: updatedPersonData.full_name,
+            email: updatedPersonData.email,
+            phone: updatedPersonData.phone,
+            status: updatedPersonData.user.status === "active" ? "Active" : "Inactive",
+            is_active: updatedPersonData.is_active,
+            role: updatedPersonData.user.role.display_name,
+            role_name: updatedPersonData.user.role.role_name,
+            role_data: updatedPersonData.user.role,
+            role_id: updatedPersonData.user.role.roleid,
+            created_at: updatedPersonData.created_at,
+            updated_at: updatedPersonData.updated_at,
+            last_login: updatedPersonData.user.last_login,
+          };
+          
+          setPersonData(transformedData);
+          console.log("✅ UI UPDATED WITH FRESH DATA:", transformedData);
+        } else {
+          // If data structure is different, use the transform function
+          console.log("🔄 Using transform function for updated data");
+          const transformedData = transformPersonData(updatedPersonData);
+          setPersonData(transformedData);
+        }
         
         setShowRoleModal(false);
-        console.log("✅ Role updated successfully to:", selectedRoleData?.display_name);
+        console.log("✅ ROLE UPDATE COMPLETE - MODAL CLOSED");
         
         // Show success message
-        alert("Role updated successfully!");
+        const newRoleName = availableRoles.find(r => r.roleid === parseInt(selectedRole))?.display_name;
+        alert(`Role updated successfully! User is now ${newRoleName}`);
       } else {
+        console.error("❌ API returned success:false", updateResponse.data);
         throw new Error(updateResponse.data.message || "Failed to update role");
       }
     } catch (err) {
-      console.error("❌ Error updating role:", err);
-      console.error("❌ Role update error details:", {
+      console.error("💥 FINAL ERROR IN ROLE UPDATE:", err);
+      console.error("💥 COMPLETE ERROR DETAILS:", {
         message: err.message,
-        response: err.response,
-        config: err.config,
-        endpoint: err.config?.url
+        name: err.name,
+        code: err.code,
+        response: {
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data
+        },
+        request: {
+          url: err.config?.url,
+          method: err.config?.method,
+          data: err.config?.data,
+          baseURL: err.config?.baseURL
+        }
       });
-      alert("Failed to update role: " + (err.response?.data?.message || err.message));
+      
+      let errorMessage = "Failed to update role: ";
+      if (err.response?.data?.message) {
+        errorMessage += err.response.data.message;
+      } else if (err.response?.status === 404) {
+        errorMessage += `Endpoint not found (404). Please contact support.`;
+      } else if (err.response?.status === 500) {
+        errorMessage += "Server error. Please try again later.";
+      } else {
+        errorMessage += err.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setUpdatingRole(false);
+      console.log("========== ROLE UPDATE PROCESS COMPLETE ==========\n");
     }
   };
 

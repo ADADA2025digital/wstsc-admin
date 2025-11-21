@@ -13,6 +13,7 @@ import {
 } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard, { EmptyState } from "../../Components/InfoCard";
+import Loader from "../../Pages/Loader";
 import api from "../../config/axiosConfig.jsx";
 
 const EDITABLE_ROLES = ["admin", "principal", "vice_principal", "volunteer"];
@@ -849,19 +850,7 @@ export default function ClassroomDetails() {
 
   if (loading) {
     console.log("⏳ RENDERING LOADING STATE");
-    return (
-      <div className="container-fluid px-4 py-3">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ height: "50vh" }}
-        >
-          <div className="text-center">
-            <div className="spinner-border text-primary" role="status"></div>
-            <p className="mt-3 text-muted">Loading classroom details...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader />;
   }
 
   if (error) {

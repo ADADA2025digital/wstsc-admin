@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import api from '../config/axiosConfig';
+import Loader from '../Pages/Loader';
 
 const RouteGuard = ({ children, requireProfileComplete = false }) => {
   const navigate = useNavigate();
@@ -54,16 +55,7 @@ const RouteGuard = ({ children, requireProfileComplete = false }) => {
   }, [navigate, requireProfileComplete]);
 
   if (isChecking) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-3">Checking authentication...</p>
-        </div>
-      </div>
-    );
+    return <Loader />;
   }
 
   return children;

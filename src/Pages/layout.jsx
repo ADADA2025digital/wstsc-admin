@@ -5,6 +5,7 @@ import Sidebar from "../Components/Sidebar";
 import React, { useState, useRef, useEffect } from "react";
 import Cookies from "js-cookie";
 import api from "../config/axiosConfig.jsx";
+import Loader from "../Pages/Loader";
 
 export default function RootLayout() {
   const location = useLocation();
@@ -76,17 +77,9 @@ export default function RootLayout() {
 
   const isLoginPage = location.pathname === "/login";
 
-  // Show loading state while checking authentication
+  // Show loading state while checking authentication - USING YOUR CUSTOM LOADER
   if (isLoading && !isLoginPage) {
-    return (
-      <div className="App">
-        <div className="d-flex justify-content-center align-items-center vh-100">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader />;
   }
 
   // Redirect to login if not authenticated

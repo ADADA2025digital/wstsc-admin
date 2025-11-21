@@ -27,32 +27,34 @@ export default function PersonsList() {
       setError("");
 
       console.log("Fetching persons from API...");
-      const response = await api.get("/admin/users");
+      const response = await api.get("/admin/persons");
       console.log("API Response:", response.data);
 
       if (response.data.success) {
-        const usersData = response.data.data.users || [];
-        console.log("Processed users data:", usersData);
+        // CORRECTED: Use 'persons' instead of 'users'
+        const personsData = response.data.data.persons || [];
+        console.log("Processed persons data:", personsData);
 
         // Transform API data to match table structure
-        const formattedPersons = usersData.map((user, index) => {
+        const formattedPersons = personsData.map((person, index) => {
           // Safely extract properties with fallbacks
-          const roleData = user.primary_role || user.role || {};
+          const user = person.user || {};
+          const roleData = user.role || {};
           const displayName = roleData.display_name || "Unknown Role";
           const roleName = roleData.role_name || "unknown";
 
           return {
             index: index + 1,
-            id: user.uid,
+            id: user.uid || person.peid, // Use peid as fallback ID
             user_id: user.uid,
-            name: user.name || "Unknown Name",
-            email: user.email || "No email",
-            phone: user.phone || "Not provided",
+            name: user.name || person.full_name || "Unknown Name",
+            email: user.email || person.person_email || "No email",
+            phone: person.person_phone || "Not provided",
             status: user.status === "active" ? "Active" : "Inactive",
             role: displayName,
             role_name: roleName,
             // Store original data for updates
-            originalData: user,
+            originalData: person,
           };
         });
 
@@ -105,7 +107,7 @@ export default function PersonsList() {
     navigate(`/persons/${encodeURIComponent(person.name)}`, {
       state: {
         personId: person.id,
-        personData: person,
+        personData: person.originalData, // Pass the original person data
       },
     });
   };
@@ -113,7 +115,7 @@ export default function PersonsList() {
   const updatePersonStatus = async (personId, newStatus) => {
     try {
       const response = await api.patch(
-        `/admin/users/${personId}/toggle-status`,
+        `/admin/persons/${personId}/toggle-status`,
         {
           is_active: newStatus === "Active",
         }
@@ -204,6 +206,8 @@ export default function PersonsList() {
         return "bg-success";
       case "student":
         return "bg-info";
+      case "staff":
+        return "bg-warning";
       default:
         return "bg-secondary";
     }

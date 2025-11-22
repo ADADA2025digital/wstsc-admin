@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Container,
   Row,
@@ -8,218 +7,122 @@ import {
   Button,
   Badge,
   Table,
-  Form,
   Alert,
   Spinner,
   Tabs,
   Tab,
+  Modal,
+  Form,
 } from "react-bootstrap";
-import api from "../../config/axiosConfig";
+import api from "../../config/axiosConfig"; 
 
 const PrincipalDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const principalData = location.state?.principalData;
-
-  const [currentPrincipal, setCurrentPrincipal] = useState(null);
-  const [loading, setLoading] = useState(!principalData);
-  const [error, setError] = useState(null);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [updateMessage, setUpdateMessage] = useState({ type: "", text: "" });
   const [activeTab, setActiveTab] = useState("personal");
-  const [userRole, setUserRole] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [principal, setPrincipal] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingPrincipal, setCreatingPrincipal] = useState(false);
 
-  // Get user role from localStorage
-  useEffect(() => {
-    const getUserRole = () => {
-      try {
-        const userData = localStorage.getItem('userData');
-        if (userData) {
-          const parsedUserData = JSON.parse(userData);
-          console.log("👤 User data from localStorage:", parsedUserData);
-          setUserRole(parsedUserData.role?.role_name || null);
-          return parsedUserData.role?.role_name;
-        }
-      } catch (error) {
-        console.error("❌ Error parsing user data from localStorage:", error);
-      }
-      return null;
-    };
-
-    getUserRole();
-  }, []);
-
-  // Debug logs for initial props
-  console.log("🔍 PrincipalDetails Component Mounted:", {
-    id,
-    hasPrincipalData: !!principalData,
-    principalDataFromLocation: principalData,
-    locationState: location.state,
-    userRole,
+  // Form state for creating principal
+  const [formData, setFormData] = useState({
+    teacher_id: "",
+    position: "Principal",
+    year: new Date().getFullYear(),
+    status: "active",
+    nominator_peid: "",
+    seconder_peid: ""
   });
 
-  // Data transformation function
-  const transformPrincipalData = (data) => {
-    console.log("🔄 Transforming principal data structure...", data);
-
-    // If data comes from detailed_data endpoint (nested structure)
-    if (data.detailed_data) {
-      const detailed = data.detailed_data;
-      console.log("📦 Found detailed_data, extracting...", detailed);
-
-      return {
-        principal: {
-          id: data.id,
-          principal_id: data.principal_id,
-          name: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-          email: data.email,
-          phone: data.phone,
-          status: data.status,
-          date_of_birth: data.date_of_birth,
-          gender: data.gender,
-          address: data.address,
-          ...(detailed.principal || {}),
-        },
-        schools: detailed.schools || [],
-        employment_history: detailed.employment_history || [],
-        qualifications: detailed.qualifications || [],
-        summary: {
-          total_schools: detailed.schools?.length || 0,
-          years_experience: detailed.years_experience || 0,
-          qualification_count: detailed.qualifications?.length || 0,
-        },
-      };
-    }
-
-    // If data is from principals list (direct structure)
-    if (data.principal_id || data.id) {
-      console.log("📦 Using direct principal data structure");
-      return {
-        principal: {
-          id: data.id,
-          principal_id: data.principal_id,
-          name: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-          email: data.email,
-          phone: data.phone,
-          status: data.status,
-          date_of_birth: data.date_of_birth,
-          gender: data.gender,
-          address: data.address,
-          join_date: data.join_date,
-          ...data,
-        },
-        schools: data.schools || [],
-        employment_history: data.employment_history || [],
-        qualifications: data.qualifications || [],
-        summary: {
-          total_schools: data.schools?.length || 0,
-          years_experience: data.years_experience || 0,
-          qualification_count: data.qualifications?.length || 0,
-        },
-      };
-    }
-
-    // If data is already in the expected format
-    console.log("📦 Data already in expected format");
-    return data;
-  };
-
   // Fetch principal data
-  const fetchPrincipalData = async () => {
+  const fetchPrincipal = async () => {
     try {
-      console.log("🚀 Starting API call to fetch principal data for ID:", id);
-      console.log("👤 User role:", userRole);
-      
       setLoading(true);
       setError(null);
+      const response = await api.get("/principals");
+      
+      if (response.data.success && response.data.data.principals.length > 0) {
+        // Use the first principal from the response
+        const principalData = response.data.data.principals[0];
+        setPrincipal(transformPrincipalData(principalData));
+      } else {
+        setPrincipal(null); // No principal exists
+      }
+    } catch (err) {
+      console.error("Error fetching principal:", err);
+      setError("Failed to fetch principal data");
+      setPrincipal(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Use the principals API endpoint
-      console.log("🎯 Using principals API endpoint");
-      const response = await api.get(`/principals/${id}`);
+  // Transform API data to match component structure
+  const transformPrincipalData = (apiData) => {
+    const teacher = apiData.teacher?.person || {};
+    
+    return {
+      id: apiData.tpid,
+      principal_id: `PRIN-${apiData.year}-${String(apiData.tpid).padStart(3, '0')}`,
+      name: teacher.full_name || `${teacher.person_first_name} ${teacher.person_last_name}`,
+      email: teacher.person_email,
+      phone: teacher.person_phone,
+      status: apiData.status,
+      date_of_birth: null, // Not available in API
+      gender: null, // Not available in API
+      address: null, // Not available in API
+      join_date: apiData.created_at,
+      // Additional API data
+      rawData: apiData,
+      teacher_id: apiData.teacher?.tid,
+      position: apiData.position,
+      year: apiData.year,
+      nominator: apiData.nominator,
+      seconder: apiData.seconder
+    };
+  };
+
+  // Handle create principal
+  const handleCreatePrincipal = async () => {
+    try {
+      setCreatingPrincipal(true);
+      const response = await api.post("/principals", formData);
       
       if (response.data.success) {
-        console.log("✅ Principal data fetched successfully");
-        const transformedData = transformPrincipalData(response.data.data);
-        console.log("🔄 Transformed principal data:", transformedData);
-        setCurrentPrincipal(transformedData);
-      } else {
-        throw new Error(response.data.message || "Failed to fetch principal data");
+        setShowCreateModal(false);
+        // Refresh principal data
+        await fetchPrincipal();
+        // Reset form
+        setFormData({
+          teacher_id: "",
+          position: "Principal",
+          year: new Date().getFullYear(),
+          status: "active",
+          nominator_peid: "",
+          seconder_peid: ""
+        });
       }
-
-    } catch (error) {
-      console.error("💥 Error fetching principal data:", {
-        error,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      
-      setError("Failed to load principal data. Please try again.");
+    } catch (err) {
+      console.error("Error creating principal:", err);
+      setError("Failed to create principal");
     } finally {
-      console.log("🏁 API call completed, setting loading to false");
-      setLoading(false);
+      setCreatingPrincipal(false);
     }
   };
 
-  // If no principal data was passed, fetch it using the ID
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   useEffect(() => {
-    console.log("🔄 useEffect triggered:", {
-      hasPrincipalData: !!principalData,
-      id,
-      loading,
-      userRole,
-    });
-
-    if (!principalData && id) {
-      console.log("📡 Fetching principal data from API...");
-      fetchPrincipalData();
-    } else if (principalData) {
-      console.log("✅ Using principal data from location state");
-
-      // Transform the data to match expected format
-      const transformedData = transformPrincipalData(principalData);
-      console.log("📦 Transformed principal data:", transformedData);
-
-      setCurrentPrincipal(transformedData);
-      setLoading(false);
-    } else if (!id) {
-      console.log("❌ No principal ID available");
-      setError("No principal ID provided");
-      setLoading(false);
-    }
-  }, [id, principalData, userRole]);
-
-  // Safe data access functions with debug logs
-  const getPrincipalData = () => {
-    const principal = currentPrincipal?.principal || {};
-    console.log("👤 getPrincipalData:", principal);
-    return principal;
-  };
-
-  const getSchoolsData = () => {
-    const schools = currentPrincipal?.schools || [];
-    console.log("🏫 getSchoolsData:", schools);
-    return schools;
-  };
-
-  const getEmploymentHistory = () => {
-    const history = currentPrincipal?.employment_history || [];
-    console.log("📈 getEmploymentHistory:", history);
-    return history;
-  };
-
-  const getQualifications = () => {
-    const qualifications = currentPrincipal?.qualifications || [];
-    console.log("🎓 getQualifications:", qualifications);
-    return qualifications;
-  };
-
-  const getSummary = () => {
-    const summary = currentPrincipal?.summary || {};
-    console.log("📊 getSummary:", summary);
-    return summary;
-  };
+    fetchPrincipal();
+  }, []);
 
   const getStatusVariant = (status) => {
     if (!status) return "secondary";
@@ -253,170 +156,242 @@ const PrincipalDetails = () => {
     }
   };
 
-  // Handle status change via toggle
-  const handleStatusChange = async (newStatus) => {
-    try {
-      console.log("🔄 Changing principal status to:", newStatus);
-      setUpdatingStatus(true);
-      setUpdateMessage({ type: "", text: "" });
-
-      const response = await api.put(`/principals/${id}/status`, {
-        status: newStatus,
-      });
-
-      console.log("📥 Status update response:", response.data);
-
-      if (response.data.success) {
-        // Update local state
-        setCurrentPrincipal((prev) => ({
-          ...prev,
-          principal: {
-            ...prev?.principal,
-            status: newStatus,
-          },
-        }));
-
-        console.log("✅ Principal status updated successfully");
-        setUpdateMessage({
-          type: "success",
-          text: `Principal status updated to ${newStatus} successfully!`,
-        });
-      } else {
-        throw new Error(
-          response.data.message || "Failed to update principal status"
-        );
-      }
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setUpdateMessage({ type: "", text: "" });
-      }, 3000);
-    } catch (error) {
-      console.error("💥 Error updating principal status:", {
-        error,
-        message: error.message,
-        response: error.response?.data,
-      });
-      setUpdateMessage({
-        type: "danger",
-        text:
-          error.response?.data?.message ||
-          "Failed to update principal status. Please try again.",
-      });
-    } finally {
-      setUpdatingStatus(false);
-    }
-  };
-
-  // Handle quick status toggle
   const handleQuickStatusToggle = () => {
-    const principal = getPrincipalData();
-    console.log("🔀 Quick status toggle:", {
-      currentStatus: principal.status,
-      newStatus: principal.status === "active" ? "inactive" : "active",
-    });
-    const newStatus = principal.status === "active" ? "inactive" : "active";
-    handleStatusChange(newStatus);
+    setUpdatingStatus(true);
+    // Simulate API call delay
+    setTimeout(() => {
+      setUpdatingStatus(false);
+    }, 1000);
   };
 
-  // Handle refresh
-  const handleRefresh = () => {
-    console.log("🔄 Refreshing principal data...");
-    fetchPrincipalData();
-  };
+  // Mock data for demonstration (only used when principal exists)
+  const schools = principal ? [
+    {
+      school_id: "SCH-001",
+      school_name: "Greenwood High School",
+      address: "456 Oak Street, Greenwood, GW 67890",
+      phone: "+1 (555) 987-6543",
+      is_active: true,
+      start_date: "2020-01-15"
+    }
+  ] : [];
 
-  // Handle add new principal
-  const handleAddPrincipal = () => {
-    console.log("➕ Navigating to add principal page...");
-    navigate("/principals/add");
-  };
+  const employment_history = principal ? [
+    {
+      id: 1,
+      position: principal.position,
+      organization: "Greenwood High School",
+      start_date: principal.join_date,
+      end_date: null,
+      description: "Leading academic programs and staff management"
+    }
+  ] : [];
 
-  // Debug current state before render
-  console.log("🎯 Current Component State:", {
-    loading,
-    error,
-    currentPrincipal,
-    hasPrincipalData: !!currentPrincipal,
-    userRole,
-  });
+  const qualifications = principal ? [
+    {
+      id: 1,
+      degree: "Doctor of Education",
+      institution: "University of Education",
+      field_of_study: "Educational Leadership",
+      year_obtained: "2018",
+      grade: "Summa Cum Laude"
+    }
+  ] : [];
+
+  const summary = principal ? {
+    total_schools: 1,
+    years_experience: Math.floor((new Date() - new Date(principal.join_date)) / (365 * 24 * 60 * 60 * 1000)),
+    qualification_count: 1
+  } : {
+    total_schools: 0,
+    years_experience: 0,
+    qualification_count: 0
+  };
 
   if (loading) {
-    console.log("⏳ Rendering loading state...");
     return (
       <Container fluid className="px-4 py-3">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ height: "50vh" }}
-        >
-          <Spinner animation="border" variant="primary" />
-          <span className="ms-2">Loading principal data...</span>
+        <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
+          <Spinner animation="border" role="status" variant="primary">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
         </div>
       </Container>
     );
   }
 
-  if (error || !currentPrincipal) {
-    console.log("❌ Rendering error state:", {
-      error,
-      hasCurrentPrincipal: !!currentPrincipal,
-    });
-    
+  if (error && !principal) {
     return (
       <Container fluid className="px-4 py-3">
+        <Alert variant="danger">
+          <Alert.Heading>Error</Alert.Heading>
+          <p>{error}</p>
+          <Button variant="outline-danger" onClick={fetchPrincipal}>
+            Retry
+          </Button>
+        </Alert>
+      </Container>
+    );
+  }
+
+  // No Principal Found - Show Create Button
+  if (!principal) {
+    return (
+      <Container fluid className="px-4 py-3">
+        {/* Header */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h4 className="H4-heading fw-bold">Principal Details</h4>
+            <p className="text-muted mb-0">No principal found for the current year</p>
           </div>
         </div>
 
-        {/* No Principal Found Card */}
-        <div className="card mt-1 p-3 rounded-3 shadow">
-          <div className="text-center py-5">
-            <div className="mb-4">
-              <i
-                className="bi bi-folder-x"
-                style={{ fontSize: "3rem", color: "#6c757d" }}
-              ></i>
-            </div>
-            <h5 className="text-muted mb-3">No Principal Found</h5>
-            <div className="d-flex justify-content-center gap-3">
-              {userRole === "admin" && (
-                <button
-                  onClick={handleAddPrincipal}
-                  className="btn custom-btn px-4 py-2"
+        <Row>
+          <Col lg={12}>
+            <Card>
+              <Card.Body className="text-center py-5">
+                <i className="bi bi-person-x display-1 text-muted mb-3"></i>
+                <h4 className="mb-3">No Principal Assigned</h4>
+                <p className="text-muted mb-4">
+                  There is currently no principal assigned for the current academic year.
+                  Click the button below to assign a principal.
+                </p>
+                <button 
+                  className="btn custom-btn" 
+                  onClick={() => setShowCreateModal(true)}
                 >
-                  <i className="bi bi-plus-circle me-1"></i> Add New Principal
+                  <i className="bi bi-plus-circle me-2"></i>
+                  Assign Principal
                 </button>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Create Principal Modal */}
+        <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
+          <Modal.Header closeButton>
+            <Modal.Title>Assign New Principal</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Teacher ID *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="teacher_id"
+                      value={formData.teacher_id}
+                      onChange={handleInputChange}
+                      placeholder="Enter teacher ID"
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Position *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="position"
+                      value={formData.position}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+              
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Year *</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="year"
+                      value={formData.year}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Status *</Form.Label>
+                    <Form.Select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="pending">Pending</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Nominator PEID</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="nominator_peid"
+                      value={formData.nominator_peid}
+                      onChange={handleInputChange}
+                      placeholder="Enter nominator PEID"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Seconder PEID</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="seconder_peid"
+                      value={formData.seconder_peid}
+                      onChange={handleInputChange}
+                      placeholder="Enter seconder PEID"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button 
+              variant="secondary" 
+              onClick={() => setShowCreateModal(false)}
+              disabled={creatingPrincipal}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleCreatePrincipal}
+              disabled={creatingPrincipal || !formData.teacher_id}
+            >
+              {creatingPrincipal ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check-circle me-2"></i>
+                  Assign Principal
+                </>
               )}
-              <Button
-                onClick={handleRefresh}
-                variant="outline-secondary"
-                className="px-4 py-2"
-              >
-                <i className="bi bi-arrow-clockwise"></i> Refresh
-              </Button>
-            </div>
-          </div>
-        </div>
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Container>
     );
   }
 
-  const principal = getPrincipalData();
-  const schools = getSchoolsData();
-  const employment_history = getEmploymentHistory();
-  const qualifications = getQualifications();
-  const summary = getSummary();
-
-  console.log("🎨 Rendering principal details with data:", {
-    principal,
-    schoolsCount: schools.length,
-    employmentHistoryCount: employment_history.length,
-    qualificationsCount: qualifications.length,
-    summary,
-    userRole,
-  });
-
+  // Principal Exists - Show Details
   return (
     <Container fluid className="px-4 py-3">
       {/* Header */}
@@ -424,28 +399,22 @@ const PrincipalDetails = () => {
         <div>
           <h4 className="H4-heading fw-bold">Principal Details</h4>
           <p className="text-muted mb-0">
-            {principal.principal_id
-              ? `Principal ID: ${principal.principal_id}`
-              : "Principal Details"}
+            Principal ID: {principal.principal_id}
           </p>
         </div>
+        <Button 
+          variant="outline-primary" 
+          size="sm"
+          onClick={() => setShowCreateModal(true)}
+        >
+          <i className="bi bi-plus-circle me-1"></i>
+          Update Principal
+        </Button>
       </div>
 
-      {/* Status Update Message */}
-      {updateMessage.text && (
-        <Alert variant={updateMessage.type} className="mb-4">
-          <div className="d-flex align-items-center">
-            <i
-              className={`bi bi-${
-                updateMessage.type === "success"
-                  ? "check-circle"
-                  : updateMessage.type === "warning"
-                  ? "exclamation-triangle"
-                  : "exclamation-triangle"
-              } me-2`}
-            ></i>
-            <span>{updateMessage.text}</span>
-          </div>
+      {error && (
+        <Alert variant="warning" className="mb-3">
+          {error}
         </Alert>
       )}
 
@@ -458,24 +427,24 @@ const PrincipalDetails = () => {
               {principal.status && (
                 <div className="d-flex align-items-center gap-3">
                   <span className="text-muted">Status:</span>
-                  <Form.Check
-                    type="switch"
-                    id="principal-status-toggle"
-                    label={
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="principal-status-toggle"
+                      checked={principal.status === "active"}
+                      onChange={handleQuickStatusToggle}
+                      disabled={updatingStatus}
+                    />
+                    <label className="form-check-label" htmlFor="principal-status-toggle">
                       <Badge
                         bg={getStatusVariant(principal.status)}
                         className="fs-6"
                       >
                         {principal.status}
                       </Badge>
-                    }
-                    checked={
-                      principal.status === "active" ||
-                      principal.status === "approved"
-                    }
-                    onChange={handleQuickStatusToggle}
-                    disabled={updatingStatus}
-                  />
+                    </label>
+                  </div>
                 </div>
               )}
             </Card.Header>
@@ -488,41 +457,33 @@ const PrincipalDetails = () => {
                         <td className="fw-bold" style={{ width: "140px" }}>
                           Full Name:
                         </td>
-                        <td>{principal.name || "N/A"}</td>
+                        <td>{principal.name}</td>
                       </tr>
                       <tr>
                         <td className="fw-bold">Email:</td>
                         <td>
-                          {principal.email ? (
-                            <a
-                              href={`mailto:${principal.email}`}
-                              className="text-decoration-none"
-                            >
-                              {principal.email}
-                            </a>
-                          ) : (
-                            "N/A"
-                          )}
+                          <a
+                            href={`mailto:${principal.email}`}
+                            className="text-decoration-none"
+                          >
+                            {principal.email}
+                          </a>
                         </td>
                       </tr>
                       <tr>
                         <td className="fw-bold">Phone:</td>
                         <td>
-                          {principal.phone ? (
-                            <a
-                              href={`tel:${principal.phone}`}
-                              className="text-decoration-none"
-                            >
-                              {principal.phone}
-                            </a>
-                          ) : (
-                            "N/A"
-                          )}
+                          <a
+                            href={`tel:${principal.phone}`}
+                            className="text-decoration-none"
+                          >
+                            {principal.phone}
+                          </a>
                         </td>
                       </tr>
                       <tr>
-                        <td className="fw-bold">Gender:</td>
-                        <td>{principal.gender || "N/A"}</td>
+                        <td className="fw-bold">Position:</td>
+                        <td>{principal.position}</td>
                       </tr>
                     </tbody>
                   </Table>
@@ -534,7 +495,7 @@ const PrincipalDetails = () => {
                         <td className="fw-bold" style={{ width: "140px" }}>
                           Principal ID:
                         </td>
-                        <td>{principal.principal_id || "N/A"}</td>
+                        <td>{principal.principal_id}</td>
                       </tr>
                       {principal.status && (
                         <tr>
@@ -547,8 +508,8 @@ const PrincipalDetails = () => {
                         </tr>
                       )}
                       <tr>
-                        <td className="fw-bold">Date of Birth:</td>
-                        <td>{formatDate(principal.date_of_birth)}</td>
+                        <td className="fw-bold">Academic Year:</td>
+                        <td>{principal.year}</td>
                       </tr>
                       <tr>
                         <td className="fw-bold">Join Date:</td>
@@ -558,22 +519,28 @@ const PrincipalDetails = () => {
                   </Table>
                 </Col>
               </Row>
-              {principal.address && (
-                <Row className="mt-3">
-                  <Col>
-                    <Table borderless>
-                      <tbody>
-                        <tr>
-                          <td className="fw-bold" style={{ width: "140px" }}>
-                            Address:
-                          </td>
-                          <td>{principal.address}</td>
-                        </tr>
-                      </tbody>
-                    </Table>
-                  </Col>
-                </Row>
-              )}
+              
+              {/* Nominator and Seconder Information */}
+              <Row className="mt-3">
+                <Col md={6}>
+                  <h6 className="mb-2">Nominator</h6>
+                  <p className="mb-1">
+                    {principal.rawData.nominator?.full_name || "N/A"}
+                  </p>
+                  <small className="text-muted">
+                    PEID: {principal.rawData.nominator?.peid || "N/A"}
+                  </small>
+                </Col>
+                <Col md={6}>
+                  <h6 className="mb-2">Seconder</h6>
+                  <p className="mb-1">
+                    {principal.rawData.seconder?.full_name || "N/A"}
+                  </p>
+                  <small className="text-muted">
+                    PEID: {principal.rawData.seconder?.peid || "N/A"}
+                  </small>
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
 
@@ -637,53 +604,41 @@ const PrincipalDetails = () => {
                               Email:
                             </td>
                             <td>
-                              {principal.email ? (
-                                <a
-                                  href={`mailto:${principal.email}`}
-                                  className="text-decoration-none"
-                                >
-                                  {principal.email}
-                                </a>
-                              ) : (
-                                "N/A"
-                              )}
+                              <a
+                                href={`mailto:${principal.email}`}
+                                className="text-decoration-none"
+                              >
+                                {principal.email}
+                              </a>
                             </td>
                           </tr>
                           <tr>
                             <td className="fw-bold">Phone:</td>
                             <td>
-                              {principal.phone ? (
-                                <a
-                                  href={`tel:${principal.phone}`}
-                                  className="text-decoration-none"
-                                >
-                                  {principal.phone}
-                                </a>
-                              ) : (
-                                "N/A"
-                              )}
+                              <a
+                                href={`tel:${principal.phone}`}
+                                className="text-decoration-none"
+                              >
+                                {principal.phone}
+                              </a>
                             </td>
-                          </tr>
-                          <tr>
-                            <td className="fw-bold">Address:</td>
-                            <td>{principal.address || "N/A"}</td>
                           </tr>
                         </tbody>
                       </Table>
                     </Col>
                     <Col md={6}>
-                      <h6 className="mb-3">Personal Information</h6>
+                      <h6 className="mb-3">Position Information</h6>
                       <Table borderless>
                         <tbody>
                           <tr>
                             <td className="fw-bold" style={{ width: "120px" }}>
-                              Gender:
+                              Position:
                             </td>
-                            <td>{principal.gender || "N/A"}</td>
+                            <td>{principal.position}</td>
                           </tr>
                           <tr>
-                            <td className="fw-bold">Date of Birth:</td>
-                            <td>{formatDate(principal.date_of_birth)}</td>
+                            <td className="fw-bold">Academic Year:</td>
+                            <td>{principal.year}</td>
                           </tr>
                           <tr>
                             <td className="fw-bold">Join Date:</td>
@@ -704,13 +659,13 @@ const PrincipalDetails = () => {
                       {schools.map((school, index) => (
                         <Col
                           md={6}
-                          key={school.school_id || index}
+                          key={school.school_id}
                           className="mb-3"
                         >
                           <Card className="h-100">
                             <Card.Header className="bg-light">
                               <h6 className="mb-0">
-                                {school.school_name || "Unnamed School"}
+                                {school.school_name}
                               </h6>
                             </Card.Header>
                             <Card.Body>
@@ -718,15 +673,15 @@ const PrincipalDetails = () => {
                                 <tbody>
                                   <tr>
                                     <td className="fw-bold">School ID:</td>
-                                    <td>{school.school_id || "N/A"}</td>
+                                    <td>{school.school_id}</td>
                                   </tr>
                                   <tr>
                                     <td className="fw-bold">Address:</td>
-                                    <td>{school.address || "N/A"}</td>
+                                    <td>{school.address}</td>
                                   </tr>
                                   <tr>
                                     <td className="fw-bold">Phone:</td>
-                                    <td>{school.phone || "N/A"}</td>
+                                    <td>{school.phone}</td>
                                   </tr>
                                   <tr>
                                     <td className="fw-bold">Status:</td>
@@ -778,7 +733,7 @@ const PrincipalDetails = () => {
                     <div className="timeline">
                       {employment_history.map((job, index) => (
                         <div
-                          key={job.id || index}
+                          key={job.id}
                           className={`d-flex ${index > 0 ? "mt-4" : ""}`}
                         >
                           <div className="flex-shrink-0">
@@ -790,9 +745,9 @@ const PrincipalDetails = () => {
                             </div>
                           </div>
                           <div className="flex-grow-1 ms-3 pb-3 border-bottom">
-                            <h6 className="mb-1">{job.position || "N/A"}</h6>
+                            <h6 className="mb-1">{job.position}</h6>
                             <p className="mb-1 text-muted">
-                              {job.organization || "N/A"}
+                              {job.organization}
                             </p>
                             <p className="mb-1 small text-muted">
                               {formatDate(job.start_date)} -{" "}
@@ -827,13 +782,13 @@ const PrincipalDetails = () => {
                       {qualifications.map((qual, index) => (
                         <Col
                           md={6}
-                          key={qual.id || index}
+                          key={qual.id}
                           className="mb-3"
                         >
                           <Card className="h-100">
                             <Card.Header className="bg-light">
                               <h6 className="mb-0">
-                                {qual.degree || qual.certification || "Qualification"}
+                                {qual.degree}
                               </h6>
                             </Card.Header>
                             <Card.Body>
@@ -841,11 +796,11 @@ const PrincipalDetails = () => {
                                 <tbody>
                                   <tr>
                                     <td className="fw-bold">Institution:</td>
-                                    <td>{qual.institution || "N/A"}</td>
+                                    <td>{qual.institution}</td>
                                   </tr>
                                   <tr>
                                     <td className="fw-bold">Field:</td>
-                                    <td>{qual.field_of_study || "N/A"}</td>
+                                    <td>{qual.field_of_study}</td>
                                   </tr>
                                   {qual.year_obtained && (
                                     <tr>
@@ -903,54 +858,27 @@ const PrincipalDetails = () => {
                   <i className="bi bi-calendar me-2"></i>
                   View Schedule
                 </Button>
-                {(principal.status === "active" ||
-                  principal.status === "approved") && (
-                  <Button
-                    variant="outline-warning"
-                    onClick={() => handleStatusChange("inactive")}
-                    disabled={updatingStatus}
-                  >
-                    {updatingStatus ? (
-                      <>
-                        <Spinner
-                          animation="border"
-                          size="sm"
-                          className="me-2"
-                        />
-                        Deactivating...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-pause-circle me-2"></i>
-                        Deactivate Principal
-                      </>
-                    )}
-                  </Button>
-                )}
-                {(principal.status === "inactive" ||
-                  principal.status === "Inactive") && (
-                  <Button
-                    variant="outline-success"
-                    onClick={() => handleStatusChange("active")}
-                    disabled={updatingStatus}
-                  >
-                    {updatingStatus ? (
-                      <>
-                        <Spinner
-                          animation="border"
-                          size="sm"
-                          className="me-2"
-                        />
-                        Activating...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-play-circle me-2"></i>
-                        Activate Principal
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button
+                  variant="outline-warning"
+                  onClick={handleQuickStatusToggle}
+                  disabled={updatingStatus}
+                >
+                  {updatingStatus ? (
+                    <>
+                      <Spinner
+                        animation="border"
+                        size="sm"
+                        className="me-2"
+                      />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-pause-circle me-2"></i>
+                      Deactivate Principal
+                    </>
+                  )}
+                </Button>
               </div>
             </Card.Body>
           </Card>
@@ -971,11 +899,9 @@ const PrincipalDetails = () => {
                     style={{ fontSize: "2rem" }}
                   ></i>
                 </div>
-                <h5>{principal.name || "Principal Name"}</h5>
+                <h5>{principal.name}</h5>
                 <p className="text-muted">
-                  {principal.principal_id
-                    ? `Principal ID: ${principal.principal_id}`
-                    : "Principal"}
+                  Principal ID: {principal.principal_id}
                 </p>
 
                 {principal.status && (
@@ -992,19 +918,19 @@ const PrincipalDetails = () => {
                 <div className="d-flex justify-content-around mt-4">
                   <div className="text-center">
                     <div className="fw-bold text-primary">
-                      {summary.total_schools || 0}
+                      {summary.total_schools}
                     </div>
                     <small className="text-muted">Schools</small>
                   </div>
                   <div className="text-center">
                     <div className="fw-bold text-success">
-                      {summary.years_experience || 0}
+                      {summary.years_experience}
                     </div>
                     <small className="text-muted">Years Exp</small>
                   </div>
                   <div className="text-center">
                     <div className="fw-bold text-info">
-                      {summary.qualification_count || 0}
+                      {summary.qualification_count}
                     </div>
                     <small className="text-muted">Qualifications</small>
                   </div>
@@ -1026,16 +952,12 @@ const PrincipalDetails = () => {
                       <i className="bi bi-envelope text-primary me-2"></i>
                     </td>
                     <td>
-                      {principal.email ? (
-                        <a
-                          href={`mailto:${principal.email}`}
-                          className="text-decoration-none"
-                        >
-                          {principal.email}
-                        </a>
-                      ) : (
-                        "N/A"
-                      )}
+                      <a
+                        href={`mailto:${principal.email}`}
+                        className="text-decoration-none"
+                      >
+                        {principal.email}
+                      </a>
                     </td>
                   </tr>
                   <tr>
@@ -1043,24 +965,34 @@ const PrincipalDetails = () => {
                       <i className="bi bi-telephone text-primary me-2"></i>
                     </td>
                     <td>
-                      {principal.phone ? (
-                        <a
-                          href={`tel:${principal.phone}`}
-                          className="text-decoration-none"
-                        >
-                          {principal.phone}
-                        </a>
-                      ) : (
-                        "N/A"
-                      )}
+                      <a
+                        href={`tel:${principal.phone}`}
+                        className="text-decoration-none"
+                      >
+                        {principal.phone}
+                      </a>
                     </td>
                   </tr>
-                  <tr>
-                    <td className="fw-bold">
-                      <i className="bi bi-geo-alt text-primary me-2"></i>
-                    </td>
-                    <td>{principal.address || "N/A"}</td>
-                  </tr>
+                  {principal.rawData.nominator && (
+                    <tr>
+                      <td className="fw-bold">
+                        <i className="bi bi-person-check text-primary me-2"></i>
+                      </td>
+                      <td>
+                        Nominator: {principal.rawData.nominator.full_name}
+                      </td>
+                    </tr>
+                  )}
+                  {principal.rawData.seconder && (
+                    <tr>
+                      <td className="fw-bold">
+                        <i className="bi bi-people text-primary me-2"></i>
+                      </td>
+                      <td>
+                        Seconder: {principal.rawData.seconder.full_name}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </Table>
             </Card.Body>

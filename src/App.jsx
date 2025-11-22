@@ -186,7 +186,7 @@ function App() {
           />
 
           <Route
-            path="/principal"
+            path="/principals"
             element={
               <RouteGuard requireProfileComplete={true}>
                 <PrincipalDetails />

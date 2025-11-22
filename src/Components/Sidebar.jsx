@@ -121,6 +121,15 @@ const Sidebar = ({
         }
         return [];
 
+      case "principal":
+        // Only admin can see principal management
+        if (isAdmin) {
+          return [
+            { label: "View All Principals", to: "/principals" },
+          ];
+        }
+        return [];
+
       default:
         return [];
     }
@@ -152,6 +161,10 @@ const Sidebar = ({
         return isAdmin || isTeacher || isParent;
 
       case "persons":
+        // Show only for admin
+        return isAdmin;
+
+      case "principal":
         // Show only for admin
         return isAdmin;
 
@@ -242,6 +255,21 @@ const Sidebar = ({
               isExpanded={activeSection === "Students"}
               onToggle={() => handleToggle("Students")}
               subItems={getSubItems("students")}
+              collapsed={collapsed && !isHovered}
+              onItemClick={handleItemClick}
+            />
+          </ul>
+        )}
+
+        {/* Principal - Show only for admin */}
+        {shouldShowSection("principal") && (
+          <ul className="nav flex-column">
+            <SideBarLink
+              iconType="bi-person-gear" // Using a gear icon for principal management
+              label="Principal"
+              isExpanded={activeSection === "Principal"}
+              onToggle={() => handleToggle("Principal")}
+              subItems={getSubItems("principal")}
               collapsed={collapsed && !isHovered}
               onItemClick={handleItemClick}
             />

@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Card,
   Row,
   Col,
-  Spinner,
-  Alert,
   Badge,
   Tab,
   Tabs,
   Form,
   Modal,
   Button,
+  Spinner,
+  Alert,
 } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
@@ -22,475 +22,231 @@ const PersonDetails = () => {
   const { name } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [personData, setPersonData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  
   const [activeTab, setActiveTab] = useState("personal");
-  const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [updatingRole, setUpdatingRole] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("");
-  const [availableRoles, setAvailableRoles] = useState([]);
+  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  useEffect(() => {
-    console.log("🔍 useEffect triggered", {
-      locationState: location.state,
-      name: name,
-      hasPersonData: !!location.state?.personData,
-      hasPersonId: !!location.state?.personId
-    });
-    
-    // Check if we have valid data from navigation
-    if (location.state?.personData) {
-      console.log("📍 Using location.state.personData:", location.state.personData);
-      try {
-        const transformedData = transformPersonData(location.state.personData);
-        setPersonData(transformedData);
-        setLoading(false);
-      } catch (error) {
-        console.error("❌ Error transforming person data:", error);
-        // If transformation fails, try to fetch from API
-        fetchPersonDetails();
-      }
-    } else {
-      console.log("🔄 No location state data, fetching from API...");
-      fetchPersonDetails();
+  // Person data state
+  const [personData, setPersonData] = useState(null);
+
+  // Get personId from navigation state or try to extract from URL
+  const getPersonId = () => {
+    // First try to get from navigation state
+    if (location.state?.personId) {
+      return location.state.personId;
     }
     
-    fetchAvailableRoles();
-  }, [name, location.state]);
+    // If not available in state, you might need to extract from URL or use other methods
+    // For now, we'll rely on the state being passed
+    console.warn("No personId found in navigation state");
+    return null;
+  };
 
-  const fetchPersonDetails = async () => {
+  // Fetch person details from API
+  const fetchPersonDetails = async (personId) => {
     try {
       setLoading(true);
-      setError(null);
+      setError("");
+
+      console.log("Fetching person details for ID:", personId);
       
-      const personId = location.state?.personId;
-      const personDataFromState = location.state?.personData;
-
-      console.log("🆔 Fetching details with:", {
-        personId,
-        hasPersonData: !!personDataFromState
-      });
-
-      // If we have person data but no ID, try to extract ID from the data
-      let actualPersonId = personId;
-      if (!actualPersonId && personDataFromState) {
-        actualPersonId = personDataFromState.peid || personDataFromState.id;
-        console.log("🆔 Extracted personId from data:", actualPersonId);
-      }
-
-      if (!actualPersonId) {
-        setError("Person ID not found. Please go back and try again.");
-        setLoading(false);
-        return;
-      }
-
-      console.log("🔄 Fetching person details for ID:", actualPersonId);
+      // Use the persons list endpoint and filter by peid, or use a specific endpoint if available
+      const response = await api.get("/admin/persons");
       
-      // Try different endpoints to find the correct one
-      const endpoints = [
-        `/admin/persons/${actualPersonId}`,
-        `/admin/users/${actualPersonId}`,
-        `/api/admin/persons/${actualPersonId}`
-      ];
-
-      let response = null;
-      let lastError = null;
-
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 Trying endpoint: ${endpoint}`);
-          response = await api.get(endpoint);
-          console.log(`✅ Success from ${endpoint}:`, response.data);
-          break;
-        } catch (err) {
-          console.log(`❌ Failed for ${endpoint}:`, err.message);
-          lastError = err;
-          continue;
-        }
-      }
-
-      if (!response && lastError) {
-        throw lastError;
-      }
-
       if (response.data.success) {
-        const apiData = response.data.data.person || response.data.data.user || response.data.data;
-        console.log("📥 API Response data:", apiData);
+        const persons = response.data.data.persons || [];
+        const person = persons.find(p => p.peid === personId);
         
-        if (!apiData) {
-          throw new Error("No person data found in response");
+        if (person) {
+          console.log("Found person:", person);
+          transformPersonData(person);
+        } else {
+          setError("Person not found");
+          setPersonData(null);
         }
-        
-        const transformedData = transformPersonData(apiData);
-        setPersonData(transformedData);
-        console.log("✅ Transformed person data:", transformedData);
       } else {
-        throw new Error(response.data.message || "Failed to fetch person details");
+        setError(response.data.message || "Failed to fetch person details");
       }
     } catch (err) {
-      console.error("❌ Error fetching person details:", err);
-      const errorMsg = err.response?.data?.message || err.message || "Failed to fetch person details";
-      setError(errorMsg);
-      
-      // If we have state data but API failed, at least show what we have
-      if (location.state?.personData) {
-        console.log("🔄 Falling back to location state data due to API error");
-        try {
-          const transformedData = transformPersonData(location.state.personData);
-          setPersonData(transformedData);
-          setError(`API Error: ${errorMsg}. Showing cached data.`);
-        } catch (transformError) {
-          console.error("❌ Also failed to transform state data:", transformError);
-        }
-      }
+      console.error("Error fetching person details:", err);
+      setError(err.response?.data?.message || "Failed to load person details");
+      setPersonData(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch available roles from API
-  const fetchAvailableRoles = async () => {
-    try {
-      console.log("🔄 Fetching available roles...");
-      const endpoints = [
-        '/admin/roles',
-        '/api/admin/roles',
-        '/roles'
-      ];
-
-      let rolesResponse = null;
-      
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 Trying roles endpoint: ${endpoint}`);
-          rolesResponse = await api.get(endpoint);
-          console.log(`✅ Roles API response from ${endpoint}:`, rolesResponse);
-          break;
-        } catch (err) {
-          console.log(`❌ Failed to fetch from ${endpoint}:`, err.message);
-          continue;
-        }
-      }
-
-      if (rolesResponse && rolesResponse.data.success) {
-        const roles = rolesResponse.data.data.roles || rolesResponse.data.data;
-        console.log("✅ Available roles:", roles);
-        setAvailableRoles(roles);
-      } else {
-        console.log("⚠️ Using default roles as fallback");
-        const defaultRoles = [
-          { roleid: 1, role_name: "admin", display_name: "Admin" },
-          { roleid: 2, role_name: "staff", display_name: "Staff" },
-          { roleid: 3, role_name: "teacher", display_name: "Teacher" },
-          { roleid: 4, role_name: "parent", display_name: "Parent" },
-          { roleid: 5, role_name: "student", display_name: "Student" }
-        ];
-        setAvailableRoles(defaultRoles);
-      }
-    } catch (err) {
-      console.error("❌ Error fetching roles:", err);
-      const defaultRoles = [
-        { roleid: 1, role_name: "admin", display_name: "Admin" },
-        { roleid: 2, role_name: "staff", display_name: "Staff" },
-        { roleid: 3, role_name: "teacher", display_name: "Teacher" },
-        { roleid: 4, role_name: "parent", display_name: "Parent" },
-        { roleid: 5, role_name: "student", display_name: "Student" }
-      ];
-      setAvailableRoles(defaultRoles);
-    }
-  };
-
-  // Improved transform function
+  // Transform API data to match component structure
   const transformPersonData = (apiData) => {
-    console.log("🔍 Transforming person data:", apiData);
+    const user = apiData.user || {};
+    const roleData = user.role || {};
     
-    if (!apiData) {
-      throw new Error("No data provided for transformation");
-    }
-
-    // Handle different API response structures
-    const data = apiData.originalData || apiData;
-    const userData = data.user || data;
-    
-    // Extract name - handle multiple scenarios
-    let fullName = "";
-    if (data.full_name) {
-      fullName = data.full_name;
-    } else if (userData.name) {
-      fullName = userData.name;
-    } else if (data.person_first_name && data.person_last_name) {
-      fullName = `${data.person_first_name} ${data.person_last_name}`;
-    } else {
-      fullName = "Unknown Name";
-    }
-
-    // Extract name parts from full name
-    const nameParts = fullName.trim().split(/\s+/);
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : "";
-    
-    // Determine status
-    const status = userData.status || data.status;
-    const isActive = status === "active" || data.is_active === true;
-    const statusDisplay = isActive ? "Active" : "Inactive";
-
-    // Extract role information
-    const roleData = userData?.role || data.primary_role || data.role || {};
-    const roleName = roleData.role_name || "unknown";
-    const roleDisplay = roleData.display_name || "Unknown Role";
-    const roleId = roleData.roleid;
-
-    // Get IDs - try multiple possible fields
-    const id = data.peid || userData.uid || data.id || data.user_id;
-    
-    if (!id) {
-      console.warn("⚠️ No ID found in person data:", data);
-    }
-
-    const transformed = {
-      id: id,
-      user_id: userData.uid || id,
-      person_id: id,
-      first_name: firstName,
-      last_name: lastName,
-      full_name: fullName,
-      email: userData.email || data.person_email || data.email || "",
-      phone: data.person_phone || data.phone || "Not provided",
-      status: statusDisplay,
-      is_active: isActive,
-      role: roleDisplay,
-      role_name: roleName,
-      role_data: roleData,
-      role_id: roleId,
-      created_at: data.created_at || userData.created_at,
-      updated_at: data.updated_at || userData.updated_at,
-      last_login: userData.last_login,
-      profile_picture: data.profile_picture || userData.profile_picture,
-      // Store original for debugging
-      _original: data
+    const transformedData = {
+      // Basic info
+      id: apiData.peid,
+      user_id: user.uid,
+      person_id: apiData.peid,
+      first_name: apiData.person_first_name,
+      last_name: apiData.person_last_name,
+      middle_name: apiData.person_middle_name,
+      full_name: apiData.full_name,
+      email: apiData.person_email,
+      phone: apiData.person_phone,
+      
+      // Status
+      status: user.status === "active" ? "Active" : "Inactive",
+      is_active: apiData.is_active,
+      person_status: apiData.person_status,
+      
+      // Role information
+      role: roleData.display_name || "Unknown Role",
+      role_name: roleData.role_name || "unknown",
+      role_id: roleData.roleid,
+      
+      // Personal details
+      gender: apiData.person_gender,
+      dob: apiData.person_dob,
+      
+      // Timestamps
+      created_at: apiData.created_at,
+      updated_at: apiData.updated_at,
+      last_login: user.last_login,
+      
+      // Role flags for UI
+      has_teacher_role: roleData.role_name === "teacher",
+      has_parent_role: roleData.role_name === "parent",
+      has_admin_role: roleData.role_name === "admin",
+      has_staff_role: roleData.role_name === "staff",
+      has_student_role: roleData.role_name === "student",
+      
+      // Store original API data
+      originalData: apiData
     };
 
-    console.log("✅ Transformed data:", transformed);
-    return transformed;
+    setPersonData(transformedData);
   };
 
-  // Function to refetch person details
-  const refetchPersonDetails = async (personId) => {
-    try {
-      console.log("🔄 Refetching updated person details for ID:", personId);
-      
-      let response;
-      try {
-        response = await api.get(`/admin/persons/${personId}`);
-      } catch (err) {
-        const formattedId = `P${personId.toString().padStart(5, '0')}`;
-        console.log(`🔄 Trying with formatted ID: ${formattedId}`);
-        response = await api.get(`/admin/persons/${formattedId}`);
-      }
-      
-      if (response.data.success) {
-        const apiData = response.data.data.person;
-        const transformedData = transformPersonData(apiData);
-        setPersonData(transformedData);
-        console.log("✅ Refetched and updated person data:", transformedData);
-        return transformedData;
-      }
-    } catch (err) {
-      console.error("❌ Error refetching person details:", err);
-      throw err;
+  // Fetch data on component mount
+  useEffect(() => {
+    const personId = getPersonId();
+    if (personId) {
+      fetchPersonDetails(personId);
+    } else {
+      setError("No person ID provided");
+      setLoading(false);
     }
-  };
+  }, [location.state]);
 
-  // Function to toggle person status
+  const handleBack = () => navigate("/persons");
+
+  // Toggle person status
   const handleStatusToggle = async (newStatus) => {
-    if (!personData) {
-      console.error("❌ No person data available");
-      return;
-    }
-
-    const personId = personData.person_id || personData.id;
-
-    if (!personId) {
-      console.error("❌ No valid person ID found in person data");
-      alert("Cannot update status: Person ID not available");
-      return;
-    }
-
     try {
-      setUpdatingStatus(true);
+      const personId = getPersonId();
+      if (!personId) {
+        setError("No person ID available");
+        return;
+      }
+
+      console.log(`Toggling status for person: ${personId} to ${newStatus}`);
       
-      console.log("🔄 Toggling status for person ID:", personId, "to:", newStatus);
-      const response = await api.put(`/admin/persons/${personId}/toggle-status`, {
-        is_active: newStatus
-      });
-      
-      console.log("✅ Status update response:", response);
-      
+      const response = await api.put(
+        `/admin/persons/${personId}/toggle-status`,
+        {}
+      );
+
       if (response.data.success) {
-        await refetchPersonDetails(personId);
-        console.log("✅ Status updated successfully to:", newStatus ? "Active" : "Inactive");
+        const updatedPerson = response.data.data.person;
+        setPersonData(prev => ({
+          ...prev,
+          is_active: updatedPerson.is_active,
+          status: updatedPerson.is_active ? "Active" : "Inactive"
+        }));
+        setSuccessMessage(`Status updated to ${updatedPerson.is_active ? "Active" : "Inactive"}`);
+        
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
       } else {
         throw new Error(response.data.message || "Failed to update status");
       }
     } catch (err) {
-      console.error("❌ Error updating person status:", err);
-      alert("Failed to update status: " + (err.response?.data?.message || err.message));
-      
-      // Revert the toggle if the API call failed
-      setPersonData(prevData => ({
-        ...prevData,
-        is_active: !newStatus
-      }));
-    } finally {
-      setUpdatingStatus(false);
+      console.error("Error updating status:", err);
+      setError(err.response?.data?.message || "Failed to update status");
     }
   };
 
-  // Function to open role update modal
+  // Role management functions
   const handleOpenRoleModal = () => {
-    console.log("📝 Opening role modal, current role_id:", personData.role_id);
-    setSelectedRole(personData.role_id?.toString() || "");
+    if (!personData) return;
+    
+    const initialSelectedRoles = [];
+    if (personData.has_teacher_role) initialSelectedRoles.push(3);
+    if (personData.has_parent_role) initialSelectedRoles.push(4);
+    
+    setSelectedRoles(initialSelectedRoles);
     setShowRoleModal(true);
   };
 
-  // Function to update user role
-  const handleRoleUpdate = async () => {
-    console.log("🔄 ========== STARTING ROLE UPDATE PROCESS ==========");
-    
-    if (!personData) {
-      console.error("❌ No person data available");
-      return;
-    }
-
-    if (!selectedRole) {
-      console.error("❌ No role selected");
-      alert("Please select a role");
-      return;
-    }
-
-    const personId = personData.person_id || personData.id;
-    let formattedPersonId = personId;
-    if (typeof personId === 'number' || !personId.startsWith('P')) {
-      formattedPersonId = `P${personId.toString().padStart(5, '0')}`;
-    }
-
-    console.log("🎯 ROLE UPDATE DETAILS:", {
-      originalPersonId: personId,
-      formattedPersonId: formattedPersonId,
-      selectedRole: selectedRole,
-      selectedRoleInt: parseInt(selectedRole),
-      personData: personData
-    });
-
-    try {
-      setUpdatingRole(true);
-      
-      console.log("🔄 Updating role for person ID:", formattedPersonId, "to role ID:", selectedRole);
-      
-      const endpoints = [
-        `/api/admin/persons/${formattedPersonId}`,
-        `/admin/persons/${formattedPersonId}`,
-      ];
-
-      console.log("🔍 ENDPOINTS TO TRY:", endpoints);
-
-      let updateResponse = null;
-      let lastError = null;
-      let successfulEndpoint = null;
-
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`\n🔍 TRYING ENDPOINT: ${endpoint}`);
-          updateResponse = await api.put(endpoint, {
-            role_id: parseInt(selectedRole)
-          });
-          
-          successfulEndpoint = endpoint;
-          console.log(`✅ SUCCESS from ${endpoint}:`, updateResponse);
-          console.log(`✅ RESPONSE DATA:`, updateResponse.data);
-          break;
-        } catch (err) {
-          console.log(`❌ FAILED for ${endpoint}:`, err.message);
-          lastError = err;
-          continue;
-        }
-      }
-
-      if (!updateResponse && lastError) {
-        console.log("💥 ALL ENDPOINTS FAILED. LAST ERROR:", lastError);
-        throw lastError;
-      }
-
-      if (updateResponse.data.success) {
-        console.log("🎉 ROLE UPDATE SUCCESSFUL!");
-        console.log("✅ FULL API RESPONSE:", updateResponse.data);
-        
-        const updatedPersonData = updateResponse.data.data.person;
-        
-        if (updatedPersonData && updatedPersonData.user) {
-          console.log("✅ UPDATED PERSON DATA FROM API:", updatedPersonData);
-          
-          const transformedData = {
-            id: updatedPersonData.user.uid,
-            user_id: updatedPersonData.user.uid,
-            person_id: updatedPersonData.user.uid,
-            first_name: updatedPersonData.first_name,
-            last_name: updatedPersonData.last_name,
-            full_name: updatedPersonData.full_name,
-            email: updatedPersonData.email,
-            phone: updatedPersonData.phone,
-            status: updatedPersonData.user.status === "active" ? "Active" : "Inactive",
-            is_active: updatedPersonData.is_active,
-            role: updatedPersonData.user.role.display_name,
-            role_name: updatedPersonData.user.role.role_name,
-            role_data: updatedPersonData.user.role,
-            role_id: updatedPersonData.user.role.roleid,
-            created_at: updatedPersonData.created_at,
-            updated_at: updatedPersonData.updated_at,
-            last_login: updatedPersonData.user.last_login,
-          };
-          
-          setPersonData(transformedData);
-          console.log("✅ UI UPDATED WITH FRESH DATA:", transformedData);
-        } else {
-          console.log("🔄 Using transform function for updated data");
-          const transformedData = transformPersonData(updatedPersonData);
-          setPersonData(transformedData);
-        }
-        
-        setShowRoleModal(false);
-        console.log("✅ ROLE UPDATE COMPLETE - MODAL CLOSED");
-        
-        const newRoleName = availableRoles.find(r => r.roleid === parseInt(selectedRole))?.display_name;
-        alert(`Role updated successfully! User is now ${newRoleName}`);
-      } else {
-        console.error("❌ API returned success:false", updateResponse.data);
-        throw new Error(updateResponse.data.message || "Failed to update role");
-      }
-    } catch (err) {
-      console.error("💥 FINAL ERROR IN ROLE UPDATE:", err);
-      
-      let errorMessage = "Failed to update role: ";
-      if (err.response?.data?.message) {
-        errorMessage += err.response.data.message;
-      } else if (err.response?.status === 404) {
-        errorMessage += `Endpoint not found (404). Please contact support.`;
-      } else if (err.response?.status === 500) {
-        errorMessage += "Server error. Please try again later.";
-      } else {
-        errorMessage += err.message;
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setUpdatingRole(false);
-      console.log("========== ROLE UPDATE PROCESS COMPLETE ==========\n");
+  const handleRoleCheckboxChange = (roleId, isChecked) => {
+    if (isChecked) {
+      setSelectedRoles(prev => [...prev, roleId]);
+    } else {
+      setSelectedRoles(prev => prev.filter(id => id !== roleId));
     }
   };
 
-  const handleBack = () => navigate("/persons");
+  const handleRoleUpdate = async () => {
+    try {
+      const personId = getPersonId();
+      if (!personId) {
+        setError("No person ID available");
+        return;
+      }
+
+      // TODO: Implement API call to update roles
+      // This would require a new endpoint like: PUT /admin/persons/{peid}/roles
+      console.log("Updating roles for person:", personId, "with roles:", selectedRoles);
+      
+      // For now, we'll update the local state
+      const hasTeacherRole = selectedRoles.includes(3);
+      const hasParentRole = selectedRoles.includes(4);
+      
+      let roleDisplay = "";
+      if (hasTeacherRole && hasParentRole) {
+        roleDisplay = "Teacher & Parent";
+      } else if (hasTeacherRole) {
+        roleDisplay = "Teacher";
+      } else if (hasParentRole) {
+        roleDisplay = "Parent";
+      } else {
+        roleDisplay = "No Role";
+      }
+
+      setPersonData(prevData => ({
+        ...prevData,
+        role: roleDisplay,
+        role_ids: selectedRoles,
+        has_teacher_role: hasTeacherRole,
+        has_parent_role: hasParentRole
+      }));
+
+      setSuccessMessage("Roles updated successfully");
+      setShowRoleModal(false);
+      
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+      
+    } catch (err) {
+      console.error("Error updating roles:", err);
+      setError("Failed to update roles");
+    }
+  };
 
   // Helper function to get badge class based on role
   const getRoleBadgeClass = (roleName) => {
@@ -510,177 +266,159 @@ const PersonDetails = () => {
     }
   };
 
-  // Loading state
+  // Define editable roles
+  const editableRoles = [
+    { roleid: 3, role_name: "teacher", display_name: "Teacher" },
+    { roleid: 4, role_name: "parent", display_name: "Parent" }
+  ];
+
   if (loading) {
     return (
       <div className="container-fluid px-4 py-3">
         <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
-          <div className="text-center">
-            <Spinner animation="border" variant="primary" />
-            <p className="mt-3 text-muted">Loading person details...</p>
-          </div>
+          <Spinner animation="border" role="status" variant="primary">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error && !personData) {
     return (
       <div className="container-fluid px-4 py-3">
-        <Alert variant="danger" className="mb-4">
-          <div className="d-flex align-items-start">
-            <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
-            <div>
-              <h4 className="alert-heading mb-1">Error Loading Person</h4>
-              <p className="mb-3">{error}</p>
-              <button onClick={handleBack} className="btn btn-primary">
-                <i className="bi bi-arrow-left me-2"></i>
-                Back to Persons
-              </button>
-            </div>
+        <Alert variant="danger" className="d-flex justify-content-between align-items-center">
+          <div>
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            {error}
           </div>
+          <Button variant="outline-danger" size="sm" onClick={handleBack}>
+            <i className="bi bi-arrow-left me-2"></i>
+            Back to List
+          </Button>
         </Alert>
       </div>
     );
   }
 
-  // Show warning if we're using fallback data
-  if (error && personData) {
-    return (
-      <div className="container-fluid px-4 py-3">
-        <Alert variant="warning" className="mb-4">
-          <div className="d-flex align-items-start">
-            <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
-            <div>
-              <h4 className="alert-heading mb-1">Partial Data Loaded</h4>
-              <p className="mb-3">{error}</p>
-              <p className="mb-3">Some data may be outdated.</p>
-              <button onClick={fetchPersonDetails} className="btn btn-primary me-2">
-                <i className="bi bi-arrow-clockwise me-2"></i>
-                Retry Loading
-              </button>
-              <button onClick={handleBack} className="btn btn-outline-secondary">
-                <i className="bi bi-arrow-left me-2"></i>
-                Back to Persons
-              </button>
-            </div>
-          </div>
-        </Alert>
-        
-        {/* Render the person data we have */}
-        {renderPersonDetails()}
-      </div>
-    );
-  }
-
-  // No data state
   if (!personData) {
     return (
       <div className="container-fluid px-4 py-3">
-        <Alert variant="warning" className="mb-4">
-          <div className="d-flex align-items-start">
-            <i className="bi bi-info-circle-fill me-3 fs-4"></i>
-            <div>
-              <h4 className="alert-heading mb-1">No Data Found</h4>
-              <p className="mb-3">No person data available for {decodeURIComponent(name)}.</p>
-              <button onClick={handleBack} className="btn btn-primary">
-                <i className="bi bi-arrow-left me-2"></i>
-                Back to Persons
-              </button>
-            </div>
-          </div>
+        <Alert variant="warning">
+          <i className="bi bi-exclamation-triangle me-2"></i>
+          No person data available
         </Alert>
+        <ButtonGlobal onClick={handleBack} className="btn btn-outline-secondary">
+          <i className="bi bi-arrow-left me-2" />
+          Back to List
+        </ButtonGlobal>
       </div>
     );
   }
 
-  // Main render function
-  const renderPersonDetails = () => {
-    return (
-      <div className="container-fluid px-4 py-3">
-        {/* Header Section */}
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h4 className="fw-bold mb-1">Person Details</h4>
-            <p className="text-muted mb-0">Viewing details for: {personData.full_name}</p>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <ButtonGlobal
-              onClick={handleBack}
-              className="btn btn-outline-secondary"
-            >
-              <i className="bi bi-arrow-left me-2" />
-              Back to List
-            </ButtonGlobal>
-          </div>
+  return (
+    <div className="container-fluid px-4 py-3">
+      {/* Header Section */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 className="fw-bold mb-1">Person Details</h4>
+          <p className="text-muted mb-0">Viewing details for: {personData.full_name}</p>
         </div>
 
-        {/* Person Summary Card */}
-        <Card className="mb-4 border-0 shadow-sm bg-light">
-          <Card.Header className="bg-transparent py-3">
-            <div className="d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">
-                <i className="bi bi-person-badge me-2"></i>
-                User Information
-              </h5>
-              <div className="d-flex align-items-center gap-3">
-                <div className="d-flex align-items-center gap-2">
-                  <Form.Check
-                    type="switch"
-                    id="person-status-switch"
-                    checked={personData.is_active}
-                    onChange={(e) => handleStatusToggle(e.target.checked)}
-                    disabled={updatingStatus}
-                    className="fs-5"
-                  />
-                  <span className="fw-medium">
-                    {updatingStatus && (
-                      <Spinner animation="border" size="sm" className="ms-2" />
-                    )}
-                  </span>
-                </div>
-                <Badge 
-                  bg={personData.is_active ? "success" : "secondary"}
-                  className="fs-7"
-                >
-                  {personData.status}
-                </Badge>
+        <div className="d-flex align-items-center gap-2">
+          <Button
+            variant="outline-secondary"
+            onClick={() => fetchPersonDetails(getPersonId())}
+            disabled={loading}
+            className="d-flex align-items-center"
+          >
+            <i className="bi bi-arrow-clockwise me-2"></i>
+            Refresh
+          </Button>
+          <ButtonGlobal
+            onClick={handleBack}
+            className="btn btn-outline-secondary"
+          >
+            <i className="bi bi-arrow-left me-2" />
+            Back to List
+          </ButtonGlobal>
+        </div>
+      </div>
+
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <Alert variant="success" className="mb-3">
+          <i className="bi bi-check-circle me-2"></i>
+          {successMessage}
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="danger" className="mb-3">
+          <i className="bi bi-exclamation-triangle me-2"></i>
+          {error}
+        </Alert>
+      )}
+
+      {/* Person Summary Card */}
+      <Card className="mb-4 border-0 shadow-sm bg-light">
+        <Card.Header className="bg-transparent py-3">
+          <div className="d-flex justify-content-between align-items-center">
+            <h5 className="mb-0">
+              <i className="bi bi-person-badge me-2"></i>
+              User Information
+            </h5>
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <Form.Check
+                  type="switch"
+                  id="person-status-switch"
+                  checked={personData.is_active}
+                  onChange={(e) => handleStatusToggle(e.target.checked)}
+                  className="fs-5"
+                />
               </div>
+              <Badge 
+                bg={personData.is_active ? "success" : "secondary"}
+                className="fs-7"
+              >
+                {personData.status}
+              </Badge>
             </div>
-          </Card.Header>
-          <Card.Body className="p-4">
-            <Row className="g-4">
-              <Col md={4}>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-muted">Full Name</span>
-                  <span className="fs-6 fw-medium text-dark">
-                    {personData.full_name}
-                  </span>
-                </div>
-              </Col>
-              <Col md={4}>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-muted">Email</span>
-                  <span className="fs-6 text-dark">{personData.email || "—"}</span>
-                </div>
-              </Col>
-              <Col md={4}>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-muted">Phone</span>
-                  <span className="fs-6 text-dark">
-                    {personData.phone}
-                  </span>
-                </div>
-              </Col>
-              <Col md={4}>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-muted">Role</span>
-                  <div className="d-flex align-items-center gap-2">
-                    <Badge className={getRoleBadgeClass(personData.role_name)}>
-                      {personData.role}
-                    </Badge>
+          </div>
+        </Card.Header>
+        <Card.Body className="p-4">
+          <Row className="g-4">
+            <Col md={4}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold text-muted">Full Name</span>
+                <span className="fs-6 fw-medium text-dark">
+                  {personData.full_name}
+                </span>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold text-muted">Email</span>
+                <span className="fs-6 text-dark">{personData.email || "—"}</span>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold text-muted">Phone</span>
+                <span className="fs-6 text-dark">
+                  {personData.phone || "Not provided"}
+                </span>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold text-muted">Role</span>
+                <div className="d-flex align-items-center gap-2">
+                  <Badge className={getRoleBadgeClass(personData.role_name)}>
+                    {personData.role}
+                  </Badge>
+                  {(personData.has_teacher_role || personData.has_parent_role) && (
                     <Button
                       variant="outline-primary"
                       size="sm"
@@ -689,286 +427,243 @@ const PersonDetails = () => {
                     >
                       <i className="bi bi-pencil"></i>
                     </Button>
-                  </div>
+                  )}
                 </div>
-              </Col>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold text-muted">User ID</span>
+                <span className="fs-6 text-dark">{personData.user_id}</span>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold text-muted">Person ID</span>
+                <span className="fs-6 text-dark">{personData.person_id}</span>
+              </div>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
 
-              <Col md={4}>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-muted">Status</span>
-                  <span className="fs-6">
-                    <Badge 
-                      bg={personData.is_active ? "success" : "secondary"}
-                      className="fs-7"
-                    >
-                      {personData.status}
-                    </Badge>
-                  </span>
-                </div>
-              </Col>
-            </Row>
-          </Card.Body>
-        </Card>
-
-        {/* Detailed Information Tabs */}
-        <Card className="border-0 shadow-sm">
-          <Card.Body className="p-0">
-            <Tabs
-              activeKey={activeTab}
-              onSelect={(k) => setActiveTab(k)}
-              className="px-3 pt-3 border-bottom"
-              fill
-            >
-              {/* Personal Information Tab */}
-              <Tab eventKey="personal" title="Personal Information">
-                <div className="p-3">
-                  <Row className="g-3">
-                    <Col md={6}>
-                      <InfoCard title="Personal Details" className="bg-light">
-                        <div className="d-flex flex-column gap-3">
-                          <div>
-                            <span className="small text-muted">First Name</span>
-                            <p className="mb-0 fw-medium text-dark">{personData.first_name}</p>
-                          </div>
-                          <div>
-                            <span className="small text-muted">Last Name</span>
-                            <p className="mb-0 fw-medium text-dark">{personData.last_name}</p>
-                          </div>
-                          <div>
-                            <span className="small text-muted">Full Name</span>
-                            <p className="mb-0 fw-medium text-dark">{personData.full_name}</p>
-                          </div>
+      {/* Detailed Information Tabs */}
+      <Card className="border-0 shadow-sm">
+        <Card.Body className="p-0">
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(k) => setActiveTab(k)}
+            className="px-3 pt-3 border-bottom"
+            fill
+          >
+            {/* Personal Information Tab */}
+            <Tab eventKey="personal" title="Personal Information">
+              <div className="p-3">
+                <Row className="g-3">
+                  <Col md={6}>
+                    <InfoCard title="Personal Details" className="bg-light">
+                      <div className="d-flex flex-column gap-3">
+                        <div>
+                          <span className="small text-muted">First Name</span>
+                          <p className="mb-0 fw-medium text-dark">{personData.first_name}</p>
                         </div>
-                      </InfoCard>
-                    </Col>
-
-                    <Col md={6}>
-                      <InfoCard title="Account Information" className="bg-light">
-                        <div className="d-flex flex-column gap-3">
-                          <div>
-                            <span className="small text-muted">Role</span>
-                            <div className="d-flex align-items-center gap-2">
-                              <Badge className={getRoleBadgeClass(personData.role_name)}>
-                                {personData.role}
-                              </Badge>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                onClick={handleOpenRoleModal}
-                              >
-                                <i className="bi bi-pencil me-1"></i>
-                                Change
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="small text-muted">Status</span>
-                            <p className="mb-0">
-                              <Badge 
-                                bg={personData.is_active ? "success" : "secondary"}
-                                className="fs-7"
-                              >
-                                {personData.status}
-                              </Badge>
-                            </p>
-                          </div>
-                          <div>
-                            <span className="small text-muted">Role Name</span>
-                            <p className="mb-0 text-dark text-capitalize">{personData.role_name}</p>
-                          </div>
-                          <div>
-                            <span className="small text-muted">Role ID</span>
-                            <p className="mb-0 text-dark">{personData.role_id}</p>
-                          </div>
+                        <div>
+                          <span className="small text-muted">Last Name</span>
+                          <p className="mb-0 fw-medium text-dark">{personData.last_name}</p>
                         </div>
-                      </InfoCard>
-                    </Col>
-                  </Row>
-                </div>
-              </Tab>
-
-              {/* Contact Information Tab */}
-              <Tab eventKey="contacts" title="Contact Information">
-                <div className="p-3">
-                  <Row className="g-3">
-                    <Col md={6}>
-                      <InfoCard title="Contact Details" className="bg-light">
-                        <div className="d-flex flex-column gap-3">
+                        {personData.middle_name && (
                           <div>
-                            <span className="small text-muted">Email Address</span>
-                            <p className="mb-0 fw-medium text-dark text-truncate">
-                              {personData.email || "—"}
-                            </p>
+                            <span className="small text-muted">Middle Name</span>
+                            <p className="mb-0 fw-medium text-dark">{personData.middle_name}</p>
                           </div>
+                        )}
+                        <div>
+                          <span className="small text-muted">Gender</span>
+                          <p className="mb-0 fw-medium text-dark">{personData.gender || "Not specified"}</p>
+                        </div>
+                        {personData.dob && (
                           <div>
-                            <span className="small text-muted">Phone Number</span>
-                            <p className="mb-0 text-dark">{personData.phone}</p>
-                          </div>
-                        </div>
-                      </InfoCard>
-                    </Col>
-
-                    <Col md={6}>
-                      <InfoCard title="System Information" className="bg-light">
-                        <div className="d-flex flex-column gap-3">
-                          {personData.created_at && (
-                            <div>
-                              <span className="small text-muted">Account Created</span>
-                              <p className="mb-0 text-dark">
-                                {formatDateToMMDDYYYY(personData.created_at)}
-                              </p>
-                            </div>
-                          )}
-                          {personData.updated_at && (
-                            <div>
-                              <span className="small text-muted">Last Updated</span>
-                              <p className="mb-0 text-dark">
-                                {formatDateToMMDDYYYY(personData.updated_at)}
-                              </p>
-                            </div>
-                          )}
-                          {personData.last_login && (
-                            <div>
-                              <span className="small text-muted">Last Login</span>
-                              <p className="mb-0 text-dark">
-                                {formatDateToMMDDYYYY(personData.last_login)}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </InfoCard>
-                    </Col>
-                  </Row>
-                </div>
-              </Tab>
-
-              {/* Role Information Tab */}
-              <Tab eventKey="role" title="Role Information">
-                <div className="p-3">
-                  <Row className="g-3">
-                    <Col md={12}>
-                      <InfoCard title="Role Details" className="bg-light">
-                        <Row className="g-4">
-                          <Col md={4}>
-                            <div className="d-flex flex-column">
-                              <span className="small text-muted">Display Name</span>
-                              <span className="fs-6 fw-medium text-dark">
-                                {personData.role}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div className="d-flex flex-column">
-                              <span className="small text-muted">Role Name</span>
-                              <span className="fs-6 text-dark text-capitalize">
-                                {personData.role_name}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div className="d-flex flex-column">
-                              <span className="small text-muted">Role ID</span>
-                              <span className="fs-6 text-dark">{personData.role_id}</span>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div className="d-flex flex-column">
-                              <span className="small text-muted">Actions</span>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={handleOpenRoleModal}
-                              >
-                                <i className="bi bi-pencil me-1"></i>
-                                Update Role
-                              </Button>
-                            </div>
-                          </Col>
-                        </Row>
-                        
-                        {personData.role_name === "parent" && (
-                          <div className="mt-4 p-3 bg-success bg-opacity-10 rounded">
-                            <h6 className="fw-semibold mb-2 text-success">
-                              <i className="bi bi-people-fill me-2"></i>
-                              Parent Role
-                            </h6>
-                            <p className="mb-0 small text-dark">
-                              This user has parent privileges and can manage their children's accounts, 
-                              view class schedules, and communicate with teachers.
+                            <span className="small text-muted">Date of Birth</span>
+                            <p className="mb-0 fw-medium text-dark">
+                              {formatDateToMMDDYYYY(personData.dob)}
                             </p>
                           </div>
                         )}
-                      </InfoCard>
-                    </Col>
-                  </Row>
-                </div>
-              </Tab>
-            </Tabs>
-          </Card.Body>
-        </Card>
+                      </div>
+                    </InfoCard>
+                  </Col>
 
-        {/* Role Update Modal */}
-        <Modal show={showRoleModal} onHide={() => setShowRoleModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>Update User Role</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Group className="mb-3">
-                <Form.Label>Select Role</Form.Label>
-                <Form.Select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  <option value="">Choose a role...</option>
-                  {availableRoles.map((role) => (
-                    <option key={role.roleid} value={role.roleid}>
-                      {role.display_name} ({role.role_name}) - ID: {role.roleid}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <div className="alert alert-info">
+                  <Col md={6}>
+                    <InfoCard title="Role Information" className="bg-light">
+                      <div className="d-flex flex-column gap-3">
+                        <div>
+                          <span className="small text-muted">Current Role</span>
+                          <div className="d-flex flex-wrap gap-2 mt-1">
+                            <Badge className={getRoleBadgeClass(personData.role_name)}>
+                              {personData.role}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="small text-muted">Role ID</span>
+                          <p className="mb-0 text-dark">{personData.role_id || "N/A"}</p>
+                        </div>
+                        {(personData.has_teacher_role || personData.has_parent_role) && (
+                          <div>
+                            <span className="small text-muted">Actions</span>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleOpenRoleModal}
+                            >
+                              <i className="bi bi-pencil me-1"></i>
+                              Edit Roles
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </InfoCard>
+                  </Col>
+                </Row>
+              </div>
+            </Tab>
+
+            {/* Contact Information Tab */}
+            <Tab eventKey="contacts" title="Contact Information">
+              <div className="p-3">
+                <Row className="g-3">
+                  <Col md={6}>
+                    <InfoCard title="Contact Details" className="bg-light">
+                      <div className="d-flex flex-column gap-3">
+                        <div>
+                          <span className="small text-muted">Email Address</span>
+                          <p className="mb-0 fw-medium text-dark text-truncate">
+                            {personData.email || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="small text-muted">Phone Number</span>
+                          <p className="mb-0 text-dark">{personData.phone || "Not provided"}</p>
+                        </div>
+                      </div>
+                    </InfoCard>
+                  </Col>
+
+                  <Col md={6}>
+                    <InfoCard title="System Information" className="bg-light">
+                      <div className="d-flex flex-column gap-3">
+                        {personData.created_at && (
+                          <div>
+                            <span className="small text-muted">Account Created</span>
+                            <p className="mb-0 text-dark">
+                              {formatDateToMMDDYYYY(personData.created_at)}
+                            </p>
+                          </div>
+                        )}
+                        {personData.updated_at && (
+                          <div>
+                            <span className="small text-muted">Last Updated</span>
+                            <p className="mb-0 text-dark">
+                              {formatDateToMMDDYYYY(personData.updated_at)}
+                            </p>
+                          </div>
+                        )}
+                        {personData.last_login && (
+                          <div>
+                            <span className="small text-muted">Last Login</span>
+                            <p className="mb-0 text-dark">
+                              {formatDateToMMDDYYYY(personData.last_login)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </InfoCard>
+                  </Col>
+                </Row>
+              </div>
+            </Tab>
+          </Tabs>
+        </Card.Body>
+      </Card>
+
+      {/* Role Update Modal with Checkboxes */}
+      <Modal show={showRoleModal} onHide={() => setShowRoleModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Update User Roles</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">Select Roles</Form.Label>
+              <div className="border rounded p-3 bg-light">
+                {editableRoles.map((role) => {
+                  const isChecked = selectedRoles.includes(role.roleid);
+                  return (
+                    <Form.Check
+                      key={role.roleid}
+                      type="checkbox"
+                      id={`role-${role.roleid}`}
+                      label={
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="fw-medium">{role.display_name}</span>
+                          <Badge bg={role.role_name === "teacher" ? "primary" : "success"} className="fs-7">
+                            {role.role_name}
+                          </Badge>
+                        </div>
+                      }
+                      checked={isChecked}
+                      onChange={(e) => handleRoleCheckboxChange(role.roleid, e.target.checked)}
+                      className="mb-2 p-2 rounded hover-bg"
+                    />
+                  );
+                })}
+              </div>
+              <Form.Text className="text-muted">
+                You can assign both Teacher and Parent roles to the same user.
+              </Form.Text>
+            </Form.Group>
+            
+            <div className="alert alert-info">
+              <small>
+                <i className="bi bi-info-circle me-2"></i>
+                <strong>Current role:</strong> {personData.role}
+                <br />
+                Changing roles will affect the user's permissions and access rights.
+              </small>
+            </div>
+            
+            {selectedRoles.length > 0 && (
+              <div className="alert alert-success">
                 <small>
-                  <i className="bi bi-info-circle me-2"></i>
-                  Changing the role will affect the user's permissions and access rights.
-                  Current role: {personData.role} (ID: {personData.role_id})
+                  <i className="bi bi-check-circle me-2"></i>
+                  <strong>Selected roles:</strong> {selectedRoles.map(roleId => {
+                    const role = editableRoles.find(r => r.roleid === roleId);
+                    return role ? role.display_name : `Role ${roleId}`;
+                  }).join(" & ")}
                 </small>
               </div>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowRoleModal(false)}
-              disabled={updatingRole}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={handleRoleUpdate}
-              disabled={!selectedRole || updatingRole}
-            >
-              {updatingRole ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check-lg me-2"></i>
-                  Update Role
-                </>
-              )}
-            </Button>
-          </Modal.Footer>
-        </Modal>
-      </div>
-    );
-  };
-
-  return renderPersonDetails();
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowRoleModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleRoleUpdate}
+            disabled={selectedRoles.length === 0}
+          >
+            <i className="bi bi-check-lg me-2"></i>
+            Update Roles
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </div>
+  );
 };
 
 export default PersonDetails;

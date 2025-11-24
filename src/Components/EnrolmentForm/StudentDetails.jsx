@@ -208,13 +208,13 @@ export default function StudentDetails({ onNext }) {
             }
             onBlur={() => handleBlur("student", "mainstream_school_name")}
             error={getError("student", "mainstream_school_name")}
-            required
+            // Removed required prop to make it optional
           />
         </div>
         <div className="col-md-4">
           <TextInput
             id="enrolmentDate"
-            label="Date of enrolment at this school"
+            label="Date of enrolment at Mainstream School"
             type="date"
             value={formData.student.enrolment_date}
             onChange={(value) =>
@@ -222,13 +222,13 @@ export default function StudentDetails({ onNext }) {
             }
             onBlur={() => handleBlur("student", "enrolment_date")}
             error={getError("student", "enrolment_date")}
-            required
+            // Removed required prop to make it optional
           />
         </div>
         <div className="col-md-4">
           <SelectInput
             id="mainstreamSchoolYear"
-            label="Year enrolled in Mainstream School"
+            label="Class enrolled in Mainstream School"
             placeholder="Select grade level"
             value={formData.student.mainstream_enrollment_year || ""}
             onChange={(value) =>
@@ -236,7 +236,7 @@ export default function StudentDetails({ onNext }) {
             }
             onBlur={() => handleBlur("student", "mainstream_enrollment_year")}
             error={getError("student", "mainstream_enrollment_year")}
-            required
+            // Removed required prop to make it optional
             options={mainstreamGradeOptions}
           />
         </div>
@@ -251,7 +251,7 @@ export default function StudentDetails({ onNext }) {
             }
             onBlur={() => handleBlur("student", "enrol_class_in_WSTSC")}
             error={getError("student", "enrol_class_in_WSTSC")}
-            required
+            required // Keep this required
             options={gradeOptions}
             disabled={loading}
           />
@@ -271,8 +271,10 @@ export default function StudentDetails({ onNext }) {
       {/* Next Button */}
       <div className="container py-3 py-lg-5">
         <div className="row">
-          <div className="col-12 d-flex justify-content-center
-align-items-center z-2">
+          <div
+            className="col-12 d-flex justify-content-center
+align-items-center z-2"
+          >
             <button
               type="button"
               onClick={handleNext}

@@ -82,13 +82,13 @@ const Sidebar = ({
       case "enrolment":
         // Admin: hide "Enrol the student"
         if (isAdmin) {
-          return [{ label: "View All Enrolments", to: "/enrolments" }];
+          return [{ label: "View All", to: "/enrolments" }];
         }
         // Parent: show all enrolment sub-items
         if (isParent) {
           return [
-            { label: "View All Enrolments", to: "/enrolments" },
-            { label: "Enrol the student", to: "/enrol" },
+            { label: "View All", to: "/enrolments" },
+            { label: "Enrol student", to: "/enrol" },
           ];
         }
         return [];
@@ -102,7 +102,7 @@ const Sidebar = ({
         if (isAdmin) {
           return [
             { label: "View all classrooms", to: "/classrooms" },
-            { label: "View status Classrooms", to: "/classroom-status" },
+            { label: "View Classrooms status", to: "/classroom-status" },
           ];
         }
         return [];

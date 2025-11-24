@@ -187,6 +187,10 @@ export const EnrolmentFormProvider = ({ children }) => {
         "attendance_to", "second_given_name", "preferred_first_name", "phone_number",
         "overseas_student", "community_school_name", "day_school_location", "day_school_name",
         "day_school_location_optional", "attendance_from", "attendance_to", "enrollment_year",
+        // These three fields are optional in UI
+        "mainstream_school_name",
+        "enrolment_date", 
+        "mainstream_enrollment_year"
       ],
       parent_carer_1: ["middle_name", "alternative_phone", "address_type", "street_number"],
       parent_carer_2: [
@@ -324,7 +328,7 @@ export const EnrolmentFormProvider = ({ children }) => {
       case "mobile_phone":
         return {
           ...rules,
-          pattern: /^[0-9+\-\s()]{8,}$/,
+          pattern: /^[0-9+\-\s()]{8,15}$/,
           message: "Must be a valid phone number (8-15 digits)",
           minLength: 8,
           maxLength: 15,
@@ -336,7 +340,7 @@ export const EnrolmentFormProvider = ({ children }) => {
       case "phone_number":
         return {
           ...rules,
-          pattern: /^[0-9+\-\s()]{8,}$/,
+          pattern: /^[0-9+\-\s()]{8,15}$/,
           message: "Must be a valid phone number (8-15 digits)",
           minLength: 8,
           maxLength: 15,
@@ -368,6 +372,7 @@ export const EnrolmentFormProvider = ({ children }) => {
           isPastDate: true,
           message: "Date of birth must be a valid past date",
           validateDate: (value) => {
+            if (!value) return false;
             const date = new Date(value);
             const today = new Date();
             // Set both dates to start of day for accurate comparison
@@ -380,8 +385,9 @@ export const EnrolmentFormProvider = ({ children }) => {
       case "enrolment_date":
         return {
           ...rules,
-          message: "This field is required",
+          message: "Please enter a valid date",
           validateDate: (value) => {
+            if (!value) return true; // Optional field, empty is valid
             const date = new Date(value);
             return !isNaN(date.getTime()); // Only validate that it's a valid date, no future restriction
           }
@@ -403,6 +409,11 @@ export const EnrolmentFormProvider = ({ children }) => {
         };
 
       case "mainstream_enrollment_year":
+        return { 
+          ...rules,
+          message: "Please select a valid option" 
+        };
+
       case "enrol_class_in_WSTSC":
       case "enrollment_year":
         return { ...rules, message: "This field is required" };
@@ -484,7 +495,7 @@ export const EnrolmentFormProvider = ({ children }) => {
       }
     }
     // Enhanced date validation
-    else if (rules.validateDate && value) {
+    else if (rules.validateDate) {
       if (!rules.validateDate(value)) {
         errorMessage = rules.message;
         isValid = false;
@@ -576,6 +587,10 @@ export const EnrolmentFormProvider = ({ children }) => {
         "attendance_to", "second_given_name", "preferred_first_name", "phone_number",
         "overseas_student", "community_school_name", "day_school_location", "day_school_name",
         "day_school_location_optional", "attendance_from", "attendance_to", "enrollment_year",
+        // These three fields are optional in UI
+        "mainstream_school_name",
+        "enrolment_date", 
+        "mainstream_enrollment_year"
       ],
       parent_carer_1: ["middle_name", "alternative_phone", "address_type", "street_number"],
       parent_carer_2: [
@@ -662,15 +677,15 @@ export const EnrolmentFormProvider = ({ children }) => {
     return !hasErrors;
   };
 
-  // Data sanitization function
+  // Enhanced data sanitization function
   const sanitizeData = (data) => {
     const sanitized = JSON.parse(JSON.stringify(data));
     const today = new Date();
 
     console.log("🔧 Starting data sanitization...");
 
-    // Helper function to ensure valid dates without aggressive adjustments
-    const ensureValidDate = (dateString, fieldName) => {
+    // Helper function to ensure valid dates with proper validation
+    const ensureValidDate = (dateString, fieldName, allowFuture = false) => {
       if (!dateString) {
         console.log(`⚠️  ${fieldName}: Empty date`);
         return dateString;
@@ -679,7 +694,19 @@ export const EnrolmentFormProvider = ({ children }) => {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.log(`❌ ${fieldName}: Invalid date format - ${dateString}`);
-        return today.toISOString().split('T')[0];
+        // For critical dates, don't auto-correct, return as is to fail validation
+        return dateString;
+      }
+
+      // Check if date is in future for dates that shouldn't be
+      if (!allowFuture) {
+        const inputDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (inputDate > currentDate) {
+          console.log(`❌ ${fieldName}: Future date not allowed - ${dateString}`);
+          // Return as is to fail validation
+          return dateString;
+        }
       }
 
       console.log(`✅ ${fieldName}: Valid date - ${dateString}`);
@@ -689,29 +716,33 @@ export const EnrolmentFormProvider = ({ children }) => {
     // Sanitize dates in nested structure
     if (sanitized.student) {
       console.log("🎓 Sanitizing student dates...");
-      sanitized.student.date_of_birth = ensureValidDate(sanitized.student.date_of_birth, 'student.dob');
-      sanitized.student.enrolment_date = ensureValidDate(sanitized.student.enrolment_date, 'student.enrolment');
+      sanitized.student.date_of_birth = ensureValidDate(sanitized.student.date_of_birth, 'student.dob', false);
+      if (sanitized.student.enrolment_date) {
+        sanitized.student.enrolment_date = ensureValidDate(sanitized.student.enrolment_date, 'student.enrolment', true);
+      }
     }
 
     if (sanitized.parent_carer_1) {
       console.log("👨‍👩‍👧 Sanitizing parent 1 dates...");
-      sanitized.parent_carer_1.date_of_birth = ensureValidDate(sanitized.parent_carer_1.date_of_birth, 'parent1.dob');
+      sanitized.parent_carer_1.date_of_birth = ensureValidDate(sanitized.parent_carer_1.date_of_birth, 'parent1.dob', false);
     }
 
     if (sanitized.parent_carer_2 && sanitized.parent_carer_2.date_of_birth) {
       console.log("👨‍👩‍👧 Sanitizing parent 2 dates...");
-      sanitized.parent_carer_2.date_of_birth = ensureValidDate(sanitized.parent_carer_2.date_of_birth, 'parent2.dob');
+      sanitized.parent_carer_2.date_of_birth = ensureValidDate(sanitized.parent_carer_2.date_of_birth, 'parent2.dob', false);
     }
 
     if (sanitized.personal_declaration) {
       console.log("📝 Sanitizing declaration dates...");
       sanitized.personal_declaration.first_parent_carer_name_date = ensureValidDate(
         sanitized.personal_declaration.first_parent_carer_name_date,
-        'declaration.date1'
+        'declaration.date1',
+        true
       );
       sanitized.personal_declaration.second_parent_carer_name_date = ensureValidDate(
         sanitized.personal_declaration.second_parent_carer_name_date,
-        'declaration.date2'
+        'declaration.date2',
+        true
       );
     }
 
@@ -735,6 +766,9 @@ export const EnrolmentFormProvider = ({ children }) => {
             obj[key] = obj[key].substring(0, 50);
           } else if (fullPath.includes('suburb') || fullPath.includes('country')) {
             obj[key] = obj[key].substring(0, 30);
+          } else if (fullPath.includes('phone')) {
+            // Remove any non-digit characters from phone numbers and limit length
+            obj[key] = obj[key].replace(/\D/g, '').substring(0, 15);
           } else {
             obj[key] = obj[key].substring(0, 100);
           }
@@ -760,9 +794,11 @@ export const EnrolmentFormProvider = ({ children }) => {
 
   const submitForm = async (personalDeclarationOnly = false) => {
     console.log("🔄 Starting form submission process...");
+    console.log("📝 Personal Declaration Only:", personalDeclarationOnly);
 
     if (!validateForm(personalDeclarationOnly)) {
       console.error("❌ Form validation failed");
+      console.log("📋 Current errors:", errors);
       if (!error) {
         setError("Please complete all required fields before submitting the form.");
       }
@@ -778,7 +814,10 @@ export const EnrolmentFormProvider = ({ children }) => {
     setDebugInfo(null);
 
     try {
-      // Restructure data to match backend expectations - use nested objects
+      // DEBUG: Log original form data
+      console.log("🔍 ORIGINAL FORM DATA - Student Section:", JSON.stringify(formData.student, null, 2));
+      
+      // Restructure data to match backend expectations
       const submissionData = {
         student: {
           family_name: formData.student.family_name?.trim().substring(0, 30) || "",
@@ -786,11 +825,12 @@ export const EnrolmentFormProvider = ({ children }) => {
           preferred_first_name: formData.student.preferred_first_name?.trim().substring(0, 30) || "",
           gender: formData.student.gender?.toLowerCase() || "",
           date_of_birth: formData.student.date_of_birth || "",
-          phone_number: formData.student.phone_number || "",
-          mainstream_school_name: formData.student.mainstream_school_name?.trim().substring(0, 50) || "",
-          enrolment_date: formData.student.enrolment_date || "",
-          mainstream_enrollment_year: formData.student.mainstream_enrollment_year || "",
+          phone_number: formData.student.phone_number?.replace(/\D/g, '').substring(0, 15) || "",
           enrol_class_in_WSTSC: formData.student.enrol_class_in_WSTSC || "",
+          // CRITICAL FIX: Provide defaults for database-required fields that are optional in UI
+          mainstream_school_name: formData.student.mainstream_school_name?.trim().substring(0, 50) || "Not Provided",
+          enrolment_date: formData.student.enrolment_date || new Date().toISOString().split('T')[0],
+          mainstream_enrollment_year: formData.student.mainstream_enrollment_year || "Not Specified",
           // Optional fields
           second_given_name: formData.student.second_given_name?.trim().substring(0, 30) || "",
           overseas_student: Boolean(formData.student.overseas_student),
@@ -808,8 +848,8 @@ export const EnrolmentFormProvider = ({ children }) => {
           date_of_birth: formData.parent_carer_1.date_of_birth || "",
           nationality: formData.parent_carer_1.nationality?.trim().substring(0, 30) || "",
           email: formData.parent_carer_1.email?.trim().substring(0, 100) || "",
-          mobile_phone: formData.parent_carer_1.mobile_phone || "",
-          alternative_phone: formData.parent_carer_1.alternative_phone || "",
+          mobile_phone: formData.parent_carer_1.mobile_phone?.replace(/\D/g, '').substring(0, 15) || "",
+          alternative_phone: formData.parent_carer_1.alternative_phone?.replace(/\D/g, '').substring(0, 15) || "",
           marital_status: formData.parent_carer_1.marital_status?.toLowerCase() || "",
           occupation: formData.parent_carer_1.occupation?.trim().substring(0, 50) || "",
           address_type: formData.parent_carer_1.address_type || "",
@@ -831,8 +871,8 @@ export const EnrolmentFormProvider = ({ children }) => {
           date_of_birth: formData.parent_carer_2.date_of_birth || "",
           nationality: formData.parent_carer_2.nationality?.trim().substring(0, 30) || "",
           email: formData.parent_carer_2.email?.trim().substring(0, 100) || "",
-          mobile_phone: formData.parent_carer_2.mobile_phone || "",
-          alternative_phone: formData.parent_carer_2.alternative_phone || "",
+          mobile_phone: formData.parent_carer_2.mobile_phone?.replace(/\D/g, '').substring(0, 15) || "",
+          alternative_phone: formData.parent_carer_2.alternative_phone?.replace(/\D/g, '').substring(0, 15) || "",
           marital_status: formData.parent_carer_2.marital_status?.toLowerCase() || "",
           occupation: formData.parent_carer_2.occupation?.trim().substring(0, 50) || "",
           address_type: formData.parent_carer_2.address_type || "",
@@ -847,17 +887,17 @@ export const EnrolmentFormProvider = ({ children }) => {
           family_name: formData.first_emergency_contact.family_name?.trim().substring(0, 30) || "",
           given_name: formData.first_emergency_contact.given_name?.trim().substring(0, 30) || "",
           relationship_to_student: formData.first_emergency_contact.relationship_to_student || "",
-          mobile_phone: formData.first_emergency_contact.mobile_phone || "",
-          home_phone: formData.first_emergency_contact.home_phone || "",
-          work_phone: formData.first_emergency_contact.work_phone || "",
+          mobile_phone: formData.first_emergency_contact.mobile_phone?.replace(/\D/g, '').substring(0, 15) || "",
+          home_phone: formData.first_emergency_contact.home_phone?.replace(/\D/g, '').substring(0, 15) || "",
+          work_phone: formData.first_emergency_contact.work_phone?.replace(/\D/g, '').substring(0, 15) || "",
         } : undefined,
         second_emergency_contact: formData.second_emergency_contact.family_name ? {
           family_name: formData.second_emergency_contact.family_name?.trim().substring(0, 30) || "",
           given_name: formData.second_emergency_contact.given_name?.trim().substring(0, 30) || "",
           relationship_to_student: formData.second_emergency_contact.relationship_to_student || "",
-          mobile_phone: formData.second_emergency_contact.mobile_phone || "",
-          home_phone: formData.second_emergency_contact.home_phone || "",
-          work_phone: formData.second_emergency_contact.work_phone || "",
+          mobile_phone: formData.second_emergency_contact.mobile_phone?.replace(/\D/g, '').substring(0, 15) || "",
+          home_phone: formData.second_emergency_contact.home_phone?.replace(/\D/g, '').substring(0, 15) || "",
+          work_phone: formData.second_emergency_contact.work_phone?.replace(/\D/g, '').substring(0, 15) || "",
         } : undefined,
         personal_declaration: {
           first_parent_carer_name: formData.personal_declaration.first_parent_carer_name?.trim().substring(0, 60) || "",
@@ -876,6 +916,12 @@ export const EnrolmentFormProvider = ({ children }) => {
         },
       };
 
+      // DEBUG: Check the three optional fields before sanitization
+      console.log("🔍 DEBUG - Optional Fields Status:");
+      console.log("  - mainstream_school_name:", submissionData.student.mainstream_school_name, `[empty: ${!submissionData.student.mainstream_school_name}]`);
+      console.log("  - enrolment_date:", submissionData.student.enrolment_date, `[empty: ${!submissionData.student.enrolment_date}]`);
+      console.log("  - mainstream_enrollment_year:", submissionData.student.mainstream_enrollment_year, `[empty: ${!submissionData.student.mainstream_enrollment_year}]`);
+
       // Remove undefined objects to avoid sending empty data
       Object.keys(submissionData).forEach(key => {
         if (submissionData[key] === undefined) {
@@ -886,17 +932,20 @@ export const EnrolmentFormProvider = ({ children }) => {
       // Apply enhanced sanitization
       const sanitizedData = sanitizeData(submissionData);
 
+      // DEBUG: Check the three optional fields after sanitization
+      console.log("🔍 DEBUG - After Sanitization:");
+      console.log("  - mainstream_school_name:", sanitizedData.student.mainstream_school_name, `[empty: ${!sanitizedData.student.mainstream_school_name}]`);
+      console.log("  - enrolment_date:", sanitizedData.student.enrolment_date, `[empty: ${!sanitizedData.student.enrolment_date}]`);
+      console.log("  - mainstream_enrollment_year:", sanitizedData.student.mainstream_enrollment_year, `[empty: ${!sanitizedData.student.mainstream_enrollment_year}]`);
+
       console.log("📤 FINAL SANITIZED SUBMISSION DATA:", JSON.stringify(sanitizedData, null, 2));
 
-      // Enhanced required fields validation
+      // Enhanced required fields validation - only check truly critical fields
       const criticalFields = [
         { field: 'family_name', name: 'Family Name', value: sanitizedData.student.family_name },
         { field: 'first_given_name', name: 'First Given Name', value: sanitizedData.student.first_given_name },
         { field: 'gender', name: 'Gender', value: sanitizedData.student.gender },
         { field: 'date_of_birth', name: 'Date of Birth', value: sanitizedData.student.date_of_birth },
-        { field: 'mainstream_school_name', name: 'Mainstream School Name', value: sanitizedData.student.mainstream_school_name },
-        { field: 'enrolment_date', name: 'Enrolment Date', value: sanitizedData.student.enrolment_date },
-        { field: 'mainstream_enrollment_year', name: 'Mainstream Enrollment Year', value: sanitizedData.student.mainstream_enrollment_year },
         { field: 'enrol_class_in_WSTSC', name: 'Enrol Class in WSTSC', value: sanitizedData.student.enrol_class_in_WSTSC },
       ];
 
@@ -915,6 +964,7 @@ export const EnrolmentFormProvider = ({ children }) => {
       }
 
       console.log("🚀 Making API request to /student-enrollment...");
+      console.log("🔍 Request payload size:", JSON.stringify(sanitizedData).length, "bytes");
 
       const response = await api.post("/student-enrollment", sanitizedData);
 
@@ -932,6 +982,28 @@ export const EnrolmentFormProvider = ({ children }) => {
       console.error("Error:", err.message);
       console.error("Response:", err.response?.data);
       console.error("Status:", err.response?.status);
+      
+      // Enhanced debugging for database errors
+      if (err.response?.status === 500) {
+        console.error("🔍 DATABASE ERROR ANALYSIS:");
+        console.error("  - Error message:", err.response.data?.error);
+        
+        // Check for specific database constraint violations
+        if (err.response.data?.error?.includes('mainstream_school')) {
+          console.error("  - ISSUE: mainstream_school field is NULL but database requires NOT NULL");
+          console.error("  - SOLUTION: Need to provide default value for mainstream_school_name");
+        }
+        
+        if (err.response.data?.error?.includes('student_enrolment_date')) {
+          console.error("  - ISSUE: student_enrolment_date field is NULL but database requires NOT NULL");
+          console.error("  - SOLUTION: Need to provide default value for enrolment_date");
+        }
+        
+        if (err.response.data?.error?.includes('mainstream_grade')) {
+          console.error("  - ISSUE: mainstream_grade field is NULL but database requires NOT NULL");
+          console.error("  - SOLUTION: Need to provide default value for mainstream_enrollment_year");
+        }
+      }
 
       const debugData = {
         timestamp: new Date().toISOString(),
@@ -943,6 +1015,9 @@ export const EnrolmentFormProvider = ({ children }) => {
         request: {
           url: err.config?.url,
           data: err.config?.data ? JSON.parse(err.config.data) : null,
+        },
+        formData: {
+          student: formData.student
         }
       };
 
@@ -955,7 +1030,16 @@ export const EnrolmentFormProvider = ({ children }) => {
 
         if (status === 500) {
           if (data?.error?.includes('SQLSTATE[23000]')) {
-            errorMessage = "Database error: Invalid data provided. Please check all fields and try again.";
+            errorMessage = "Database error: Some required information is missing. Please check all fields and try again.";
+            
+            // Provide more specific error messages based on the database error
+            if (data.error.includes('mainstream_school')) {
+              errorMessage = "Please provide the Mainstream School Name or contact support if this doesn't apply.";
+            } else if (data.error.includes('student_enrolment_date')) {
+              errorMessage = "Please provide the Date of Enrolment or contact support if this doesn't apply.";
+            } else if (data.error.includes('mainstream_grade')) {
+              errorMessage = "Please provide the Class enrolled in Mainstream School or contact support if this doesn't apply.";
+            }
           } else if (data?.message) {
             errorMessage = `Server error: ${data.message}`;
           } else {
@@ -988,11 +1072,12 @@ export const EnrolmentFormProvider = ({ children }) => {
         first_given_name: "John",
         gender: "male",
         date_of_birth: "2015-06-15",
+        enrol_class_in_WSTSC: "GRADE1B_8225",
+        overseas_student: false,
+        // Provide defaults for database-required fields
         mainstream_school_name: "Primary School",
         enrolment_date: "2024-01-30",
         mainstream_enrollment_year: "Year 4",
-        enrol_class_in_WSTSC: "GRADE1B_8225",
-        overseas_student: false,
       },
       parent_carer_1: {
         title: "Mr",

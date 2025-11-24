@@ -190,13 +190,6 @@ const ClassroomsStatus = () => {
               {classrooms.length}
             </Badge>
           </h5>
-          <ButtonGlobal
-            onClick={openCreateModal}
-            className="btn btn-primary"
-          >
-            <i className="bi bi-plus-circle me-2" />
-            Create Classroom
-          </ButtonGlobal>
         </div>
       </Card.Header>
       <Card.Body className="p-0">
@@ -283,13 +276,6 @@ const ClassroomsStatus = () => {
                 ? "There are no active classrooms at the moment."
                 : "There are no inactive classrooms at the moment."}
             </p>
-            <ButtonGlobal
-              onClick={openCreateModal}
-              className="btn btn-primary"
-            >
-              <i className="bi bi-plus-circle me-2" />
-              Create Classroom
-            </ButtonGlobal>
           </div>
         )}
       </Card.Body>

@@ -1,9 +1,11 @@
+// src/Components/Sidebar.js
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "../assets/Styles/Style.css";
 import SideBarLink from "./SideBarLink";
 import Icon from "./SideBarIcon";
 import api from "../config/axiosConfig";
+import { useUserData } from "../hooks/useUserData";
 
 const Sidebar = ({
   isSidebarVisible,
@@ -14,32 +16,18 @@ const Sidebar = ({
 }) => {
   const [activeSection, setActiveSection] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [userRole, setUserRole] = useState(null);
+  const { userData } = useUserData();
   const sidebarRef = useRef(null);
 
-  // Get user data from localStorage
+  // Get user role from userData
+  const userRole = userData?.primary_role?.role_name || null;
+
+  // Monitor user role changes
   useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem("userData"));
-        // console.log("User data from localStorage:", userData);
-
-        if (!userData || !userData.primary_role) {
-          console.error("No user data or primary_role found in localStorage");
-          return;
-        }
-
-        const userRoleName = userData.primary_role.role_name;
-        // console.log("User role from localStorage:", userRoleName);
-        setUserRole(userRoleName);
-
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-      }
-    };
-
-    fetchUserRole();
-  }, []);
+    if (userRole) {
+      console.log("🔄 Sidebar: User role updated to:", userRole);
+    }
+  }, [userRole]);
 
   const handleToggle = (label) => {
     setActiveSection(activeSection === label ? null : label);
@@ -76,7 +64,7 @@ const Sidebar = ({
       return [];
     }
 
-    // console.log(`Getting sub-items for ${section} as ${userRole}`);
+    console.log(`🔄 Sidebar: Getting sub-items for ${section} as ${userRole}`);
 
     switch (section) {
       case "enrolment":
@@ -142,7 +130,7 @@ const Sidebar = ({
       return section === "dashboard";
     }
 
-    // console.log(`Checking visibility for ${section} as ${userRole}`);
+    console.log(`🔄 Sidebar: Checking visibility for ${section} as ${userRole}`);
 
     switch (section) {
       case "dashboard":
@@ -265,7 +253,7 @@ const Sidebar = ({
         {shouldShowSection("principal") && (
           <ul className="nav flex-column">
             <SideBarLink
-              iconType="bi-person-gear" // Using a gear icon for principal management
+              iconType="bi-person-gear"
               label="Principal"
               isExpanded={activeSection === "Principal"}
               onToggle={() => handleToggle("Principal")}

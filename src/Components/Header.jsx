@@ -8,6 +8,9 @@ import Dropdown from "../Components/Dropdown";
 import Icon from "../Components/SideBarIcon";
 import Cookies from "js-cookie";
 import api from "../config/axiosConfig";
+import { useLoading } from "../Context/LoadingContext";
+import { useUserData } from "../hooks/useUserData";
+import { syncUserRole, verifyRoleSync, shouldRefreshFromAPI } from "../utils/roleSync";
 
 const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [isEnvelopeDropdownOpen, setEnvelopeDropdownOpen] = useState(false);
@@ -20,16 +23,13 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [rotate, setRotate] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [userData, setUserData] = useState(null);
   const [profileImage, setProfileImage] = useState(Profile);
   const [isProfileImageLoading, setProfileImageLoading] = useState(false);
 
-  // Switch profile modal state
   const [showSwitchProfile, setShowSwitchProfile] = useState(false);
   const [availableProfiles, setAvailableProfiles] = useState([]);
   const [switchingProfile, setSwitchingProfile] = useState(false);
 
-  // Logout confirm modal state
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -41,101 +41,127 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const switchProfileRef = useRef(null);
 
   const navigate = useNavigate();
+  const { startGlobalLoading, stopGlobalLoading } = useLoading();
+  const { userData, updateUserData, isLoading: userDataLoading } = useUserData();
 
-  // Function to fetch profile image
-  const fetchProfileImage = async () => {
+  const createProfilesFromRoles = (profileData) => {
+    if (!profileData || !profileData.all_roles) return [];
+
+    const profiles = profileData.all_roles.map((role, index) => ({
+      id: role.roleid || index + 1,
+      name: profileData.full_name,
+      email: profileData.email,
+      role: role.display_name,
+      role_name: role.role_name,
+      avatar: profileData.photo_url || Profile,
+      current: role.role_name === profileData.primary_role?.role_name,
+      is_primary: role.is_primary,
+      assigned_at: role.assigned_at
+    }));
+
+    console.log("👥 Created profiles from roles:", profiles);
+    return profiles;
+  };
+
+  const debugRoleSwitch = (profile) => {
+    console.log("=== DEBUG ROLE SWITCH ===");
+    console.log("Switching to profile:", profile);
+    console.log("Current userData:", userData);
+    console.log("Available profiles:", availableProfiles);
+    console.log("LocalStorage before switch:", localStorage.getItem("userData"));
+    console.log("=== END DEBUG ===");
+  };
+
+  const fetchUserProfile = async () => {
+    // Check if we recently switched roles - if so, DON'T fetch from API
+    const roleSwitchComplete = localStorage.getItem("roleSwitchComplete");
+    const lastRoleSwitch = localStorage.getItem("lastRoleSwitch");
+    
+    if (roleSwitchComplete === "true" && lastRoleSwitch) {
+      const switchTime = new Date(lastRoleSwitch);
+      const currentTime = new Date();
+      const timeDiff = currentTime - switchTime;
+      const minutesDiff = timeDiff / (1000 * 60);
+      
+      if (minutesDiff < 5) {
+        console.log("🔄 Header: Recently switched roles, skipping API fetch");
+        // Just use existing localStorage data
+        if (userData) {
+          const profilesFromRoles = createProfilesFromRoles(userData);
+          setAvailableProfiles(profilesFromRoles);
+          if (userData.photo_url) {
+            setProfileImage(userData.photo_url);
+          }
+        }
+        setProfileImageLoading(false);
+        return;
+      }
+    }
+
+    // Only fetch from API if we don't have data
+    if (userData) {
+      console.log("🔄 Header: Using existing user data from localStorage");
+      console.log("📊 Current role in userData:", userData.primary_role);
+      
+      const profilesFromRoles = createProfilesFromRoles(userData);
+      setAvailableProfiles(profilesFromRoles);
+      
+      if (userData.photo_url) {
+        setProfileImage(userData.photo_url);
+      }
+      
+      setProfileImageLoading(false);
+      return;
+    }
+
+    // Only fetch from API if no data exists
     setProfileImageLoading(true);
     try {
-      // console.log("🔄 Starting profile image fetch from /profile/person");
+      console.log("🔄 Header: No user data found, fetching from API");
 
       const response = await api.get("/profile/person");
-
-      // console.log("✅ Profile API Response received");
-
-      // Extract the image URL from the correct path based on your API response
-      const imageUrl = response.data?.data?.profile?.photo_url;
-
-      // console.log("🖼️ Extracted image URL:", imageUrl);
-
-      if (imageUrl) {
-        console.log("🔍 Testing if image URL loads...");
-
-        // Verify the image loads successfully
-        const img = new Image();
-        img.onload = () => {
-          // console.log("✅ Profile image loaded successfully");
-          setProfileImage(imageUrl);
-          setProfileImageLoading(false);
+      const profileData = response.data?.data?.profile;
+      
+      if (profileData) {
+        const userDataFromApi = {
+          name: profileData.full_name,
+          email: profileData.email,
+          first_name: profileData.first_name,
+          last_name: profileData.last_name,
+          peid: profileData.peid,
+          user_id: profileData.user_id,
+          primary_role: profileData.primary_role,
+          all_roles: profileData.all_roles,
+          photo_url: profileData.photo_url
         };
-        img.onerror = () => {
-          console.warn("❌ Profile image failed to load, using fallback");
-          setProfileImage(Profile);
-          setProfileImageLoading(false);
-        };
-        img.src = imageUrl;
-      } else {
-        // console.warn("⚠️ No image URL found, using fallback");
-        setProfileImage(Profile);
-        setProfileImageLoading(false);
+        
+        console.log("🔄 Header: Setting initial data from API");
+        updateUserData(userDataFromApi);
+
+        const profilesFromRoles = createProfilesFromRoles(profileData);
+        setAvailableProfiles(profilesFromRoles);
+
+        if (profileData.photo_url) {
+          setProfileImage(profileData.photo_url);
+        }
       }
     } catch (error) {
-      console.error("❌ Error fetching profile image:", error);
-      setProfileImage(Profile);
+      console.error("❌ Header: Error fetching user profile:", error);
+    } finally {
       setProfileImageLoading(false);
     }
   };
 
-  // Load user data from localStorage and fetch profile image
   useEffect(() => {
-    const storedUserData = localStorage.getItem("userData");
-    if (storedUserData) {
-      try {
-        const parsedData = JSON.parse(storedUserData);
-        setUserData(parsedData);
+    fetchUserProfile();
+  }, [userData]);
 
-        // Fetch profile image
-        fetchProfileImage();
-
-        // Mock data for available profiles - replace with actual API call
-        setAvailableProfiles([
-          {
-            id: 1,
-            name: "Deniya Edwinraj",
-            email: parsedData.email,
-            role: "Personal Account",
-            avatar: profileImage,
-            current: true,
-          },
-          {
-            id: 2,
-            name: "ADADA Digital",
-            email: "adada@example.com",
-            role: "Business Profile",
-            avatar:
-              "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100&h=100&fit=crop&crop=face",
-          },
-          {
-            id: 3,
-            name: "Student Profile",
-            email: "student@example.com",
-            role: "Education",
-            avatar:
-              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-          },
-          {
-            id: 4,
-            name: "Developer Account",
-            email: "dev@example.com",
-            role: "Technical",
-            avatar:
-              "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-          },
-        ]);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
+  // Monitor userData changes for debugging
+  useEffect(() => {
+    if (userData) {
+      console.log("🔄 Header: User data updated - Current role:", userData.primary_role?.display_name);
     }
-  }, []);
+  }, [userData]);
 
   const toggleBellDropdown = () => {
     setBellDropdownOpen((s) => !s);
@@ -189,7 +215,6 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Close all dropdowns when clicking outside
   useEffect(() => {
     const handlePointerDown = (event) => {
       const refs = [
@@ -220,7 +245,6 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     };
   }, []);
 
-  // Close on Esc
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -244,6 +268,8 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     localStorage.removeItem("userData");
     localStorage.removeItem("authenticated");
     localStorage.removeItem("profileImage");
+    localStorage.removeItem("roleSwitchComplete");
+    localStorage.removeItem("lastRoleSwitch");
 
     const cookies = Cookies.get();
     Object.keys(cookies).forEach((cookieName) => {
@@ -265,7 +291,6 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     setShowLogoutConfirm(false);
   };
 
-  // Switch Profile Functions
   const openSwitchProfileModal = () => {
     setSwitchProfileOpen(false);
     setProfileDropdownOpen(false);
@@ -277,41 +302,71 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     setShowSwitchProfile(false);
   };
 
-  const handleSwitchProfile = (profile) => {
+  const handleSwitchProfile = async (profile) => {
     if (switchingProfile || profile.current) return;
 
+    debugRoleSwitch(profile);
+    
+    console.log(`🔄 STARTING PROFILE SWITCH: ${profile.role_name}`);
+    console.log("📊 Profile data received:", profile);
+    
+    startGlobalLoading(`Switching to ${profile.role} role...`);
     setSwitchingProfile(true);
 
-    // Simulate API call to switch profile
-    setTimeout(() => {
-      console.log("Switching to profile:", profile);
-
-      // Update the current profile
+    try {
+      // Step 1: Update available profiles UI
       const updatedProfiles = availableProfiles.map((p) => ({
         ...p,
-        current: p.id === profile.id,
+        current: p.role_name === profile.role_name,
       }));
       setAvailableProfiles(updatedProfiles);
-      // console.log(updatedProfiles);
 
-      // Update current user data
-      if (userData) {
-        const updatedUserData = {
-          ...userData,
-          name: profile.name,
-          email: profile.email,
-        };
-        setUserData(updatedUserData);
-        localStorage.setItem("userData", JSON.stringify(updatedUserData));
-      }
+      // Step 2: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      setSwitchingProfile(false);
+      // Step 3: Synchronize role to localStorage using utility
+      console.log("🔄 Syncing role to localStorage...");
+      const updatedUserData = await syncUserRole(profile);
+      
+      // Step 4: Update React state via custom hook - THIS IS CRITICAL
+      console.log("🔄 Updating React state with new role...");
+      updateUserData(updatedUserData);
+      
+      // Step 5: Verify the sync worked
+      console.log("🔍 Verifying role sync...");
+      const verifiedData = verifyRoleSync();
+      console.log("✅ Verified role sync:", verifiedData?.primary_role);
+
+      // Step 6: Set flags to prevent API overwrite
+      localStorage.setItem("roleSwitchComplete", "true");
+      localStorage.setItem("lastRoleSwitch", new Date().toISOString());
+      console.log("✅ Role switch flags set");
+
+      // Step 7: Close all modals
       setSwitchProfileOpen(false);
       setProfileDropdownOpen(false);
+      setShowSwitchProfile(false);
 
-      // Show success message
-      console.log(`Switched to ${profile.name} successfully!`);
-    }, 1000);
+      console.log(`✅ PROFILE SWITCH COMPLETE: ${profile.role}`);
+
+      // Step 8: Wait for UI to update, then reload
+      setTimeout(() => {
+        console.log("🔄 Reloading application...");
+        console.log("🔍 Final localStorage check before reload:", localStorage.getItem("userData"));
+        stopGlobalLoading();
+        
+        // Force a complete reload with cache busting
+        window.location.href = window.location.origin + window.location.pathname + '?t=' + new Date().getTime();
+      }, 2000);
+
+    } catch (error) {
+      console.error('❌ PROFILE SWITCH FAILED:', error);
+      stopGlobalLoading();
+      setSwitchingProfile(false);
+      
+      // Show error message to user
+      alert('Failed to switch profile. Please try again.');
+    }
   };
 
   const handleFullScreenToggle = () => {
@@ -358,6 +413,19 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
       document.body.classList.add("dark-mode");
     }
   }, []);
+
+  // Show loading if user data is still loading
+  if (userDataLoading) {
+    return (
+      <nav className="navbar-top navbar navbar-expand-lg fixed-top">
+        <div className="container-fluid d-flex justify-content-center">
+          <div className="spinner-border text-white" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <>
@@ -420,6 +488,14 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                 Welcome to Western Sydney Tamil Study Center,
               </span>
               <span className="fw-bold">{userData.name}</span>
+              {userData.primary_role && (
+                <span 
+                  className="badge bg-light text-dark ms-2"
+                  key={userData.primary_role.role_name}
+                >
+                  {userData.primary_role.display_name}
+                </span>
+              )}
             </div>
           )}
 
@@ -470,6 +546,18 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                   setProfileImage(Profile);
                 }}
               />
+              {userData?.primary_role && (
+                <span 
+                  className="position-absolute bottom-0 end-0 badge bg-success rounded-circle"
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    fontSize: "8px",
+                    border: "2px solid white"
+                  }}
+                  title={userData.primary_role.display_name}
+                ></span>
+              )}
             </div>
             {isProfileDropdownOpen && (
               <div
@@ -484,98 +572,104 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                   Account <i className="bi bi-person ms-3"></i>
                 </Link>
 
-                {/* Switch Profile Menu Item with Submenu */}
-                <div className="dropdown-item position-relative p-0">
-                  <div
-                    className="d-flex align-items-center justify-content-between text-decoration-none text-dark w-100 px-3 py-2"
-                    style={{ cursor: "pointer" }}
-                    onClick={toggleSwitchProfile}
-                  >
-                    <i className="bi bi-chevron-left small"></i>
-
-                    <span className="d-flex align-items-center text-dark">
-                      Switch Profile <i className="bi bi-arrow-repeat ms-3"></i>
-                    </span>
-                  </div>
-
-                  {/* Switch Profile Submenu - Now on LEFT side */}
-                  {isSwitchProfileOpen && (
+                {availableProfiles.length > 1 && (
+                  <div className="dropdown-item position-relative p-0">
                     <div
-                      ref={switchProfileRef}
-                      className="dropdown-menu position-absolute end-100 top-0 mt-0 shadow rounded-0"
-                      style={{
-                        minWidth: "280px",
-                        marginRight: "1px",
-                        display: "block",
-                      }}
+                      className="d-flex align-items-center justify-content-between text-decoration-none text-dark w-100 px-3 py-2"
+                      style={{ cursor: "pointer" }}
+                      onClick={toggleSwitchProfile}
                     >
-                      <div className="px-3 py-2 border-bottom">
-                        <h6 className="mb-1 fw-bold">Switch Profiles</h6>
-                        <p className="text-muted small mb-0">
-                          Choose a different profile
-                        </p>
-                      </div>
+                      <i className="bi bi-chevron-left small"></i>
 
-                      <div className="py-2">
-                        {availableProfiles.slice(0, 3).map((profile) => (
-                          <div
-                            key={profile.id}
-                            className={`profile-item d-flex align-items-center px-3 py-2 ${
-                              profile.current ? "bg-light" : "hover-bg"
-                            }`}
-                            style={{
-                              cursor:
-                                switchingProfile || profile.current
-                                  ? "not-allowed"
-                                  : "pointer",
-                              opacity:
-                                switchingProfile && !profile.current ? 0.6 : 1,
-                            }}
-                            onClick={() => handleSwitchProfile(profile)}
-                          >
-                            <img
-                              src={profile.avatar}
-                              alt={profile.name}
-                              className="rounded-circle me-3"
-                              style={{
-                                width: "40px",
-                                height: "40px",
-                                objectFit: "cover",
-                              }}
-                            />
-                            <div className="flex-grow-1">
-                              <h6 className="mb-0 fw-semibold">
-                                {profile.name}
-                              </h6>
-                              <p className="text-muted small mb-0">
-                                {profile.role}
-                              </p>
-                            </div>
-                            {profile.current ? (
-                              <i className="bi bi-check-circle-fill text-success"></i>
-                            ) : (
-                              <i className="bi bi-circle"></i>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="border-top">
-                        <button
-                          className="dropdown-item d-flex align-items-center"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            openSwitchProfileModal();
-                          }}
-                        >
-                          <i className="bi bi-person-rolodex me-2"></i>
-                          See all profiles
-                        </button>
-                      </div>
+                      <span className="d-flex align-items-center text-dark">
+                        Switch Profile <i className="bi bi-arrow-repeat ms-3"></i>
+                      </span>
                     </div>
-                  )}
-                </div>
+
+                    {isSwitchProfileOpen && (
+                      <div
+                        ref={switchProfileRef}
+                        className="dropdown-menu position-absolute end-100 top-0 mt-0 shadow rounded-0"
+                        style={{
+                          minWidth: "280px",
+                          marginRight: "1px",
+                          display: "block",
+                        }}
+                      >
+                        <div className="px-3 py-2 border-bottom">
+                          <h6 className="mb-1 fw-bold">Switch Profiles</h6>
+                          <p className="text-muted small mb-0">
+                            Choose a different profile
+                          </p>
+                        </div>
+
+                        <div className="py-2">
+                          {availableProfiles.slice(0, 3).map((profile) => (
+                            <div
+                              key={profile.id}
+                              className={`profile-item d-flex align-items-center px-3 py-2 ${
+                                profile.current ? "bg-light" : "hover-bg"
+                              }`}
+                              style={{
+                                cursor:
+                                  switchingProfile || profile.current
+                                    ? "not-allowed"
+                                    : "pointer",
+                                opacity:
+                                  switchingProfile && !profile.current ? 0.6 : 1,
+                              }}
+                              onClick={() => handleSwitchProfile(profile)}
+                            >
+                              <img
+                                src={profile.avatar}
+                                alt={profile.name}
+                                className="rounded-circle me-3"
+                                style={{
+                                  width: "40px",
+                                  height: "40px",
+                                  objectFit: "cover",
+                                }}
+                              />
+                              <div className="flex-grow-1">
+                                <h6 className="mb-0 fw-semibold">
+                                  {profile.name}
+                                </h6>
+                                <p className="text-muted small mb-0">
+                                  {profile.role}
+                                </p>
+                                <small className="text-muted">
+                                  {profile.assigned_at ? 
+                                    new Date(profile.assigned_at).toLocaleDateString() : 
+                                    'Recently assigned'
+                                  }
+                                </small>
+                              </div>
+                              {profile.current ? (
+                                <i className="bi bi-check-circle-fill text-success"></i>
+                              ) : (
+                                <i className="bi bi-circle"></i>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="border-top">
+                          <button
+                            className="dropdown-item d-flex align-items-center"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openSwitchProfileModal();
+                            }}
+                          >
+                            <i className="bi bi-person-rolodex me-2"></i>
+                            See all profiles
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <hr className="dropdown-divider" />
                 <a
@@ -596,7 +690,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
         </div>
       </nav>
 
-      {/* Rest of your mobile nav and modals remain the same */}
+      {/* Mobile bottom navigation */}
       {isMobile && (
         <nav className="navbar fixed-bottom d-flex justify-content-around py-2 px-3">
           <Link to="/">
@@ -667,8 +761,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
               <div className="modal-body">
                 <p className="text-muted mb-3">
-                  Choose a profile to switch to. Each profile has different
-                  settings and permissions.
+                  Choose a profile to switch to. Each profile has different settings and permissions.
                 </p>
 
                 <div className="profiles-list">
@@ -712,6 +805,11 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                         <span className="badge bg-secondary">
                           {profile.role}
                         </span>
+                        {profile.assigned_at && (
+                          <small className="text-muted d-block mt-1">
+                            Assigned: {new Date(profile.assigned_at).toLocaleDateString()}
+                          </small>
+                        )}
                       </div>
                       {profile.current ? (
                         <i className="bi bi-check-circle-fill text-success fs-5"></i>

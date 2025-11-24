@@ -1,3 +1,4 @@
+// src/Pages/layout.js
 import "../App.css";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import Header from "../Components/Header";
@@ -6,6 +7,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Cookies from "js-cookie";
 import api from "../config/axiosConfig.jsx";
 import Loader from "../Pages/Loader";
+import { useLoading } from "../Context/LoadingContext.jsx";
 
 export default function RootLayout() {
   const location = useLocation();
@@ -16,8 +18,9 @@ export default function RootLayout() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [userRoles, setUserRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const { isGlobalLoading, loadingMessage } = useLoading();
 
-  // Check if user is authenticated
   const isAuthenticated = () => {
     const token = Cookies.get("token");
     const authenticated = localStorage.getItem("authenticated");
@@ -49,7 +52,6 @@ export default function RootLayout() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Fetch user roles on component mount
   useEffect(() => {
     const fetchUserRoles = async () => {
       if (!isAuthenticated()) {
@@ -66,7 +68,6 @@ export default function RootLayout() {
         }
       } catch (error) {
         console.error('Failed to fetch user roles:', error);
-        // If we get a 401, the interceptor will handle logout and redirect
       } finally {
         setIsLoading(false);
       }
@@ -77,7 +78,25 @@ export default function RootLayout() {
 
   const isLoginPage = location.pathname === "/login";
 
-  // Show loading state while checking authentication - USING YOUR CUSTOM LOADER
+  // Show global loading state during profile switching
+  if (isGlobalLoading && !isLoginPage) {
+    console.log("🔄 RootLayout: Showing global loader -", loadingMessage);
+    return (
+      <div className="App">
+        <div className="global-loader-container">
+          <Loader />
+          {loadingMessage && (
+            <div className="text-center mt-3">
+              <p className="loading-message">{loadingMessage}</p>
+              <p className="loading-sub-message">Please wait while we update your profile...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking authentication
   if (isLoading && !isLoginPage) {
     return <Loader />;
   }
@@ -89,7 +108,7 @@ export default function RootLayout() {
 
   // Redirect to dashboard if authenticated and on login page
   if (isAuthenticated() && isLoginPage) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (

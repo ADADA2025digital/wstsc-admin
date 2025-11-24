@@ -1,3 +1,4 @@
+// src/App.js
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -29,190 +30,196 @@ import PersonsList from "./Pages/Persons/PersonsList";
 import PersonDetails from "./Pages/Persons/PersonDetails";
 import RouteGuard from "./Components/RouteGuard";
 import AuthGuard from "./Components/AuthGuard";
-import AssignPrincipal from "./Pages/Principal/AssignPrincipal"; // Add this import
+import AssignPrincipal from "./Pages/Principal/AssignPrincipal";
+import { LoadingProvider } from "./Context/LoadingContext";
+import DebugPanel from "./Components/DebugPanel";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/setup-password" element={<SetupPassword />} />
+    <LoadingProvider>
+      <Router>
+        {/* Debug Panel for development */}
+        {process.env.NODE_ENV === 'development' && <DebugPanel />}
+        
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/setup-password" element={<SetupPassword />} />
 
-        {/* Protected routes with layout */}
-        <Route
-          path="/"
-          element={
-            <AuthGuard>
-              <RootLayout />
-            </AuthGuard>
-          }
-        >
-          {/* Routes that require completed profile */}
+          {/* Protected routes with layout */}
           <Route
-            index
+            path="/"
             element={
-              <RouteGuard requireProfileComplete={true}>
-                <Home />
-              </RouteGuard>
+              <AuthGuard>
+                <RootLayout />
+              </AuthGuard>
             }
-          />
+          >
+            {/* Routes that require completed profile */}
+            <Route
+              index
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <Home />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/useraccount"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <UserAccount />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/useraccount"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <UserAccount />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/persons"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <PersonsList />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/persons/:name"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <PersonDetails />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/persons"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <PersonsList />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/persons/:name"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <PersonDetails />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/enrolments"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <EnrolStudents />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/enrolment/:id"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <EnrolmentDetails />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/enrol"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <EnrolmentForm />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/enrolments"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <EnrolStudents />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/enrolment/:id"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <EnrolmentDetails />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/enrol"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <EnrolmentForm />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/teachers"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <TeachersTable />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/teachers/:id"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <TeacherDetails />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/teachers"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <TeachersTable />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/teachers/:id"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <TeacherDetails />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/parents"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <ParentTable />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/parents/:name"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <ParentDetails />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/parents"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <ParentTable />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/parents/:name"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <ParentDetails />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/classrooms"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <ClassroomsList />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/classrooms/:id"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <ClassroomDetails />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/classroom-status"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <ClassroomsStatus />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/classrooms"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <ClassroomsList />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/classrooms/:id"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <ClassroomDetails />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/classroom-status"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <ClassroomsStatus />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/students"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <StudentsList />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/students/:id"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <StudentDetails />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/students"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <StudentsList />
+                </RouteGuard>
+              }
+            />
+            <Route
+              path="/students/:id"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <StudentDetails />
+                </RouteGuard>
+              }
+            />
 
-          <Route
-            path="/principals"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <PrincipalDetails />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/principals"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <PrincipalDetails />
+                </RouteGuard>
+              }
+            />
 
-          {/* Add the Assign Principal route */}
-          <Route
-            path="/assign-principal"
-            element={
-              <RouteGuard requireProfileComplete={true}>
-                <AssignPrincipal />
-              </RouteGuard>
-            }
-          />
+            <Route
+              path="/assign-principal"
+              element={
+                <RouteGuard requireProfileComplete={true}>
+                  <AssignPrincipal />
+                </RouteGuard>
+              }
+            />
 
-          {/* Update profile route - inside layout but doesn't require completed profile */}
-          <Route path="update-profile" element={<EditProfile />} />
-        </Route>
+            {/* Update profile route - inside layout but doesn't require completed profile */}
+            <Route path="update-profile" element={<EditProfile />} />
+          </Route>
 
-        {/* Optional: Add a catch-all route for 404 */}
-        <Route path="*" element={<div>404 - Page Not Found</div>} />
-      </Routes>
-    </Router>
+          {/* Optional: Add a catch-all route for 404 */}
+          <Route path="*" element={<div>404 - Page Not Found</div>} />
+        </Routes>
+      </Router>
+    </LoadingProvider>
   );
 }
 

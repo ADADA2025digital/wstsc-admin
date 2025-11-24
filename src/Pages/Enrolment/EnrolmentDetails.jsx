@@ -6,6 +6,51 @@ import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
 import api from "../../config/axiosConfig";
 import Loader from "../../Pages/Loader";
+import emailjs from '@emailjs/browser';
+
+// Email.js configuration
+const EMAILJS_CONFIG = {
+  SERVICE_ID: 'service_1gocmzl',
+  TEMPLATE_ID: 'template_dpzhb0s',
+  PUBLIC_KEY: 'Ro7uPiRIt-owJl0Nn',
+};
+
+// Initialize Email.js
+emailjs.init(EMAILJS_CONFIG.PUBLIC_KEY);
+
+// Enhanced Email sending function with professional formatting
+const sendAcceptanceEmail = async (parentEmail, studentName, enrolmentDetails) => {
+  try {
+    const templateParams = {
+      to_email: parentEmail,
+      student_name: studentName,
+      enrolment_id: enrolmentDetails.enrollment_id || 'N/A',
+      enrolment_date: formatDateToMMDDYYYY(enrolmentDetails.enrolment_date) || 'N/A',
+      class_name: enrolmentDetails.classroom_info?.class_name || enrolmentDetails.enrol_class_in_WSTSC || 'To be assigned',
+      approved_date: new Date().toLocaleDateString('en-AU', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      parent_name: (enrolmentDetails.parent_carer_1?.first_name + ' ' + enrolmentDetails.parent_carer_1?.last_name) || 'Parent/Guardian',
+    };
+
+    console.log('📧 Sending professional acceptance email with params:', templateParams);
+
+    const response = await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.TEMPLATE_ID,
+      templateParams
+    );
+
+    console.log('✅ Professional acceptance email sent successfully:', response);
+    return { success: true, response };
+  } catch (error) {
+    console.error('❌ Error sending professional acceptance email:', error);
+    return { success: false, error };
+  }
+};
 
 const EnrolmentDetails = () => {
   const { id } = useParams();
@@ -18,6 +63,9 @@ const EnrolmentDetails = () => {
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [emailStatus, setEmailStatus] = useState(null);
+  const [classrooms, setClassrooms] = useState([]);
+  const [classroomLoading, setClassroomLoading] = useState(false);
 
   // Rejection modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -45,12 +93,9 @@ const EnrolmentDetails = () => {
           }
 
           console.log("👤 User role detected:", role);
-          console.log("📋 Full user data structure:", parsedUserData);
           setUserRole(role);
         } else {
-          console.warn(
-            "⚠️ No user data found in localStorage, defaulting to parent role"
-          );
+          console.warn("⚠️ No user data found in localStorage, defaulting to parent role");
           setUserRole("parent");
         }
       } catch (error) {
@@ -62,26 +107,85 @@ const EnrolmentDetails = () => {
     getUserRole();
   }, []);
 
-  // Normalize data structure to match component expectations
-  const normalizeStudentData = (rawData) => {
-    console.log("🔄 Normalizing data structure:", rawData);
+  // Fetch classrooms list
+  const fetchClassrooms = async () => {
+    try {
+      setClassroomLoading(true);
+      console.log("🏫 Fetching classrooms list...");
+      
+      const response = await api.get("/classrooms");
+      console.log("✅ Classrooms API response:", response);
+      
+      if (response.data.success) {
+        const classroomsData = response.data.data.classrooms || response.data.data;
+        console.log("📚 Classrooms list:", classroomsData);
+        setClassrooms(classroomsData);
+      } else {
+        console.warn("⚠️ Failed to fetch classrooms:", response.data.message);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching classrooms:", err);
+    } finally {
+      setClassroomLoading(false);
+    }
+  };
+
+  // Enhanced normalizeStudentData function with classroom mapping
+  const normalizeStudentData = (rawData, classroomsList = []) => {
+    console.log("🔄 Normalizing data structure - RAW DATA:", rawData);
+    console.log("📚 Available classrooms:", classroomsList);
+    
+    // Debug classroom information specifically
+    console.log("🏫 Classroom data debug:", {
+      com_school_enr_grade: rawData.com_school_enr_grade,
+      enrol_class_in_WSTSC: rawData.enrol_class_in_WSTSC,
+      classroom: rawData.classroom,
+      classroom_info: rawData.classroom_info,
+    });
+
+    // Find classroom name from classrooms list
+    let classroomInfo = null;
+    const classroomId = rawData.com_school_enr_grade || rawData.enrol_class_in_WSTSC;
+    
+    if (classroomId && classroomsList.length > 0) {
+      const foundClassroom = classroomsList.find(
+        classroom => classroom.class_id === classroomId || classroom.class_code === classroomId
+      );
+      
+      if (foundClassroom) {
+        classroomInfo = {
+          class_id: foundClassroom.class_id,
+          class_name: foundClassroom.class_name || foundClassroom.name || `Class ${classroomId}`,
+          class_code: foundClassroom.class_code,
+        };
+        console.log("🎯 Found classroom:", classroomInfo);
+      } else {
+        console.warn("⚠️ Classroom not found for ID:", classroomId);
+        classroomInfo = {
+          class_id: classroomId,
+          class_name: `Class ${classroomId}`,
+        };
+      }
+    } else if (classroomId) {
+      // If we have classroom ID but no classrooms list yet
+      classroomInfo = {
+        class_id: classroomId,
+        class_name: `Class ${classroomId}`,
+      };
+      console.log("🎯 Using classroom ID directly:", classroomInfo);
+    } else {
+      classroomInfo = {
+        class_id: null,
+        class_name: "Not assigned",
+      };
+      console.log("⚠️ No classroom data found");
+    }
 
     // If data already has the expected nested structure, return as-is
     if (rawData.student && rawData.parent_carer_1) {
       console.log("✅ Data already in expected structure");
       return rawData;
     }
-
-    // Debug medical data structure
-    console.log("🏥 Raw medical data structure:", {
-      rawMedical: rawData.medical_details,
-      flatMedical: {
-        asthma: rawData.asthma,
-        major_illness: rawData.major_illness,
-        allergies: rawData.allergies,
-        special_learning_needs: rawData.special_learning_needs,
-      },
-    });
 
     // Handle medical details - multiple possible structures
     let medicalDetails = null;
@@ -93,10 +197,8 @@ const EnrolmentDetails = () => {
           asthma: rawData.medical_details.asthma || "No",
           major_illness: rawData.medical_details.major_illness || "No",
           allergies: rawData.medical_details.allergies || "No",
-          special_learning_needs:
-            rawData.medical_details.special_learning_needs || "No",
-          special_learning_needs_details:
-            rawData.medical_details.special_learning_needs_details || null,
+          special_learning_needs: rawData.medical_details.special_learning_needs || "No",
+          special_learning_needs_details: rawData.medical_details.special_learning_needs_details || null,
         };
       }
     } else {
@@ -106,29 +208,25 @@ const EnrolmentDetails = () => {
         major_illness: rawData.major_illness || "No",
         allergies: rawData.allergies || "No",
         special_learning_needs: rawData.special_learning_needs || "No",
-        special_learning_needs_details:
-          rawData.special_learning_needs_details || null,
+        special_learning_needs_details: rawData.special_learning_needs_details || null,
       };
     }
 
     const normalizedData = {
       student: {
-        enrollment_id: rawData.enrollment_id,
-        family_name: rawData.family_name,
-        first_given_name: rawData.first_given_name,
-        preferred_first_name: rawData.preferred_first_name,
-        gender: rawData.gender,
-        date_of_birth: rawData.date_of_birth,
+        enrollment_id: rawData.enrollment_id || rawData.enrid,
+        family_name: rawData.family_name || rawData.student_family_name,
+        first_given_name: rawData.first_given_name || rawData.student_first__name,
+        preferred_first_name: rawData.preferred_first_name || rawData.student_preferred_name,
+        gender: rawData.gender || rawData.student_gender,
+        date_of_birth: rawData.date_of_birth || rawData.student_dob,
         phone_number: rawData.phone_number,
-        mainstream_school_name: rawData.mainstream_school_name,
-        enrolment_date: rawData.enrolment_date,
-        mainstream_enrollment_year: rawData.mainstream_enrollment_year,
-        enrol_class_in_WSTSC: rawData.enrol_class_in_WSTSC,
-        classroom_info: rawData.classroom || {
-          class_id: rawData.enrol_class_in_WSTSC,
-          class_name: rawData.classroom?.class_name || "Not assigned",
-        },
-        status: rawData.status,
+        mainstream_school_name: rawData.mainstream_school_name || rawData.mainstream_school,
+        enrolment_date: rawData.enrolment_date || rawData.student_enrolment_date,
+        mainstream_enrollment_year: rawData.mainstream_enrollment_year || rawData.mainstream_grade,
+        enrol_class_in_WSTSC: rawData.enrol_class_in_WSTSC || rawData.com_school_enr_grade,
+        classroom_info: classroomInfo,
+        status: rawData.status || rawData.student_status,
         submitted_by: rawData.submitter?.name || "System",
         submitted_at: rawData.submitted_at,
         approved_by: rawData.approved_by || rawData.approver?.name,
@@ -145,25 +243,29 @@ const EnrolmentDetails = () => {
       personal_declaration: rawData.personal_declaration || null,
     };
 
-    console.log("🎯 Normalized medical data:", normalizedData.medical_details);
+    console.log("📊 FINAL NORMALIZED DATA - Classroom info:", normalizedData.student.classroom_info);
     return normalizedData;
   };
 
   useEffect(() => {
     console.log("useEffect triggered - Checking for student data");
 
-    if (location.state?.studentData) {
-      console.log(
-        "📥 Using student data from location state:",
-        location.state.studentData
-      );
-      const normalizedData = normalizeStudentData(location.state.studentData);
-      setStudentData(normalizedData);
-      setLoading(false);
-    } else {
-      console.log("🔄 No student data in location state, fetching from API");
-      fetchStudentDetails();
-    }
+    const initializeData = async () => {
+      // First fetch classrooms
+      await fetchClassrooms();
+
+      if (location.state?.studentData) {
+        console.log("📥 Using student data from location state:", location.state.studentData);
+        const normalizedData = normalizeStudentData(location.state.studentData, classrooms);
+        setStudentData(normalizedData);
+        setLoading(false);
+      } else {
+        console.log("🔄 No student data in location state, fetching from API");
+        fetchStudentDetails();
+      }
+    };
+
+    initializeData();
   }, [id, location.state, userRole]);
 
   const fetchStudentDetails = async () => {
@@ -191,20 +293,18 @@ const EnrolmentDetails = () => {
       }
 
       const response = await api.get(endpoint);
-      console.log("✅ API Response:", response);
-      console.log("📊 Response Data:", response.data);
+      console.log("✅ FULL API Response:", response);
 
       if (response.data.success) {
         // Map the API response to match your expected structure
         const apiData = response.data.data.enrollment || response.data.data;
-        console.log("🎯 Raw API Data:", apiData);
+        console.log("🎯 Raw API Data for normalization:", apiData);
 
-        const normalizedData = normalizeStudentData(apiData);
+        const normalizedData = normalizeStudentData(apiData, classrooms);
+        console.log("📊 Final normalized data to set state:", normalizedData);
         setStudentData(normalizedData);
       } else {
-        throw new Error(
-          response.data.message || "Failed to fetch student details"
-        );
+        throw new Error(response.data.message || "Failed to fetch student details");
       }
     } catch (err) {
       console.error("❌ Error fetching student details:", err);
@@ -214,22 +314,58 @@ const EnrolmentDetails = () => {
     }
   };
 
-  // Console log when studentData changes
+  // Update student data when classrooms are loaded
   useEffect(() => {
-    if (studentData) {
-      console.log("🎯 Student Data State Updated:", studentData);
-      console.log("📋 Student Data Structure:", {
-        student: studentData.student,
-        parent_carer_1: studentData.parent_carer_1,
-        medical_details: studentData.medical_details,
-        first_emergency_contact: studentData.first_emergency_contact,
-        personal_declaration: studentData.personal_declaration,
-        classroom_info: studentData.student?.classroom_info,
-      });
+    if (studentData && classrooms.length > 0) {
+      console.log("🔄 Updating student data with classrooms info");
+      const updatedData = normalizeStudentData(
+        location.state?.studentData || studentData, 
+        classrooms
+      );
+      setStudentData(updatedData);
     }
-  }, [studentData]);
+  }, [classrooms]);
 
   const handleBack = () => navigate("/enrolments");
+
+  // Function to handle email sending
+  const sendAcceptanceEmailToParent = async () => {
+    try {
+      setEmailStatus('sending');
+      
+      if (!studentData?.parent_carer_1?.email) {
+        console.warn("⚠️ No parent email found, skipping email notification");
+        setEmailStatus('no_email');
+        setTimeout(() => setEmailStatus(null), 3000);
+        return;
+      }
+
+      const parentEmail = studentData.parent_carer_1.email;
+      const studentName = `${studentData.student.first_given_name} ${studentData.student.family_name}`;
+      
+      console.log("📧 Preparing to send acceptance email to:", parentEmail);
+
+      const emailResult = await sendAcceptanceEmail(
+        parentEmail,
+        studentName,
+        studentData.student
+      );
+
+      if (emailResult.success) {
+        console.log("✅ Acceptance email sent successfully to parent");
+        setEmailStatus('sent');
+        setTimeout(() => setEmailStatus(null), 5000);
+      } else {
+        console.warn("⚠️ Failed to send acceptance email:", emailResult.error);
+        setEmailStatus('failed');
+        setTimeout(() => setEmailStatus(null), 5000);
+      }
+    } catch (emailError) {
+      console.error("❌ Error in email sending process:", emailError);
+      setEmailStatus('failed');
+      setTimeout(() => setEmailStatus(null), 5000);
+    }
+  };
 
   const handleAcceptEnrolment = async () => {
     if (!id) {
@@ -242,46 +378,39 @@ const EnrolmentDetails = () => {
 
     try {
       setAcceptLoading(true);
-      setError(null); // Clear any previous errors
+      setError(null);
       console.log("🔄 Starting accept enrolment API call...");
 
-      // Use the exact endpoint from your API response
       const endpoint = `/admin/enrollments/${id}/approve`;
       console.log("🎯 Using approval endpoint:", endpoint);
 
-      // Make POST request with empty body as shown in your API example
       const response = await api.post(
         endpoint,
         {},
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // Ensure token is included
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
 
       console.log("✅ Accept enrolment API response:", response);
-      console.log("📊 Response data:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment accepted successfully!");
 
-        // Extract data from the API response matching your structure
-        const responseData =
-          response.data.data.enrollment || response.data.data;
-        console.log("📋 Response enrollment data:", responseData);
+        const responseData = response.data.data.enrollment || response.data.data;
 
-        // Update local state with the complete API response data
+        // Update local state first
         setStudentData((prevData) => {
           const updatedData = {
             ...prevData,
             student: {
               ...prevData.student,
               status: "approved",
-              approved_by: responseData.approved_by || "Admin Two",
+              approved_by: responseData.approved_by || "Admin",
               approved_at: responseData.approved_at || new Date().toISOString(),
-              // Include any other fields that might be returned
               ...(responseData.enrid && { enrollment_id: responseData.enrid }),
               ...(responseData.student_name && {
                 first_given_name: responseData.student_name.split(" ")[0],
@@ -292,16 +421,15 @@ const EnrolmentDetails = () => {
               }),
             },
           };
-          console.log("🔄 Updated student data after acceptance:", updatedData);
           return updatedData;
         });
 
-        // Show success message
+        // Send acceptance email to parent
+        await sendAcceptanceEmailToParent();
+
         setError(null);
 
-        // Optional: Show a temporary success message
         setTimeout(() => {
-          // You could add a toast notification here
           console.log("✅ Enrolment approval completed");
         }, 1000);
       } else {
@@ -317,11 +445,9 @@ const EnrolmentDetails = () => {
 
       setError(errorMessage);
 
-      // Log detailed error information
       if (err.response) {
         console.error("Error response data:", err.response.data);
         console.error("Error response status:", err.response.status);
-        console.error("Error response headers:", err.response.headers);
       }
 
       // Handle specific HTTP status codes
@@ -368,21 +494,13 @@ const EnrolmentDetails = () => {
       setRejectionError("");
       console.log("🔄 Starting reject enrolment API call...");
 
-      // Use the exact endpoint from your API documentation
       const endpoint = `/admin/enrollments/${id}/reject`;
       console.log("🎯 Using rejection endpoint:", endpoint);
 
-      // Try different request body formats to find what the server expects
-      let requestBody;
-
-      // Option 1: Exact format from API documentation (most likely)
-      requestBody = {
+      let requestBody = {
         rejection_reason: rejectionReason.trim(),
       };
 
-      console.log("📦 Request body (Option 1):", requestBody);
-
-      // Make the POST request to reject the enrolment with the rejection reason
       const response = await api.post(endpoint, requestBody, {
         headers: {
           "Content-Type": "application/json",
@@ -391,31 +509,21 @@ const EnrolmentDetails = () => {
       });
 
       console.log("✅ Reject enrolment API response:", response);
-      console.log("📊 Response data:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment rejected successfully!");
 
-        // Extract the response data matching your API structure
-        const responseData =
-          response.data.data?.enrollment || response.data.data;
-        console.log(
-          "📋 Response enrollment data after rejection:",
-          responseData
-        );
+        const responseData = response.data.data?.enrollment || response.data.data;
 
-        // Update local state with the complete API response data
         setStudentData((prevData) => {
           const updatedData = {
             ...prevData,
             student: {
               ...prevData.student,
               status: "rejected",
-              rejected_by: responseData.rejected_by || "Admin Two",
+              rejected_by: responseData.rejected_by || "Admin",
               rejected_at: responseData.rejected_at || new Date().toISOString(),
-              rejection_reason:
-                responseData.rejection_reason || rejectionReason.trim(),
-              // Include any other fields that might be returned
+              rejection_reason: responseData.rejection_reason || rejectionReason.trim(),
               ...(responseData.enrid && { enrollment_id: responseData.enrid }),
               ...(responseData.student_name && {
                 first_given_name: responseData.student_name.split(" ")[0],
@@ -423,17 +531,12 @@ const EnrolmentDetails = () => {
               }),
             },
           };
-          console.log("🔄 Updated student data after rejection:", updatedData);
           return updatedData;
         });
 
-        // Close the modal
         handleCloseRejectModal();
-
-        // Show success message
         setError(null);
 
-        // Optional: Show a temporary success message
         setTimeout(() => {
           console.log("✅ Enrolment rejection completed");
         }, 1000);
@@ -443,42 +546,19 @@ const EnrolmentDetails = () => {
     } catch (err) {
       console.error("❌ Error rejecting enrolment:", err);
 
-      // Enhanced error logging for 422 validation errors
       if (err.response?.status === 422) {
         console.error("🔍 Validation Error Details:");
-        console.error("🔍 Full error response:", err.response);
         console.error("🔍 Error data:", err.response.data);
-        console.error("🔍 Validation errors:", err.response.data?.errors);
-        console.error("🔍 Error message:", err.response.data?.message);
-
-        // Try to extract specific field errors
-        if (err.response.data?.errors) {
-          Object.keys(err.response.data.errors).forEach((field) => {
-            console.error(
-              `🔍 Field '${field}' errors:`,
-              err.response.data.errors[field]
-            );
-          });
-        }
       }
 
       const errorMessage =
         err.response?.data?.message ||
-        (err.response?.data?.errors &&
-          Object.values(err.response.data.errors).flat().join(", ")) ||
+        (err.response?.data?.errors && Object.values(err.response.data.errors).flat().join(", ")) ||
         err.message ||
         "Failed to reject enrolment. Please try again.";
 
       setRejectionError(errorMessage);
 
-      // Log detailed error information
-      if (err.response) {
-        console.error("Error response data:", err.response.data);
-        console.error("Error response status:", err.response.status);
-        console.error("Error response headers:", err.response.headers);
-      }
-
-      // Handle specific HTTP status codes
       if (err.response?.status === 401) {
         console.error("Authentication error - token may be invalid");
       } else if (err.response?.status === 403) {
@@ -486,75 +566,21 @@ const EnrolmentDetails = () => {
       } else if (err.response?.status === 404) {
         console.error("Enrolment not found - ID may be invalid");
       } else if (err.response?.status === 422) {
-        console.error(
-          "Validation error - check rejection reason format and length"
-        );
-
-        // If validation fails, try alternative request formats
-        await tryAlternativeRejectFormats();
+        console.error("Validation error - check rejection reason format and length");
       }
     } finally {
       setRejectLoading(false);
     }
   };
 
-  // Alternative method to try different request formats
-  const tryAlternativeRejectFormats = async () => {
-    console.log("🔄 Trying alternative request formats...");
-
-    const alternativeFormats = [
-      {
-        name: "camelCase format",
-        body: { rejectionReason: rejectionReason.trim() },
-      },
-      {
-        name: "nested data format",
-        body: { data: { rejection_reason: rejectionReason.trim() } },
-      },
-      {
-        name: "simple string format",
-        body: rejectionReason.trim(),
-      },
-      {
-        name: "with additional fields",
-        body: {
-          rejection_reason: rejectionReason.trim(),
-          reason: rejectionReason.trim(),
-        },
-      },
-    ];
-
-    for (const format of alternativeFormats) {
-      try {
-        console.log(`🔄 Trying ${format.name}:`, format.body);
-        const endpoint = `/admin/enrollments/${id}/reject`;
-
-        const response = await api.post(endpoint, format.body, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (response.data.success) {
-          console.log(`✅ Success with ${format.name}!`);
-          // Handle success...
-          break;
-        }
-      } catch (error) {
-        console.log(`❌ ${format.name} failed:`, error.response?.data);
-      }
-    }
-  };
-
-  // Show loading while determining user role
-  if (!userRole) {
-    return <Loader />; // Use your custom Loader component
+  // Show loading while determining user role or loading classrooms
+  if (!userRole || classroomLoading) {
+    return <Loader />;
   }
 
   // Loading state
   if (loading) {
-    return <Loader />; // Use your custom Loader component
+    return <Loader />;
   }
 
   // Error state
@@ -566,9 +592,7 @@ const EnrolmentDetails = () => {
             <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
             <div>
               <h4 className="alert-heading mb-1">
-                {error.includes("accept")
-                  ? "Acceptance Error"
-                  : "Error Loading Student"}
+                {error.includes("accept") ? "Acceptance Error" : "Error Loading Student"}
               </h4>
               <p className="mb-3">{error}</p>
               {error.includes("Authentication") && (
@@ -635,14 +659,51 @@ const EnrolmentDetails = () => {
           <h4 className="fw-bold mb-1">Enrolment Details</h4>
           <p className="text-muted mb-0">Enrolment ID: {id}</p>
 
+          {/* Enhanced Email Status Indicators */}
+          {emailStatus === 'sending' && (
+            <div className="alert alert-info mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-envelope me-2 fs-5"></i>
+              <div>
+                <strong>Sending acceptance notification...</strong>
+                <div className="small">Preparing and dispatching professional confirmation email to parent</div>
+              </div>
+            </div>
+          )}
+          {emailStatus === 'sent' && (
+            <div className="alert alert-success mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-check2-all me-2 fs-5"></i>
+              <div>
+                <strong>Acceptance notification delivered!</strong>
+                <div className="small">Professional confirmation email has been successfully sent to the parent</div>
+              </div>
+            </div>
+          )}
+          {emailStatus === 'failed' && (
+            <div className="alert alert-warning mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-exclamation-triangle me-2 fs-5"></i>
+              <div>
+                <strong>Enrolment accepted - Email notification failed</strong>
+                <div className="small">The enrolment was approved but we couldn't send the confirmation email. Please notify the parent manually.</div>
+              </div>
+            </div>
+          )}
+          {emailStatus === 'no_email' && (
+            <div className="alert alert-warning mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-info-circle me-2 fs-5"></i>
+              <div>
+                <strong>Enrolment accepted - No parent email available</strong>
+                <div className="small">The enrolment was approved but no parent email was found for automatic notification.</div>
+              </div>
+            </div>
+          )}
+
           {/* Success message after approval */}
           {isApproved && (
             <div className="alert alert-success mt-2 py-2" role="alert">
               <i className="bi bi-check2-circle me-2"></i>
               <strong>Enrolment Approved!</strong>
               {student?.approved_by && ` by ${student.approved_by}`}
-              {student?.approved_at &&
-                ` on ${formatDateToMMDDYYYY(student.approved_at)}`}
+              {student?.approved_at && ` on ${formatDateToMMDDYYYY(student.approved_at)}`}
             </div>
           )}
 
@@ -652,31 +713,9 @@ const EnrolmentDetails = () => {
               <i className="bi bi-x-circle me-2"></i>
               <strong>Enrolment Rejected!</strong>
               {student?.rejected_by && ` by ${student.rejected_by}`}
-              {student?.rejected_at &&
-                ` on ${formatDateToMMDDYYYY(student.rejected_at)}`}
-              {student?.rejection_reason &&
-                ` - Reason: ${student.rejection_reason}`}
+              {student?.rejected_at && ` on ${formatDateToMMDDYYYY(student.rejected_at)}`}
+              {student?.rejection_reason && ` - Reason: ${student.rejection_reason}`}
             </div>
-          )}
-
-          {/* Only show approval/rejection info for admin users */}
-          {canApproveReject && (
-            <>
-              {student?.approved_by && student?.approved_at && !isApproved && (
-                <p className="text-muted small mb-0">
-                  Approved by {student.approved_by} on{" "}
-                  {formatDateToMMDDYYYY(student.approved_at)}
-                </p>
-              )}
-              {student?.rejected_by && student?.rejected_at && !isRejected && (
-                <p className="text-danger small mb-0">
-                  Rejected by {student.rejected_by} on{" "}
-                  {formatDateToMMDDYYYY(student.rejected_at)}
-                  {student.rejection_reason &&
-                    ` - Reason: ${student.rejection_reason}`}
-                </p>
-              )}
-            </>
           )}
         </div>
 
@@ -691,10 +730,7 @@ const EnrolmentDetails = () => {
               >
                 {acceptLoading ? (
                   <>
-                    <div
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                    >
+                    <div className="spinner-border spinner-border-sm me-2" role="status">
                       <span className="visually-hidden">Loading...</span>
                     </div>
                     Processing...
@@ -733,10 +769,7 @@ const EnrolmentDetails = () => {
             </ButtonGlobal>
           )}
 
-          <ButtonGlobal
-            onClick={handleBack}
-            className="btn btn-outline-secondary"
-          >
+          <ButtonGlobal onClick={handleBack} className="btn btn-outline-secondary">
             <i className="bi bi-arrow-left me-2" />
             Back to List
           </ButtonGlobal>
@@ -751,9 +784,7 @@ const EnrolmentDetails = () => {
               <i className="bi bi-person-badge me-2"></i>
               Student Information
             </h5>
-            <span className="badge bg-info">
-              ID: {student.enrollment_id || id}
-            </span>
+            <span className="badge bg-info">ID: {student.enrollment_id || id}</span>
           </div>
         </div>
         <div className="card-body p-4">
@@ -761,17 +792,13 @@ const EnrolmentDetails = () => {
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Full Name</span>
-                <span className="fs-6 fw-medium">
-                  {student?.first_given_name} {student?.family_name}
-                </span>
+                <span className="fs-6 fw-medium">{student?.first_given_name} {student?.family_name}</span>
               </div>
             </div>
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Preferred Name</span>
-                <span className="fs-6">
-                  {student?.preferred_first_name || "—"}
-                </span>
+                <span className="fs-6">{student?.preferred_first_name || "—"}</span>
               </div>
             </div>
             <div className="col-md-3">
@@ -783,52 +810,41 @@ const EnrolmentDetails = () => {
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Date of Birth</span>
-                <span className="fs-6">
-                  {formatDateToMMDDYYYY(student?.date_of_birth)}
-                </span>
+                <span className="fs-6">{formatDateToMMDDYYYY(student?.date_of_birth)}</span>
               </div>
             </div>
 
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Enrollment Year</span>
-                <span className="fs-6">
-                  {student?.mainstream_enrollment_year || "—"}
-                </span>
+                <span className="fs-6">{student?.mainstream_enrollment_year || "—"}</span>
               </div>
             </div>
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Mainstream School</span>
-                <span className="fs-6">
-                  {student?.mainstream_school_name || "—"}
-                </span>
+                <span className="fs-6">{student?.mainstream_school_name || "—"}</span>
               </div>
             </div>
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">WSTSC Class</span>
                 <span className="fs-6">
-                  {student?.classroom_info?.class_name ||
-                    student?.enrol_class_in_WSTSC ||
-                    "—"}
+                  {student?.classroom_info?.class_name || `Class ${student?.enrol_class_in_WSTSC || student?.com_school_enr_grade}` || "—"}
+                  {!student?.classroom_info?.class_name && !student?.enrol_class_in_WSTSC && !student?.com_school_enr_grade && (
+                    <small className="text-danger d-block">No class data found</small>
+                  )}
                 </span>
               </div>
             </div>
             <div className="col-md-3">
               <div className="d-flex flex-column align-items-start">
                 <span className="small fw-semibold">Status</span>
-                <span
-                  className={`badge ${
-                    student?.status === "approved"
-                      ? "bg-success"
-                      : student?.status === "pending"
-                      ? "bg-warning"
-                      : student?.status === "rejected"
-                      ? "bg-danger"
-                      : "bg-secondary"
-                  }`}
-                >
+                <span className={`badge ${
+                  student?.status === "approved" ? "bg-success" :
+                  student?.status === "pending" ? "bg-warning" :
+                  student?.status === "rejected" ? "bg-danger" : "bg-secondary"
+                }`}>
                   {student?.status ? student.status.toUpperCase() : "—"}
                 </span>
               </div>
@@ -837,9 +853,7 @@ const EnrolmentDetails = () => {
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Enrolment Date</span>
-                <span className="fs-6">
-                  {formatDateToMMDDYYYY(student?.enrolment_date)}
-                </span>
+                <span className="fs-6">{formatDateToMMDDYYYY(student?.enrolment_date)}</span>
               </div>
             </div>
           </div>
@@ -849,121 +863,25 @@ const EnrolmentDetails = () => {
       {/* Detailed Information Tabs */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(k) => setActiveTab(k)}
-            className="px-3 pt-3 border-bottom"
-            fill
-          >
+          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="px-3 pt-3 border-bottom" fill>
             {/* Parent/Carer Information Tab */}
-            <Tab
-              eventKey="parents"
-              title={
-                <span>
-                  <i className="bi bi-people me-2"></i>Parent/Carer
-                </span>
-              }
-            >
+            <Tab eventKey="parents" title={<span><i className="bi bi-people me-2"></i>Parent/Carer</span>}>
               <div className="p-3">
                 <Row className="g-3">
                   <Col md={12}>
-                    <InfoCard
-                      title="Parent/Carer Information"
-                      className="bg-secondary bg-opacity-10"
-                      emptyState={!parent_carer_1}
-                      emptyMessage="No parent/carer information available"
-                    >
+                    <InfoCard title="Parent/Carer Information" className="bg-secondary bg-opacity-10" emptyState={!parent_carer_1} emptyMessage="No parent/carer information available">
                       {parent_carer_1 && (
                         <Row className="g-4">
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Name</span>
-                              <p className="mb-0 fw-medium">
-                                {parent_carer_1.title}{" "}
-                                {parent_carer_1.first_name}{" "}
-                                {parent_carer_1.last_name}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Gender</span>
-                              <p className="mb-0">
-                                {parent_carer_1.gender || "—"}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Relationship</span>
-                              <p className="mb-0">
-                                {parent_carer_1.relationship_to_student || "—"}
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Email</span>
-                              <p className="mb-0">
-                                {parent_carer_1.email || "—"}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Mobile Phone</span>
-                              <p className="mb-0">
-                                {parent_carer_1.mobile_phone || "—"}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Country of Birth</span>
-                              <p className="mb-0">
-                                {parent_carer_1.country_of_birth || "—"}
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Nationality</span>
-                              <p className="mb-0">
-                                {parent_carer_1.nationality || "—"}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Occupation</span>
-                              <p className="mb-0">
-                                {parent_carer_1.occupation || "—"}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Marital Status</span>
-                              <p className="mb-0">
-                                {parent_carer_1.marital_status || "—"}
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={12}>
-                            <div>
-                              <span className="small">Address</span>
-                              <p className="mb-0">
-                                {parent_carer_1.street_number}{" "}
-                                {parent_carer_1.street_name},{" "}
-                                {parent_carer_1.suburb}, {parent_carer_1.state}{" "}
-                                {parent_carer_1.postal_code},{" "}
-                                {parent_carer_1.country}
-                              </p>
-                            </div>
-                          </Col>
+                          <Col md={4}><div><span className="small">Name</span><p className="mb-0 fw-medium">{parent_carer_1.title} {parent_carer_1.first_name} {parent_carer_1.last_name}</p></div></Col>
+                          <Col md={4}><div><span className="small">Gender</span><p className="mb-0">{parent_carer_1.gender || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Relationship</span><p className="mb-0">{parent_carer_1.relationship_to_student || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Email</span><p className="mb-0">{parent_carer_1.email || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Mobile Phone</span><p className="mb-0">{parent_carer_1.mobile_phone || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Country of Birth</span><p className="mb-0">{parent_carer_1.country_of_birth || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Nationality</span><p className="mb-0">{parent_carer_1.nationality || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Occupation</span><p className="mb-0">{parent_carer_1.occupation || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Marital Status</span><p className="mb-0">{parent_carer_1.marital_status || "—"}</p></div></Col>
+                          <Col md={12}><div><span className="small">Address</span><p className="mb-0">{parent_carer_1.street_number} {parent_carer_1.street_name}, {parent_carer_1.suburb}, {parent_carer_1.state} {parent_carer_1.postal_code}, {parent_carer_1.country}</p></div></Col>
                         </Row>
                       )}
                     </InfoCard>
@@ -973,69 +891,18 @@ const EnrolmentDetails = () => {
             </Tab>
 
             {/* Emergency Contacts Tab */}
-            <Tab
-              eventKey="emergency"
-              title={
-                <span>
-                  <i className="bi bi-telephone-plus me-2"></i>Emergency Contact
-                </span>
-              }
-            >
+            <Tab eventKey="emergency" title={<span><i className="bi bi-telephone-plus me-2"></i>Emergency Contact</span>}>
               <div className="p-3">
                 <Row className="g-3">
                   <Col md={12}>
-                    <InfoCard
-                      title="Emergency Contact"
-                      className="bg-secondary bg-opacity-10"
-                      emptyState={!first_emergency_contact}
-                      emptyMessage="No emergency contact information available"
-                    >
+                    <InfoCard title="Emergency Contact" className="bg-secondary bg-opacity-10" emptyState={!first_emergency_contact} emptyMessage="No emergency contact information available">
                       {first_emergency_contact && (
                         <Row className="g-4">
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Name</span>
-                              <p className="mb-0 fw-medium">
-                                {first_emergency_contact.given_name}{" "}
-                                {first_emergency_contact.family_name}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Relationship</span>
-                              <p className="mb-0">
-                                {
-                                  first_emergency_contact.relationship_to_student
-                                }
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Mobile Phone</span>
-                              <p className="mb-0">
-                                {first_emergency_contact.mobile_phone || "—"}
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Home Phone</span>
-                              <p className="mb-0">
-                                {first_emergency_contact.home_phone || "—"}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4}>
-                            <div>
-                              <span className="small">Work Phone</span>
-                              <p className="mb-0">
-                                {first_emergency_contact.work_phone || "—"}
-                              </p>
-                            </div>
-                          </Col>
+                          <Col md={4}><div><span className="small">Name</span><p className="mb-0 fw-medium">{first_emergency_contact.given_name} {first_emergency_contact.family_name}</p></div></Col>
+                          <Col md={4}><div><span className="small">Relationship</span><p className="mb-0">{first_emergency_contact.relationship_to_student}</p></div></Col>
+                          <Col md={4}><div><span className="small">Mobile Phone</span><p className="mb-0">{first_emergency_contact.mobile_phone || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Home Phone</span><p className="mb-0">{first_emergency_contact.home_phone || "—"}</p></div></Col>
+                          <Col md={4}><div><span className="small">Work Phone</span><p className="mb-0">{first_emergency_contact.work_phone || "—"}</p></div></Col>
                         </Row>
                       )}
                     </InfoCard>
@@ -1045,111 +912,17 @@ const EnrolmentDetails = () => {
             </Tab>
 
             {/* Medical Information Tab */}
-            <Tab
-              eventKey="medical"
-              title={
-                <span>
-                  <i className="bi bi-heart-pulse me-2"></i>Medical Information
-                </span>
-              }
-            >
+            <Tab eventKey="medical" title={<span><i className="bi bi-heart-pulse me-2"></i>Medical Information</span>}>
               <div className="p-3">
                 <Row>
                   <Col md={12}>
-                    <InfoCard
-                      title="Medical Details"
-                      className="bg-secondary bg-opacity-10"
-                      emptyState={!medical_details}
-                      emptyMessage="No medical information available"
-                    >
+                    <InfoCard title="Medical Details" className="bg-secondary bg-opacity-10" emptyState={!medical_details} emptyMessage="No medical information available">
                       {medical_details && (
                         <Row className="g-4">
-                          <Col md={3}>
-                            <div>
-                              <span className="small">Asthma</span>
-                              <p className="mb-0">
-                                <span
-                                  className={`badge ${
-                                    medical_details.asthma === "Yes" ||
-                                    medical_details.asthma === true
-                                      ? "bg-success"
-                                      : "bg-secondary"
-                                  }`}
-                                >
-                                  {medical_details.asthma?.toString() || "No"}
-                                </span>
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={3}>
-                            <div>
-                              <span className="small">Major Illness</span>
-                              <p className="mb-0">
-                                <span
-                                  className={`badge ${
-                                    medical_details.major_illness === "Yes" ||
-                                    medical_details.major_illness === true
-                                      ? "bg-success"
-                                      : "bg-secondary"
-                                  }`}
-                                >
-                                  {medical_details.major_illness?.toString() ||
-                                    "No"}
-                                </span>
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={3}>
-                            <div>
-                              <span className="small">Allergies</span>
-                              <p className="mb-0">
-                                <span
-                                  className={`badge ${
-                                    medical_details.allergies === "Yes" ||
-                                    medical_details.allergies === true
-                                      ? "bg-success"
-                                      : "bg-secondary"
-                                  }`}
-                                >
-                                  {medical_details.allergies?.toString() ||
-                                    "No"}
-                                </span>
-                              </p>
-                            </div>
-                          </Col>
-
-                          <Col md={3}>
-                            <div>
-                              <span className="small">
-                                Special Learning Needs
-                              </span>
-                              <p className="mb-0">
-                                <span
-                                  className={`badge ${
-                                    medical_details.special_learning_needs ===
-                                      "Yes" ||
-                                    medical_details.special_learning_needs ===
-                                      true
-                                      ? "bg-success"
-                                      : "bg-secondary"
-                                  }`}
-                                >
-                                  {medical_details.special_learning_needs?.toString() ||
-                                    "No"}
-                                </span>
-                              </p>
-                              {medical_details.special_learning_needs_details && (
-                                <small className="text-muted">
-                                  Details:{" "}
-                                  {
-                                    medical_details.special_learning_needs_details
-                                  }
-                                </small>
-                              )}
-                            </div>
-                          </Col>
+                          <Col md={3}><div><span className="small">Asthma</span><p className="mb-0"><span className={`badge ${medical_details.asthma === "Yes" || medical_details.asthma === true ? "bg-success" : "bg-secondary"}`}>{medical_details.asthma?.toString() || "No"}</span></p></div></Col>
+                          <Col md={3}><div><span className="small">Major Illness</span><p className="mb-0"><span className={`badge ${medical_details.major_illness === "Yes" || medical_details.major_illness === true ? "bg-success" : "bg-secondary"}`}>{medical_details.major_illness?.toString() || "No"}</span></p></div></Col>
+                          <Col md={3}><div><span className="small">Allergies</span><p className="mb-0"><span className={`badge ${medical_details.allergies === "Yes" || medical_details.allergies === true ? "bg-success" : "bg-secondary"}`}>{medical_details.allergies?.toString() || "No"}</span></p></div></Col>
+                          <Col md={3}><div><span className="small">Special Learning Needs</span><p className="mb-0"><span className={`badge ${medical_details.special_learning_needs === "Yes" || medical_details.special_learning_needs === true ? "bg-success" : "bg-secondary"}`}>{medical_details.special_learning_needs?.toString() || "No"}</span></p>{medical_details.special_learning_needs_details && (<small className="text-muted">Details: {medical_details.special_learning_needs_details}</small>)}</div></Col>
                         </Row>
                       )}
                     </InfoCard>
@@ -1159,101 +932,17 @@ const EnrolmentDetails = () => {
             </Tab>
 
             {/* Personal Declaration Tab */}
-            <Tab
-              eventKey="declaration"
-              title={
-                <span>
-                  <i className="bi bi-file-text me-2"></i>Personal Declaration
-                </span>
-              }
-            >
+            <Tab eventKey="declaration" title={<span><i className="bi bi-file-text me-2"></i>Personal Declaration</span>}>
               <div className="p-3">
                 <Row>
                   <Col md={12}>
-                    <InfoCard
-                      title="Personal Declaration"
-                      className="bg-secondary bg-opacity-10"
-                      emptyState={!personal_declaration}
-                      emptyMessage="No personal declaration information available"
-                    >
+                    <InfoCard title="Personal Declaration" className="bg-secondary bg-opacity-10" emptyState={!personal_declaration} emptyMessage="No personal declaration information available">
                       {personal_declaration && (
                         <Row className="g-4">
-                          <Col md={6}>
-                            <div className="bg-white rounded p-3">
-                              <span className="small">
-                                First Parent/Carer Name
-                              </span>
-                              <p className="mb-0 fw-medium">
-                                {personal_declaration.first_parent_carer_name}
-                              </p>
-                              {personal_declaration.first_parent_carer_name_date && (
-                                <small className="text-muted">
-                                  Date:{" "}
-                                  {formatDateToMMDDYYYY(
-                                    personal_declaration.first_parent_carer_name_date
-                                  )}
-                                </small>
-                              )}
-                            </div>
-                          </Col>
-                          <Col md={6}>
-                            <div className="bg-white rounded p-3">
-                              <span className="small">
-                                Second Parent/Carer Name
-                              </span>
-                              <p className="mb-0 fw-medium">
-                                {personal_declaration.second_parent_carer_name ||
-                                  "—"}
-                              </p>
-                              {personal_declaration.second_parent_carer_name_date && (
-                                <small className="text-muted">
-                                  Date:{" "}
-                                  {formatDateToMMDDYYYY(
-                                    personal_declaration.second_parent_carer_name_date
-                                  )}
-                                </small>
-                              )}
-                            </div>
-                          </Col>
-
-                          <Col md={6}>
-                            <div className="bg-white rounded p-3">
-                              <span className="small">Photo/Video Consent</span>
-                              <p className="mb-0">
-                                <span
-                                  className={`badge ${
-                                    personal_declaration.photo_video_consent
-                                      ? "bg-success"
-                                      : "bg-danger"
-                                  }`}
-                                >
-                                  {personal_declaration.photo_video_consent
-                                    ? "Granted"
-                                    : "Not Granted"}
-                                </span>
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={6}>
-                            <div className="bg-white rounded p-3">
-                              <span className="small">
-                                Medical Treatment Consent
-                              </span>
-                              <p className="mb-0">
-                                <span
-                                  className={`badge ${
-                                    personal_declaration.medical_treatment_consent
-                                      ? "bg-success"
-                                      : "bg-danger"
-                                  }`}
-                                >
-                                  {personal_declaration.medical_treatment_consent
-                                    ? "Granted"
-                                    : "Not Granted"}
-                                </span>
-                              </p>
-                            </div>
-                          </Col>
+                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">First Parent/Carer Name</span><p className="mb-0 fw-medium">{personal_declaration.first_parent_carer_name}</p>{personal_declaration.first_parent_carer_name_date && (<small className="text-muted">Date: {formatDateToMMDDYYYY(personal_declaration.first_parent_carer_name_date)}</small>)}</div></Col>
+                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">Second Parent/Carer Name</span><p className="mb-0 fw-medium">{personal_declaration.second_parent_carer_name || "—"}</p>{personal_declaration.second_parent_carer_name_date && (<small className="text-muted">Date: {formatDateToMMDDYYYY(personal_declaration.second_parent_carer_name_date)}</small>)}</div></Col>
+                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">Photo/Video Consent</span><p className="mb-0"><span className={`badge ${personal_declaration.photo_video_consent ? "bg-success" : "bg-danger"}`}>{personal_declaration.photo_video_consent ? "Granted" : "Not Granted"}</span></p></div></Col>
+                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">Medical Treatment Consent</span><p className="mb-0"><span className={`badge ${personal_declaration.medical_treatment_consent ? "bg-success" : "bg-danger"}`}>{personal_declaration.medical_treatment_consent ? "Granted" : "Not Granted"}</span></p></div></Col>
                         </Row>
                       )}
                     </InfoCard>
@@ -1267,91 +956,27 @@ const EnrolmentDetails = () => {
 
       {/* Rejection Confirmation Modal - Only show for admin users */}
       {canApproveReject && (
-        <Modal
-          show={showRejectModal}
-          onHide={handleCloseRejectModal}
-          size="md"
-          centered
-          backdrop="static"
-        >
+        <Modal show={showRejectModal} onHide={handleCloseRejectModal} size="md" centered backdrop="static">
           <Modal.Header closeButton>
-            <Modal.Title>
-              <i className="bi bi-x-circle me-2 text-danger"></i>
-              Reject Enrolment
-            </Modal.Title>
+            <Modal.Title><i className="bi bi-x-circle me-2 text-danger"></i>Reject Enrolment</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <div className="text-center mb-3">
-              <div className="mb-3">
-                <i className="bi bi-exclamation-triangle text-warning fs-1"></i>
-              </div>
-              <h5 className="mb-3">
-                Are you sure you want to reject this enrolment?
-              </h5>
-              <p className="text-muted">
-                You are about to reject the enrolment for{" "}
-                <strong>
-                  {student?.first_given_name} {student?.family_name}
-                </strong>
-                . This action will change the enrolment status to rejected.
-              </p>
+              <div className="mb-3"><i className="bi bi-exclamation-triangle text-warning fs-1"></i></div>
+              <h5 className="mb-3">Are you sure you want to reject this enrolment?</h5>
+              <p className="text-muted">You are about to reject the enrolment for <strong>{student?.first_given_name} {student?.family_name}</strong>. This action will change the enrolment status to rejected.</p>
             </div>
-
             <div className="mb-3">
-              <label
-                htmlFor="rejectionReason"
-                className="form-label fw-semibold"
-              >
-                Reason for Rejection <span className="text-danger">*</span>
-              </label>
-              <textarea
-                id="rejectionReason"
-                className={`form-control ${rejectionError ? "is-invalid" : ""}`}
-                rows="3"
-                placeholder="Please provide a detailed reason for rejecting this enrolment..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-              />
-              {rejectionError && (
-                <div className="invalid-feedback">{rejectionError}</div>
-              )}
-              <div className="form-text">
-                Please provide a detailed reason (minimum 10 characters). This
-                reason will be recorded and visible in the enrolment history.
-              </div>
+              <label htmlFor="rejectionReason" className="form-label fw-semibold">Reason for Rejection <span className="text-danger">*</span></label>
+              <textarea id="rejectionReason" className={`form-control ${rejectionError ? "is-invalid" : ""}`} rows="3" placeholder="Please provide a detailed reason for rejecting this enrolment..." value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
+              {rejectionError && <div className="invalid-feedback">{rejectionError}</div>}
+              <div className="form-text">Please provide a detailed reason (minimum 10 characters). This reason will be recorded and visible in the enrolment history.</div>
             </div>
           </Modal.Body>
           <Modal.Footer className="d-flex justify-content-between">
-            <Button
-              variant="secondary"
-              onClick={handleCloseRejectModal}
-              disabled={rejectLoading}
-            >
-              Cancel
-            </Button>
-            <ButtonGlobal
-              onClick={handleRejectEnrolment}
-              className="btn btn-danger"
-              disabled={
-                rejectLoading ||
-                !rejectionReason.trim() ||
-                rejectionReason.trim().length < 10
-              }
-            >
-              {rejectLoading ? (
-                <>
-                  <div
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                  ></div>
-                  Rejecting...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-x-circle me-2" />
-                  Reject Enrolment
-                </>
-              )}
+            <Button variant="secondary" onClick={handleCloseRejectModal} disabled={rejectLoading}>Cancel</Button>
+            <ButtonGlobal onClick={handleRejectEnrolment} className="btn btn-danger" disabled={rejectLoading || !rejectionReason.trim() || rejectionReason.trim().length < 10}>
+              {rejectLoading ? (<><div className="spinner-border spinner-border-sm me-2" role="status"></div>Rejecting...</>) : (<><i className="bi bi-x-circle me-2" />Reject Enrolment</>)}
             </ButtonGlobal>
           </Modal.Footer>
         </Modal>

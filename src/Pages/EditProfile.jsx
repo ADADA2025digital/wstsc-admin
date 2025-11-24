@@ -1122,29 +1122,6 @@ const EditProfile = () => {
                           </Form.Group>
                         </div>
 
-                        <div className="col-12">
-                          <Form.Group>
-                            <Form.Label>Address Line 2</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="address_line2"
-                              value={formData.address_line2}
-                              onChange={handleInputChange}
-                              placeholder="Apartment 4B"
-                              className={`rounded-0 ${
-                                getFieldError("address_line2")
-                                  ? "is-invalid"
-                                  : ""
-                              }`}
-                            />
-                            {getFieldError("address_line2") && (
-                              <Form.Control.Feedback type="invalid">
-                                {getFieldError("address_line2")}
-                              </Form.Control.Feedback>
-                            )}
-                          </Form.Group>
-                        </div>
-
                         {/* Country Select */}
                         <div className="col-12">
                           <SelectInput

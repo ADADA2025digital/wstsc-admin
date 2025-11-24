@@ -24,61 +24,104 @@ const StudentDetails = () => {
   const studentData = location.state?.studentData;
 
   const [currentStudent, setCurrentStudent] = useState(null);
+  const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(!studentData);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updateMessage, setUpdateMessage] = useState({ type: "", text: "" });
   const [activeTab, setActiveTab] = useState("parents");
   const [userRole, setUserRole] = useState(null);
 
-  // Get user role from localStorage - FIXED: Check primary_role.role_name
+  // Get user role from localStorage
   useEffect(() => {
     const getUserRole = () => {
       try {
         const userData = localStorage.getItem('userData');
-        console.log("🔍 Raw userData from localStorage:", userData);
         if (userData) {
           const parsedUserData = JSON.parse(userData);
-          console.log("👤 Parsed user data from localStorage:", parsedUserData);
-          
-          // FIX: Check both primary_role.role_name and all_roles[0].role_name
           const role = parsedUserData.primary_role?.role_name || 
                       parsedUserData.all_roles?.[0]?.role_name || 
                       parsedUserData.role?.role_name || 
                       null;
-          
-          console.log("🎭 User role detected:", role);
           setUserRole(role);
-          return role;
-        } else {
-          console.log("❌ No userData found in localStorage");
         }
       } catch (error) {
-        console.error("❌ Error parsing user data from localStorage:", error);
+        console.error("Error parsing user data:", error);
       }
-      return null;
     };
-
     getUserRole();
   }, []);
 
-  // Debug logs for initial props
-  console.log("🔍 StudentDetails Component Mounted:", {
-    id,
-    hasStudentData: !!studentData,
-    studentDataFromLocation: studentData,
-    locationState: location.state,
-    userRole,
-  });
+  // Fetch classrooms data
+  const fetchClassrooms = async () => {
+    try {
+      setLoadingClassrooms(true);
+      const response = await api.get("/classrooms");
+      console.log("🏫 Classrooms API response:", response.data);
+      
+      // Extract classrooms array from the response
+      let classroomsData = [];
+      
+      if (response.data.data && Array.isArray(response.data.data.classrooms)) {
+        classroomsData = response.data.data.classrooms;
+      } else if (Array.isArray(response.data.classrooms)) {
+        classroomsData = response.data.classrooms;
+      } else if (Array.isArray(response.data.data)) {
+        classroomsData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        classroomsData = response.data;
+      }
+      
+      console.log("📚 Final classrooms data:", classroomsData);
+      setClassrooms(classroomsData);
+    } catch (error) {
+      console.error("Error fetching classrooms:", error);
+      setClassrooms([]);
+    } finally {
+      setLoadingClassrooms(false);
+    }
+  };
+
+  // Helper function to get class name from ID
+  const getClassName = (classId) => {
+    if (!classId || classId === "null" || classId === "undefined") {
+      return "Not assigned";
+    }
+    
+    const classroomsArray = Array.isArray(classrooms) ? classrooms : [];
+    
+    console.log("🔍 Class lookup:", {
+      classId,
+      classroomsCount: classroomsArray.length,
+      classrooms: classroomsArray.map(cls => ({ class_id: cls.class_id, class_name: cls.class_name }))
+    });
+    
+    if (classroomsArray.length === 0) {
+      return loadingClassrooms ? "Loading..." : classId;
+    }
+    
+    // Find classroom by class_id (exact match)
+    const classroom = classroomsArray.find(cls => {
+      return cls.class_id && cls.class_id.toString() === classId.toString();
+    });
+    
+    console.log("✅ Found classroom:", classroom);
+    
+    // Return class name if found
+    if (classroom) {
+      return classroom.class_name || classId;
+    }
+    
+    return classId; // Return the ID if no name found
+  };
 
   // Data transformation function for different data structures
   const transformStudentData = (data) => {
-    console.log("🔄 Starting data transformation with raw data:", data);
+    console.log("Transforming student data:", data);
 
     // If data comes from location state (student list click)
     if (data.studid && data.student_name) {
-      console.log("📦 Found location state data structure");
-      
       const transformedData = {
         student: {
           id: data.studid,
@@ -92,13 +135,12 @@ const StudentDetails = () => {
           mainstream_school_name: data.mainstream_school,
           enrol_class_in_WSTSC: data.class_grade,
           enrolment_date: data.enrollment_date,
-          // Submission info
           submitted_at: data.submitted_at,
           approved_at: data.actioned_at,
           approved_by: data.approved_by,
         },
-        parents_carers: [], // Will need to fetch this separately
-        emergency_contacts: [], // Will need to fetch this separately
+        parents_carers: [],
+        emergency_contacts: [],
         classes: data.class_grade ? [{
           class_id: data.class_grade,
           class_name: data.class_grade,
@@ -111,18 +153,13 @@ const StudentDetails = () => {
           has_medical_details: data.has_medical_details || false,
         },
       };
-
-      console.log("🎯 Transformed location state data:", transformedData);
       return transformedData;
     }
 
     // If data comes from the new student details API
     if (data.student_info && data.parent_carers) {
-      console.log("📦 Found new student API data structure");
-      
-      // Transform parent/carer data
       const transformedParents = data.parent_carers.map((parent, index) => {
-        const transformedParent = {
+        return {
           parent_carer_id: index + 1,
           carer_type: parent.carer_type,
           title: parent.title,
@@ -141,12 +178,10 @@ const StudentDetails = () => {
           occupation: parent.occupation,
           address: parent.address ? `${parent.address.street_number} ${parent.address.street_name}, ${parent.address.suburb}, ${parent.address.state} ${parent.address.postal_code}, ${parent.address.country}` : "N/A"
         };
-        return transformedParent;
       });
 
-      // Transform emergency contacts
       const transformedEmergencyContacts = data.emergency_contacts.map((contact, index) => {
-        const transformedContact = {
+        return {
           preference: contact.preference === "1" ? "first" : "secondary",
           given_name: contact.given_name,
           family_name: contact.family_name,
@@ -155,12 +190,10 @@ const StudentDetails = () => {
           home_phone: contact.home_phone,
           work_phone: contact.work_phone
         };
-        return transformedContact;
       });
 
-      // Transform class assignments
       const transformedClasses = data.class_assignments.map((classInfo, index) => {
-        const transformedClass = {
+        return {
           class_id: classInfo.class_id,
           class_name: classInfo.class_name,
           class_is_active: classInfo.class_is_active,
@@ -170,7 +203,6 @@ const StudentDetails = () => {
           teachers: classInfo.teachers || [],
           teacher_count: classInfo.teacher_count || 0
         };
-        return transformedClass;
       });
 
       const transformedData = {
@@ -189,7 +221,6 @@ const StudentDetails = () => {
           age: data.student_info.age,
           age_at_enrollment: data.student_info.age_at_enrollment,
           enrolment_date: data.student_info.enrolment_date,
-          // Submission info
           submitted_by: data.submission_info?.submitted_by,
           submitted_at: data.submission_info?.submitted_at,
           approved_by: data.submission_info?.approved_by,
@@ -211,14 +242,11 @@ const StudentDetails = () => {
           has_personal_declaration: data.summary?.has_personal_declaration || false
         },
       };
-
-      console.log("🎯 Final transformed data:", transformedData);
       return transformedData;
     }
 
     // If data comes from parent API (my-enrollments)
     if (data.student && data.parent_carer_1) {
-      console.log("📦 Found parent API data structure");
       return {
         student: {
           id: data.student.enrollment_id,
@@ -276,10 +304,7 @@ const StudentDetails = () => {
       };
     }
 
-    // If data is already in the expected format
-    console.log("📦 Data already in expected format or unknown structure:", data);
-    
-    // FIX: Ensure the returned data has all required properties
+    // Default return for unknown structures
     return {
       student: data.student || {},
       parents_carers: data.parents_carers || [],
@@ -291,129 +316,72 @@ const StudentDetails = () => {
     };
   };
 
-  // Fetch detailed student data when we only have basic info from location state
+  // Fetch detailed student data
   const fetchDetailedStudentData = async () => {
     try {
-      console.log("📡 Fetching detailed student data for:", id);
       setLoading(true);
-      
-      let endpoint;
-      if (userRole === 'parent') {
-        endpoint = `/my-enrollments/${id}`;
-      } else {
-        endpoint = `/students/${id}`;
-      }
-      
-      console.log("🎯 Using endpoint:", endpoint);
+      let endpoint = userRole === 'parent' ? `/my-enrollments/${id}` : `/students/${id}`;
       const response = await api.get(endpoint);
-      console.log("📥 Detailed API response:", response);
       
       if (response.data.success) {
         const transformedData = transformStudentData(response.data.data);
-        console.log("🔄 Transformed detailed data:", transformedData);
         setCurrentStudent(transformedData);
       } else {
-        throw new Error(response.data.message || "Failed to fetch detailed student data");
+        throw new Error(response.data.message || "Failed to fetch student data");
       }
     } catch (error) {
-      console.error("💥 Error fetching detailed student data:", error);
-      // Don't set error here - we'll still show the basic info
-      console.log("⚠️ Will display basic student info only");
+      console.error("Error fetching student data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // If no student data was passed, fetch it using the ID
+  // Main useEffect
   useEffect(() => {
-    console.log("🔄 useEffect triggered:", {
-      hasStudentData: !!studentData,
-      id,
-      loading,
-      userRole,
-    });
-
     if (studentData) {
-      console.log("✅ Using student data from location state:", studentData);
-
-      // First, transform the basic data we have from location state
       const transformedData = transformStudentData(studentData);
-      console.log("📦 Transformed basic student data from location:", transformedData);
-
       setCurrentStudent(transformedData);
       setLoading(false);
 
-      // FIX: Added safe length checks
       const hasParents = transformedData.parents_carers && transformedData.parents_carers.length > 0;
       const hasEmergencyContacts = transformedData.emergency_contacts && transformedData.emergency_contacts.length > 0;
       
-      // Then fetch detailed data if we're missing parent/emergency contact info
       if (!hasParents || !hasEmergencyContacts) {
-        console.log("🔍 Missing detailed info, fetching complete data...");
         fetchDetailedStudentData();
       }
     } else if (!studentData && id && userRole !== null) {
-      console.log("📡 No location data, fetching student data from API...");
       fetchDetailedStudentData();
     } else if (!id) {
-      console.log("❌ No student ID available");
       setError("No student ID provided");
       setLoading(false);
     }
+
+    // Fetch classrooms data
+    fetchClassrooms();
   }, [id, studentData, userRole]);
 
-  // Safe data access functions with debug logs
-  const getStudentData = () => {
-    const student = currentStudent?.student || {};
-    console.log("👤 getStudentData result:", student);
-    return student;
-  };
-
-  const getParentsData = () => {
-    const parents = currentStudent?.parents_carers || [];
-    console.log("👪 getParentsData result:", parents);
-    return parents;
-  };
-
-  const getEmergencyContacts = () => {
-    const contacts = currentStudent?.emergency_contacts || [];
-    console.log("🚨 getEmergencyContacts result:", contacts);
-    return contacts;
-  };
-
-  const getClasses = () => {
-    const classes = currentStudent?.classes || [];
-    console.log("🏫 getClasses result:", classes);
-    return classes;
-  };
-
-  const getSummary = () => {
-    const summary = currentStudent?.summary || {};
-    console.log("📊 getSummary result:", summary);
-    return summary;
-  };
+  // Data access functions
+  const getStudentData = () => currentStudent?.student || {};
+  const getParentsData = () => currentStudent?.parents_carers || [];
+  const getEmergencyContacts = () => currentStudent?.emergency_contacts || [];
+  const getClasses = () => currentStudent?.classes || [];
+  const getSummary = () => currentStudent?.summary || {};
 
   const getStatusVariant = (status) => {
     if (!status) return "secondary";
-
     switch (status.toLowerCase()) {
       case "approved":
-      case "active":
-        return "success";
-      case "pending":
-        return "warning";
-      case "inactive":
-        return "secondary";
-      default:
-        return "info";
+      case "active": return "success";
+      case "pending": return "warning";
+      case "inactive": return "secondary";
+      default: return "info";
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
+      return new Date(dateString).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -423,7 +391,7 @@ const StudentDetails = () => {
     }
   };
 
-  // Handle status change via toggle - Only for admin users
+  // Handle status change
   const handleStatusChange = async (newStatus) => {
     if (!userRole || userRole === 'parent') {
       setUpdateMessage({
@@ -434,15 +402,12 @@ const StudentDetails = () => {
     }
 
     try {
-      console.log("🔄 Changing student status to:", newStatus);
       setUpdatingStatus(true);
       setUpdateMessage({ type: "", text: "" });
 
       const response = await api.put(`/students/${id}/status`, {
         status: newStatus,
       });
-
-      console.log("📥 Status update response:", response.data);
 
       if (response.data.success) {
         setCurrentStudent((prev) => ({
@@ -465,7 +430,7 @@ const StudentDetails = () => {
         setUpdateMessage({ type: "", text: "" });
       }, 3000);
     } catch (error) {
-      console.error("💥 Error updating student status:", error);
+      console.error("Error updating student status:", error);
       setUpdateMessage({
         type: "danger",
         text: error.response?.data?.message || "Failed to update student status. Please try again.",
@@ -475,7 +440,7 @@ const StudentDetails = () => {
     }
   };
 
-  // Handle quick status toggle - Only for admin users
+  // Handle quick status toggle
   const handleQuickStatusToggle = () => {
     if (!userRole || userRole === 'parent') {
       setUpdateMessage({
@@ -489,15 +454,6 @@ const StudentDetails = () => {
     const newStatus = student.status === "approved" ? "inactive" : "approved";
     handleStatusChange(newStatus);
   };
-
-  // Debug current state before render
-  console.log("🎯 Current Component State before render:", {
-    loading,
-    error,
-    currentStudent,
-    hasStudentData: !!currentStudent,
-    userRole,
-  });
 
   if (loading) {
     return <Loader />;
@@ -540,13 +496,12 @@ const StudentDetails = () => {
   const classes = getClasses();
   const summary = getSummary();
 
-  console.log("🎨 Rendering student details with data:", {
-    student,
-    parentsCount: parents_carers.length,
-    emergencyContactsCount: emergency_contacts.length,
-    classesCount: classes.length,
-    summary,
-    userRole,
+  // Debug logging
+  console.log("🎯 Current state before render:", {
+    studentClassId: student.enrol_class_in_WSTSC,
+    classroomsCount: classrooms.length,
+    loadingClassrooms,
+    classroomsSample: classrooms.slice(0, 3)
   });
 
   return (
@@ -652,7 +607,16 @@ const StudentDetails = () => {
                       </tr>
                       <tr>
                         <td className="fw-bold">WSTSC Class:</td>
-                        <td>{student.enrol_class_in_WSTSC || "Not assigned"}</td>
+                        <td>
+                          {loadingClassrooms ? (
+                            <>
+                              <Spinner animation="border" size="sm" className="me-2" />
+                              Loading...
+                            </>
+                          ) : (
+                            getClassName(student.enrol_class_in_WSTSC)
+                          )}
+                        </td>
                       </tr>
                     </tbody>
                   </Table>
@@ -857,7 +821,16 @@ const StudentDetails = () => {
                         <Col md={6} key={classInfo.class_id || index} className="mb-3">
                           <Card className="h-100">
                             <Card.Header className="bg-light">
-                              <h6 className="mb-0">{classInfo.class_name || "Unnamed Class"}</h6>
+                              <h6 className="mb-0">
+                                {loadingClassrooms ? (
+                                  <>
+                                    <Spinner animation="border" size="sm" className="me-2" />
+                                    Loading...
+                                  </>
+                                ) : (
+                                  getClassName(classInfo.class_id) || "Unnamed Class"
+                                )}
+                              </h6>
                             </Card.Header>
                             <Card.Body>
                               <Table borderless size="sm">
@@ -865,6 +838,16 @@ const StudentDetails = () => {
                                   <tr>
                                     <td className="fw-bold">Class ID:</td>
                                     <td>{classInfo.class_id || "N/A"}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="fw-bold">Class Name:</td>
+                                    <td>
+                                      {loadingClassrooms ? (
+                                        <Spinner animation="border" size="sm" />
+                                      ) : (
+                                        getClassName(classInfo.class_id)
+                                      )}
+                                    </td>
                                   </tr>
                                   <tr>
                                     <td className="fw-bold">Status:</td>
@@ -943,6 +926,22 @@ const StudentDetails = () => {
                 <p className="text-muted">
                   {student.studid ? `Student ID: ${student.studid}` : student.enrollment_id ? `Enrollment ID: ${student.enrollment_id}` : "Student"}
                 </p>
+                
+                {/* Show actual class name instead of ID */}
+                {student.enrol_class_in_WSTSC && (
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      Class: {loadingClassrooms ? (
+                        <>
+                          <Spinner animation="border" size="sm" className="me-2" />
+                          Loading...
+                        </>
+                      ) : (
+                        getClassName(student.enrol_class_in_WSTSC)
+                      )}
+                    </small>
+                  </div>
+                )}
 
                 {student.status && (
                   <div className="mb-3">

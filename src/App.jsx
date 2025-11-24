@@ -29,6 +29,7 @@ import PersonsList from "./Pages/Persons/PersonsList";
 import PersonDetails from "./Pages/Persons/PersonDetails";
 import RouteGuard from "./Components/RouteGuard";
 import AuthGuard from "./Components/AuthGuard";
+import AssignPrincipal from "./Pages/Principal/AssignPrincipal"; // Add this import
 
 function App() {
   return (
@@ -190,6 +191,16 @@ function App() {
             element={
               <RouteGuard requireProfileComplete={true}>
                 <PrincipalDetails />
+              </RouteGuard>
+            }
+          />
+
+          {/* Add the Assign Principal route */}
+          <Route
+            path="/assign-principal"
+            element={
+              <RouteGuard requireProfileComplete={true}>
+                <AssignPrincipal />
               </RouteGuard>
             }
           />

@@ -11,10 +11,10 @@ import {
   Spinner,
   Tabs,
   Tab,
-  Modal,
-  Form,
 } from "react-bootstrap";
-import api from "../../config/axiosConfig"; 
+import { Link } from "react-router-dom";
+import api from "../../config/axiosConfig";
+import Loader from "../../Pages/Loader";
 
 const PrincipalDetails = () => {
   const [activeTab, setActiveTab] = useState("personal");
@@ -22,18 +22,6 @@ const PrincipalDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [principal, setPrincipal] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creatingPrincipal, setCreatingPrincipal] = useState(false);
-
-  // Form state for creating principal
-  const [formData, setFormData] = useState({
-    teacher_id: "",
-    position: "Principal",
-    year: new Date().getFullYear(),
-    status: "active",
-    nominator_peid: "",
-    seconder_peid: ""
-  });
 
   // Fetch principal data
   const fetchPrincipal = async () => {
@@ -41,7 +29,7 @@ const PrincipalDetails = () => {
       setLoading(true);
       setError(null);
       const response = await api.get("/principals");
-      
+
       if (response.data.success && response.data.data.principals.length > 0) {
         // Use the first principal from the response
         const principalData = response.data.data.principals[0];
@@ -61,11 +49,16 @@ const PrincipalDetails = () => {
   // Transform API data to match component structure
   const transformPrincipalData = (apiData) => {
     const teacher = apiData.teacher?.person || {};
-    
+
     return {
       id: apiData.tpid,
-      principal_id: `PRIN-${apiData.year}-${String(apiData.tpid).padStart(3, '0')}`,
-      name: teacher.full_name || `${teacher.person_first_name} ${teacher.person_last_name}`,
+      principal_id: `PRIN-${apiData.year}-${String(apiData.tpid).padStart(
+        3,
+        "0"
+      )}`,
+      name:
+        teacher.full_name ||
+        `${teacher.person_first_name} ${teacher.person_last_name}`,
       email: teacher.person_email,
       phone: teacher.person_phone,
       status: apiData.status,
@@ -79,45 +72,8 @@ const PrincipalDetails = () => {
       position: apiData.position,
       year: apiData.year,
       nominator: apiData.nominator,
-      seconder: apiData.seconder
+      seconder: apiData.seconder,
     };
-  };
-
-  // Handle create principal
-  const handleCreatePrincipal = async () => {
-    try {
-      setCreatingPrincipal(true);
-      const response = await api.post("/principals", formData);
-      
-      if (response.data.success) {
-        setShowCreateModal(false);
-        // Refresh principal data
-        await fetchPrincipal();
-        // Reset form
-        setFormData({
-          teacher_id: "",
-          position: "Principal",
-          year: new Date().getFullYear(),
-          status: "active",
-          nominator_peid: "",
-          seconder_peid: ""
-        });
-      }
-    } catch (err) {
-      console.error("Error creating principal:", err);
-      setError("Failed to create principal");
-    } finally {
-      setCreatingPrincipal(false);
-    }
-  };
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
   };
 
   useEffect(() => {
@@ -165,59 +121,62 @@ const PrincipalDetails = () => {
   };
 
   // Mock data for demonstration (only used when principal exists)
-  const schools = principal ? [
-    {
-      school_id: "SCH-001",
-      school_name: "Greenwood High School",
-      address: "456 Oak Street, Greenwood, GW 67890",
-      phone: "+1 (555) 987-6543",
-      is_active: true,
-      start_date: "2020-01-15"
-    }
-  ] : [];
+  const schools = principal
+    ? [
+        {
+          school_id: "SCH-001",
+          school_name: "Greenwood High School",
+          address: "456 Oak Street, Greenwood, GW 67890",
+          phone: "+1 (555) 987-6543",
+          is_active: true,
+          start_date: "2020-01-15",
+        },
+      ]
+    : [];
 
-  const employment_history = principal ? [
-    {
-      id: 1,
-      position: principal.position,
-      organization: "Greenwood High School",
-      start_date: principal.join_date,
-      end_date: null,
-      description: "Leading academic programs and staff management"
-    }
-  ] : [];
+  const employment_history = principal
+    ? [
+        {
+          id: 1,
+          position: principal.position,
+          organization: "Greenwood High School",
+          start_date: principal.join_date,
+          end_date: null,
+          description: "Leading academic programs and staff management",
+        },
+      ]
+    : [];
 
-  const qualifications = principal ? [
-    {
-      id: 1,
-      degree: "Doctor of Education",
-      institution: "University of Education",
-      field_of_study: "Educational Leadership",
-      year_obtained: "2018",
-      grade: "Summa Cum Laude"
-    }
-  ] : [];
+  const qualifications = principal
+    ? [
+        {
+          id: 1,
+          degree: "Doctor of Education",
+          institution: "University of Education",
+          field_of_study: "Educational Leadership",
+          year_obtained: "2018",
+          grade: "Summa Cum Laude",
+        },
+      ]
+    : [];
 
-  const summary = principal ? {
-    total_schools: 1,
-    years_experience: Math.floor((new Date() - new Date(principal.join_date)) / (365 * 24 * 60 * 60 * 1000)),
-    qualification_count: 1
-  } : {
-    total_schools: 0,
-    years_experience: 0,
-    qualification_count: 0
-  };
+  const summary = principal
+    ? {
+        total_schools: 1,
+        years_experience: Math.floor(
+          (new Date() - new Date(principal.join_date)) /
+            (365 * 24 * 60 * 60 * 1000)
+        ),
+        qualification_count: 1,
+      }
+    : {
+        total_schools: 0,
+        years_experience: 0,
+        qualification_count: 0,
+      };
 
   if (loading) {
-    return (
-      <Container fluid className="px-4 py-3">
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
-          <Spinner animation="border" role="status" variant="primary">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-        </div>
-      </Container>
-    );
+    return <Loader />;
   }
 
   if (error && !principal) {
@@ -242,7 +201,9 @@ const PrincipalDetails = () => {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h4 className="H4-heading fw-bold">Principal Details</h4>
-            <p className="text-muted mb-0">No principal found for the current year</p>
+            <p className="text-muted mb-0">
+              No principal found for the current year
+            </p>
           </div>
         </div>
 
@@ -253,140 +214,17 @@ const PrincipalDetails = () => {
                 <i className="bi bi-person-x display-1 text-muted mb-3"></i>
                 <h4 className="mb-3">No Principal Assigned</h4>
                 <p className="text-muted mb-4">
-                  There is currently no principal assigned for the current academic year.
-                  Click the button below to assign a principal.
+                  There is currently no principal assigned for the current
+                  academic year. Click the button below to assign a principal.
                 </p>
-                <button 
-                  className="btn custom-btn" 
-                  onClick={() => setShowCreateModal(true)}
-                >
+                <Link className="btn custom-btn" to="/assign-principal">
                   <i className="bi bi-plus-circle me-2"></i>
                   Assign Principal
-                </button>
+                </Link>
               </Card.Body>
             </Card>
           </Col>
         </Row>
-
-        {/* Create Principal Modal */}
-        <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
-          <Modal.Header closeButton>
-            <Modal.Title>Assign New Principal</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Teacher ID *</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="teacher_id"
-                      value={formData.teacher_id}
-                      onChange={handleInputChange}
-                      placeholder="Enter teacher ID"
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Position *</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="position"
-                      value={formData.position}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Year *</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="year"
-                      value={formData.year}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Status *</Form.Label>
-                    <Form.Select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleInputChange}
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="pending">Pending</option>
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Nominator PEID</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="nominator_peid"
-                      value={formData.nominator_peid}
-                      onChange={handleInputChange}
-                      placeholder="Enter nominator PEID"
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Seconder PEID</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="seconder_peid"
-                      value={formData.seconder_peid}
-                      onChange={handleInputChange}
-                      placeholder="Enter seconder PEID"
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowCreateModal(false)}
-              disabled={creatingPrincipal}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={handleCreatePrincipal}
-              disabled={creatingPrincipal || !formData.teacher_id}
-            >
-              {creatingPrincipal ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check-circle me-2"></i>
-                  Assign Principal
-                </>
-              )}
-            </Button>
-          </Modal.Footer>
-        </Modal>
       </Container>
     );
   }
@@ -402,10 +240,11 @@ const PrincipalDetails = () => {
             Principal ID: {principal.principal_id}
           </p>
         </div>
-        <Button 
-          variant="outline-primary" 
+        <Button
+          variant="outline-primary"
           size="sm"
-          onClick={() => setShowCreateModal(true)}
+          as={Link}
+          to="/assign-principal"
         >
           <i className="bi bi-plus-circle me-1"></i>
           Update Principal
@@ -436,7 +275,10 @@ const PrincipalDetails = () => {
                       onChange={handleQuickStatusToggle}
                       disabled={updatingStatus}
                     />
-                    <label className="form-check-label" htmlFor="principal-status-toggle">
+                    <label
+                      className="form-check-label"
+                      htmlFor="principal-status-toggle"
+                    >
                       <Badge
                         bg={getStatusVariant(principal.status)}
                         className="fs-6"
@@ -519,7 +361,7 @@ const PrincipalDetails = () => {
                   </Table>
                 </Col>
               </Row>
-              
+
               {/* Nominator and Seconder Information */}
               <Row className="mt-3">
                 <Col md={6}>
@@ -657,16 +499,10 @@ const PrincipalDetails = () => {
                   {schools.length > 0 ? (
                     <Row>
                       {schools.map((school, index) => (
-                        <Col
-                          md={6}
-                          key={school.school_id}
-                          className="mb-3"
-                        >
+                        <Col md={6} key={school.school_id} className="mb-3">
                           <Card className="h-100">
                             <Card.Header className="bg-light">
-                              <h6 className="mb-0">
-                                {school.school_name}
-                              </h6>
+                              <h6 className="mb-0">{school.school_name}</h6>
                             </Card.Header>
                             <Card.Body>
                               <Table borderless size="sm">
@@ -751,7 +587,9 @@ const PrincipalDetails = () => {
                             </p>
                             <p className="mb-1 small text-muted">
                               {formatDate(job.start_date)} -{" "}
-                              {job.end_date ? formatDate(job.end_date) : "Present"}
+                              {job.end_date
+                                ? formatDate(job.end_date)
+                                : "Present"}
                             </p>
                             {job.description && (
                               <p className="mb-0 small">{job.description}</p>
@@ -780,16 +618,10 @@ const PrincipalDetails = () => {
                   {qualifications.length > 0 ? (
                     <Row>
                       {qualifications.map((qual, index) => (
-                        <Col
-                          md={6}
-                          key={qual.id}
-                          className="mb-3"
-                        >
+                        <Col md={6} key={qual.id} className="mb-3">
                           <Card className="h-100">
                             <Card.Header className="bg-light">
-                              <h6 className="mb-0">
-                                {qual.degree}
-                              </h6>
+                              <h6 className="mb-0">{qual.degree}</h6>
                             </Card.Header>
                             <Card.Body>
                               <Table borderless size="sm">
@@ -865,11 +697,7 @@ const PrincipalDetails = () => {
                 >
                   {updatingStatus ? (
                     <>
-                      <Spinner
-                        animation="border"
-                        size="sm"
-                        className="me-2"
-                      />
+                      <Spinner animation="border" size="sm" className="me-2" />
                       Updating...
                     </>
                   ) : (
@@ -988,9 +816,7 @@ const PrincipalDetails = () => {
                       <td className="fw-bold">
                         <i className="bi bi-people text-primary me-2"></i>
                       </td>
-                      <td>
-                        Seconder: {principal.rawData.seconder.full_name}
-                      </td>
+                      <td>Seconder: {principal.rawData.seconder.full_name}</td>
                     </tr>
                   )}
                 </tbody>

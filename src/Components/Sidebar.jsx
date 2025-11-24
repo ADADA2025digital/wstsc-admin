@@ -22,7 +22,7 @@ const Sidebar = ({
     const fetchUserRole = async () => {
       try {
         const userData = JSON.parse(localStorage.getItem("userData"));
-        console.log("User data from localStorage:", userData);
+        // console.log("User data from localStorage:", userData);
 
         if (!userData || !userData.primary_role) {
           console.error("No user data or primary_role found in localStorage");
@@ -30,7 +30,7 @@ const Sidebar = ({
         }
 
         const userRoleName = userData.primary_role.role_name;
-        console.log("User role from localStorage:", userRoleName);
+        // console.log("User role from localStorage:", userRoleName);
         setUserRole(userRoleName);
 
       } catch (error) {

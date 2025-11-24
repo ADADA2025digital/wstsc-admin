@@ -46,16 +46,16 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const fetchProfileImage = async () => {
     setProfileImageLoading(true);
     try {
-      console.log("🔄 Starting profile image fetch from /profile/person");
+      // console.log("🔄 Starting profile image fetch from /profile/person");
 
       const response = await api.get("/profile/person");
 
-      console.log("✅ Profile API Response received");
+      // console.log("✅ Profile API Response received");
 
       // Extract the image URL from the correct path based on your API response
       const imageUrl = response.data?.data?.profile?.photo_url;
 
-      console.log("🖼️ Extracted image URL:", imageUrl);
+      // console.log("🖼️ Extracted image URL:", imageUrl);
 
       if (imageUrl) {
         console.log("🔍 Testing if image URL loads...");
@@ -63,7 +63,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
         // Verify the image loads successfully
         const img = new Image();
         img.onload = () => {
-          console.log("✅ Profile image loaded successfully");
+          // console.log("✅ Profile image loaded successfully");
           setProfileImage(imageUrl);
           setProfileImageLoading(false);
         };
@@ -74,7 +74,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
         };
         img.src = imageUrl;
       } else {
-        console.warn("⚠️ No image URL found, using fallback");
+        // console.warn("⚠️ No image URL found, using fallback");
         setProfileImage(Profile);
         setProfileImageLoading(false);
       }

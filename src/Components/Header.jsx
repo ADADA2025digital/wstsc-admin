@@ -10,7 +10,11 @@ import Cookies from "js-cookie";
 import api from "../config/axiosConfig";
 import { useLoading } from "../Context/LoadingContext";
 import { useUserData } from "../hooks/useUserData";
-import { syncUserRole, verifyRoleSync, shouldRefreshFromAPI } from "../utils/roleSync";
+import {
+  syncUserRole,
+  verifyRoleSync,
+  shouldRefreshFromAPI,
+} from "../utils/roleSync";
 
 const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [isEnvelopeDropdownOpen, setEnvelopeDropdownOpen] = useState(false);
@@ -42,7 +46,11 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
   const navigate = useNavigate();
   const { startGlobalLoading, stopGlobalLoading } = useLoading();
-  const { userData, updateUserData, isLoading: userDataLoading } = useUserData();
+  const {
+    userData,
+    updateUserData,
+    isLoading: userDataLoading,
+  } = useUserData();
 
   const createProfilesFromRoles = (profileData) => {
     if (!profileData || !profileData.all_roles) return [];
@@ -56,7 +64,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
       avatar: profileData.photo_url || Profile,
       current: role.role_name === profileData.primary_role?.role_name,
       is_primary: role.is_primary,
-      assigned_at: role.assigned_at
+      assigned_at: role.assigned_at,
     }));
 
     console.log("👥 Created profiles from roles:", profiles);
@@ -68,7 +76,10 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     console.log("Switching to profile:", profile);
     console.log("Current userData:", userData);
     console.log("Available profiles:", availableProfiles);
-    console.log("LocalStorage before switch:", localStorage.getItem("userData"));
+    console.log(
+      "LocalStorage before switch:",
+      localStorage.getItem("userData")
+    );
     console.log("=== END DEBUG ===");
   };
 
@@ -76,13 +87,13 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     // Check if we recently switched roles - if so, DON'T fetch from API
     const roleSwitchComplete = localStorage.getItem("roleSwitchComplete");
     const lastRoleSwitch = localStorage.getItem("lastRoleSwitch");
-    
+
     if (roleSwitchComplete === "true" && lastRoleSwitch) {
       const switchTime = new Date(lastRoleSwitch);
       const currentTime = new Date();
       const timeDiff = currentTime - switchTime;
       const minutesDiff = timeDiff / (1000 * 60);
-      
+
       if (minutesDiff < 5) {
         console.log("🔄 Header: Recently switched roles, skipping API fetch");
         // Just use existing localStorage data
@@ -102,14 +113,14 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     if (userData) {
       console.log("🔄 Header: Using existing user data from localStorage");
       console.log("📊 Current role in userData:", userData.primary_role);
-      
+
       const profilesFromRoles = createProfilesFromRoles(userData);
       setAvailableProfiles(profilesFromRoles);
-      
+
       if (userData.photo_url) {
         setProfileImage(userData.photo_url);
       }
-      
+
       setProfileImageLoading(false);
       return;
     }
@@ -121,7 +132,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
       const response = await api.get("/profile/person");
       const profileData = response.data?.data?.profile;
-      
+
       if (profileData) {
         const userDataFromApi = {
           name: profileData.full_name,
@@ -132,9 +143,9 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
           user_id: profileData.user_id,
           primary_role: profileData.primary_role,
           all_roles: profileData.all_roles,
-          photo_url: profileData.photo_url
+          photo_url: profileData.photo_url,
         };
-        
+
         console.log("🔄 Header: Setting initial data from API");
         updateUserData(userDataFromApi);
 
@@ -159,7 +170,10 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   // Monitor userData changes for debugging
   useEffect(() => {
     if (userData) {
-      console.log("🔄 Header: User data updated - Current role:", userData.primary_role?.display_name);
+      console.log(
+        "🔄 Header: User data updated - Current role:",
+        userData.primary_role?.display_name
+      );
     }
   }, [userData]);
 
@@ -306,10 +320,10 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     if (switchingProfile || profile.current) return;
 
     debugRoleSwitch(profile);
-    
+
     console.log(`🔄 STARTING PROFILE SWITCH: ${profile.role_name}`);
     console.log("📊 Profile data received:", profile);
-    
+
     startGlobalLoading(`Switching to ${profile.role} role...`);
     setSwitchingProfile(true);
 
@@ -322,16 +336,16 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
       setAvailableProfiles(updatedProfiles);
 
       // Step 2: Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Step 3: Synchronize role to localStorage using utility
       console.log("🔄 Syncing role to localStorage...");
       const updatedUserData = await syncUserRole(profile);
-      
+
       // Step 4: Update React state via custom hook - THIS IS CRITICAL
       console.log("🔄 Updating React state with new role...");
       updateUserData(updatedUserData);
-      
+
       // Step 5: Verify the sync worked
       console.log("🔍 Verifying role sync...");
       const verifiedData = verifyRoleSync();
@@ -349,23 +363,25 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
       console.log(`✅ PROFILE SWITCH COMPLETE: ${profile.role}`);
 
-      // Step 8: Wait for UI to update, then reload
+      // Step 8: Wait for UI to update, then navigate to home page
       setTimeout(() => {
-        console.log("🔄 Reloading application...");
-        console.log("🔍 Final localStorage check before reload:", localStorage.getItem("userData"));
+        console.log("🔄 Navigating to home page...");
+        console.log(
+          "🔍 Final localStorage check before navigation:",
+          localStorage.getItem("userData")
+        );
         stopGlobalLoading();
-        
-        // Force a complete reload with cache busting
-        window.location.href = window.location.origin + window.location.pathname + '?t=' + new Date().getTime();
-      }, 2000);
 
+        // Navigate to home page instead of reloading
+        navigate("/", { replace: true });
+      }, 1500);
     } catch (error) {
-      console.error('❌ PROFILE SWITCH FAILED:', error);
+      console.error("❌ PROFILE SWITCH FAILED:", error);
       stopGlobalLoading();
       setSwitchingProfile(false);
-      
+
       // Show error message to user
-      alert('Failed to switch profile. Please try again.');
+      alert("Failed to switch profile. Please try again.");
     }
   };
 
@@ -489,7 +505,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
               </span>
               <span className="fw-bold">{userData.name}</span>
               {userData.primary_role && (
-                <span 
+                <span
                   className="badge bg-light text-dark ms-2"
                   key={userData.primary_role.role_name}
                 >
@@ -547,13 +563,13 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                 }}
               />
               {userData?.primary_role && (
-                <span 
+                <span
                   className="position-absolute bottom-0 end-0 badge bg-success rounded-circle"
                   style={{
                     width: "12px",
                     height: "12px",
                     fontSize: "8px",
-                    border: "2px solid white"
+                    border: "2px solid white",
                   }}
                   title={userData.primary_role.display_name}
                 ></span>
@@ -582,7 +598,8 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                       <i className="bi bi-chevron-left small"></i>
 
                       <span className="d-flex align-items-center text-dark">
-                        Switch Profile <i className="bi bi-arrow-repeat ms-3"></i>
+                        Switch Profile{" "}
+                        <i className="bi bi-arrow-repeat ms-3"></i>
                       </span>
                     </div>
 
@@ -616,7 +633,9 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                                     ? "not-allowed"
                                     : "pointer",
                                 opacity:
-                                  switchingProfile && !profile.current ? 0.6 : 1,
+                                  switchingProfile && !profile.current
+                                    ? 0.6
+                                    : 1,
                               }}
                               onClick={() => handleSwitchProfile(profile)}
                             >
@@ -638,10 +657,11 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                                   {profile.role}
                                 </p>
                                 <small className="text-muted">
-                                  {profile.assigned_at ? 
-                                    new Date(profile.assigned_at).toLocaleDateString() : 
-                                    'Recently assigned'
-                                  }
+                                  {profile.assigned_at
+                                    ? new Date(
+                                        profile.assigned_at
+                                      ).toLocaleDateString()
+                                    : "Recently assigned"}
                                 </small>
                               </div>
                               {profile.current ? (
@@ -761,7 +781,8 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
               <div className="modal-body">
                 <p className="text-muted mb-3">
-                  Choose a profile to switch to. Each profile has different settings and permissions.
+                  Choose a profile to switch to. Each profile has different
+                  settings and permissions.
                 </p>
 
                 <div className="profiles-list">
@@ -807,7 +828,8 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                         </span>
                         {profile.assigned_at && (
                           <small className="text-muted d-block mt-1">
-                            Assigned: {new Date(profile.assigned_at).toLocaleDateString()}
+                            Assigned:{" "}
+                            {new Date(profile.assigned_at).toLocaleDateString()}
                           </small>
                         )}
                       </div>

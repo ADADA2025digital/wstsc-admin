@@ -1,4 +1,3 @@
-// src/Pages/layout.js
 import "../App.css";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import Header from "../Components/Header";

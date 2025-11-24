@@ -32,14 +32,11 @@ import RouteGuard from "./Components/RouteGuard";
 import AuthGuard from "./Components/AuthGuard";
 import AssignPrincipal from "./Pages/Principal/AssignPrincipal";
 import { LoadingProvider } from "./Context/LoadingContext";
-import DebugPanel from "./Components/DebugPanel";
 
 function App() {
   return (
     <LoadingProvider>
       <Router>
-        {/* Debug Panel for development */}
-        {process.env.NODE_ENV === 'development' && <DebugPanel />}
         
         <Routes>
           {/* Public routes */}

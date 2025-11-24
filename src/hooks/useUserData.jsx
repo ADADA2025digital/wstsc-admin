@@ -1,4 +1,3 @@
-// src/hooks/useUserData.js
 import { useState, useEffect } from 'react';
 
 export const useUserData = () => {

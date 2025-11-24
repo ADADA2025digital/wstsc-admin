@@ -1,4 +1,3 @@
-// src/utils/roleSync.js
 export const syncUserRole = (profile) => {
   return new Promise((resolve) => {
     console.log("🔄 syncUserRole: Starting role synchronization for", profile.role_name);

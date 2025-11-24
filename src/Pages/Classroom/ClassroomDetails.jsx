@@ -87,30 +87,6 @@ export default function ClassroomDetails() {
     isAdmin: userRole === "admin"
   });
 
-  // Debug function to check API response structure
-  const debugApiResponse = (response) => {
-    console.log("🔍 DEBUG API RESPONSE STRUCTURE:");
-    console.log("Success:", response.data?.success);
-    console.log("Message:", response.data?.message);
-    console.log("Has data:", !!response.data?.data);
-    
-    if (response.data?.data) {
-      console.log("Data keys:", Object.keys(response.data.data));
-      console.log("Has assignments:", !!response.data.data.assignments);
-      
-      if (response.data.data.assignments) {
-        console.log("Number of assignments:", response.data.data.assignments.length);
-        
-        // Log first assignment structure
-        if (response.data.data.assignments.length > 0) {
-          console.log("First assignment structure:", response.data.data.assignments[0]);
-          console.log("First assignment class_id:", response.data.data.assignments[0].class_id);
-          console.log("First assignment teacher:", response.data.data.assignments[0].teacher);
-        }
-      }
-    }
-  };
-
   // Fetch classroom by ID
   const fetchClassroomById = async (classroomId) => {
     try {
@@ -166,7 +142,7 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Fetch assigned teachers - FIXED VERSION
+  // Fetch assigned teachers - CORRECTED VERSION
   const fetchAssignedTeachers = async (classroomClassId) => {
     try {
       console.log(
@@ -174,31 +150,20 @@ export default function ClassroomDetails() {
         classroomClassId
       );
 
-      const response = await api.get("/classroom-teachers");
+      // Use the correct endpoint from your API response
+      const response = await api.get(`/classroom-teachers/classroom/${classroomClassId}/teachers`);
       
-      // Debug the response structure
-      debugApiResponse(response);
+      console.log("📦 TEACHERS API RESPONSE:", response.data);
 
       if (response.data && response.data.success) {
-        const allAssignments = response.data.data.assignments || [];
-        console.log("📋 ALL ASSIGNMENTS FROM API:", allAssignments);
+        const responseData = response.data.data;
+        console.log("📋 FULL RESPONSE DATA:", responseData);
 
-        // SIMPLIFIED FILTERING - Just check class_id directly
-        const classroomAssignments = allAssignments.filter((assignment) => {
-          const matches = assignment.class_id === classroomClassId;
-          
-          console.log(`🔍 FILTERING - Assignment:`, {
-            assignmentClassId: assignment.class_id,
-            ourClassroomId: classroomClassId,
-            matches: matches,
-          });
+        // Extract teachers from the correct response structure
+        const teachersList = responseData.teachers || [];
+        console.log("🎯 TEACHERS LIST FROM API:", teachersList);
 
-          return matches;
-        });
-
-        console.log("🎯 FILTERED CLASSROOM ASSIGNMENTS:", classroomAssignments);
-
-        const teachers = classroomAssignments.map((assignment) => {
+        const teachers = teachersList.map((assignment) => {
           const teacher = assignment.teacher;
           const teacherData = {
             id: teacher.tid,
@@ -209,7 +174,10 @@ export default function ClassroomDetails() {
             endDate: assignment.end_date,
             isCurrent: assignment.is_current,
             status: assignment.status,
-            // Include additional teacher details for debugging
+            // Include additional teacher details
+            phone: teacher.phone,
+            profilePicture: teacher.photo_url,
+            position: teacher.position_display_name,
             rawTeacherData: teacher,
             rawAssignmentData: assignment
           };
@@ -219,6 +187,11 @@ export default function ClassroomDetails() {
 
         console.log("✅ FINAL ASSIGNED TEACHERS LIST:", teachers);
         setAssignedTeachers(teachers);
+        
+        // Also update the classroom data if needed
+        if (responseData.classroom) {
+          console.log("🏫 UPDATED CLASSROOM DATA FROM TEACHERS API:", responseData.classroom);
+        }
       } else {
         console.error(
           "❌ TEACHERS API RESPONSE NOT SUCCESSFUL:",
@@ -229,59 +202,100 @@ export default function ClassroomDetails() {
     } catch (error) {
       console.error("💥 ERROR fetching assigned teachers:", error);
       console.error("Error response data:", error.response?.data);
+      showMessage(
+        "danger",
+        "Failed to load teachers: " +
+          (error.response?.data?.message || error.message)
+      );
       setAssignedTeachers([]);
     }
   };
 
-  // Fetch class students
+  // Fetch class students using student-enrollment endpoint
   const fetchClassStudents = async (classId) => {
     try {
       setLoadingStudents(true);
       console.log("👨‍🎓 START: Fetching students for class:", classId);
+      console.log("🌐 Using endpoint: /student-enrollment");
 
-      const response = await api.get(`/class-students/class/${classId}`);
-      console.log("📦 CLASS STUDENTS API RESPONSE:", response.data);
+      const response = await api.get("/student-enrollment");
+      console.log("📦 STUDENT ENROLLMENT API RESPONSE:", response.data);
 
       if (response.data && response.data.success) {
-        const studentsData = response.data.data.students || [];
-        console.log("🎯 RAW STUDENTS DATA:", studentsData);
+        const allEnrollments = response.data.data.enrollments || [];
+        console.log("📋 ALL ENROLLMENTS:", allEnrollments);
 
-        // Map the student data to a more usable format
-        const mappedStudents = studentsData.map((studentData, index) => {
-          const student = studentData.student || {};
+        // Filter enrollments for the current class
+        const classEnrollments = allEnrollments.filter(enrollment => 
+          enrollment.class_id === classId || enrollment.classroom_id === classId
+        );
+        
+        console.log("🎯 FILTERED ENROLLMENTS FOR THIS CLASS:", classEnrollments);
+
+        // Map the enrollment data to a more usable format
+        const mappedStudents = classEnrollments.map((enrollment, index) => {
+          const student = enrollment.student || {};
+          const person = student.person || {};
+          
           return {
-            id: studentData.csid || student.enrollment_id || index,
-            enrollmentId: student.enrollment_id,
-            csid: studentData.csid,
-            studentId: studentData.student_id,
-            firstName: student.first_given_name,
-            familyName: student.family_name,
-            preferredName: student.preferred_first_name,
-            fullName: `${student.first_given_name || ''} ${student.family_name || ''}`.trim(),
-            gender: student.gender,
-            dateOfBirth: student.date_of_birth,
-            enrollmentYear: studentData.enr_year,
-            isActive: studentData.is_active,
-            rawData: studentData
+            id: enrollment.se_id || enrollment.enrollment_id || index,
+            enrollmentId: enrollment.enrollment_id,
+            seId: enrollment.se_id,
+            studentId: enrollment.student_id,
+            classId: enrollment.class_id,
+            classroomId: enrollment.classroom_id,
+            
+            // Student personal details
+            firstName: person.first_given_name || student.first_name,
+            familyName: person.family_name || student.last_name,
+            preferredName: person.preferred_name || student.preferred_name,
+            fullName: `${person.first_given_name || student.first_name || ''} ${person.family_name || student.last_name || ''}`.trim(),
+            
+            // Contact information
+            email: person.email || student.email,
+            phone: person.phone || student.phone,
+            
+            // Demographic information
+            gender: person.gender || student.gender,
+            dateOfBirth: person.date_of_birth || student.date_of_birth,
+            
+            // Enrollment details
+            enrollmentYear: enrollment.enrollment_year,
+            enrollmentDate: enrollment.enrollment_date,
+            isActive: enrollment.is_active,
+            status: enrollment.status,
+            
+            // Additional details
+            gradeLevel: enrollment.grade_level,
+            section: enrollment.section,
+            
+            rawData: enrollment,
+            rawStudentData: student,
+            rawPersonData: person
           };
         });
 
-        console.log("✅ MAPPED STUDENTS:", mappedStudents);
+        console.log("✅ MAPPED STUDENTS FOR CLASS:", mappedStudents);
         setStudents(mappedStudents);
       } else {
-        console.error("❌ CLASS STUDENTS API FAILED:", response.data);
+        console.error("❌ STUDENT ENROLLMENT API FAILED:", response.data);
         setStudents([]);
       }
     } catch (error) {
-      console.error("💥 ERROR fetching class students:", error);
+      console.error("💥 ERROR fetching student enrollments:", error);
       console.error("Error response:", error.response?.data);
+      showMessage(
+        "danger",
+        "Failed to load students: " +
+          (error.response?.data?.message || error.message)
+      );
       setStudents([]);
     } finally {
       setLoadingStudents(false);
     }
   };
 
-  // Fetch available teachers - ENHANCED DEBUGGING
+  // Fetch available teachers
   const fetchAvailableTeachers = async () => {
     try {
       setLoadingTeachers(true);
@@ -305,8 +319,8 @@ export default function ClassroomDetails() {
         teachers.forEach((teacher, index) => {
           console.log(`👤 Teacher ${index + 1}:`, {
             uid: teacher.uid,
-            user_id: teacher.user_id, // Check if this exists
-            tid: teacher.tid, // Check if teacher ID exists here
+            user_id: teacher.user_id,
+            tid: teacher.tid,
             name: teacher.name,
             email: teacher.email,
             phone: teacher.phone,
@@ -325,7 +339,7 @@ export default function ClassroomDetails() {
           
           return {
             user_id: teacherId,
-            tid: teacher.tid, // Include tid separately
+            tid: teacher.tid,
             name: teacher.name,
             email: teacher.email,
             phone: teacher.phone,
@@ -370,7 +384,7 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Toggle classroom status using PATCH method - SIMPLIFIED AND WORKING
+  // Toggle classroom status using PATCH method
   const toggleClassroomStatus = async () => {
     if (!classroom?.id || !canEdit) {
       console.log("🚫 CANNOT TOGGLE: Missing classroom ID or edit permissions", {
@@ -395,35 +409,18 @@ export default function ClassroomDetails() {
     
     try {
       console.log("🚀 SENDING PATCH REQUEST to:", `/classrooms/${classroom.id}/toggle-status`);
-      console.log("📦 REQUEST DETAILS:", {
-        method: 'PATCH',
-        url: `/classrooms/${classroom.id}/toggle-status`,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer [REDACTED]'
-        },
-        data: {} // Empty object as per your working API example
-      });
 
-      const startTime = Date.now();
-      
-      // Use the exact same PATCH call that works in your API example
       const response = await api.put(
         `/classrooms/${classroom.id}/toggle-status`,
-        {} // Empty object - no need for data in body
+        {}
       );
       
-      const endTime = Date.now();
-      
-      console.log("⏱️ API RESPONSE TIME:", `${endTime - startTime}ms`);
-      console.log("📦 TOGGLE STATUS API RESPONSE:", response);
-      console.log("🔢 RESPONSE STATUS:", response.status);
-      console.log("💾 RESPONSE DATA:", response.data);
+      console.log("📦 TOGGLE STATUS API RESPONSE:", response.data);
 
       if (response.data && response.data.success) {
         console.log("✅ TOGGLE STATUS SUCCESSFUL");
         
-        // Extract data from response exactly as in your working example
+        // Extract data from response
         const updatedClassroom = response.data.data.classroom;
         const previousStatus = response.data.data.previous_status;
         const newStatus = response.data.data.new_status;
@@ -456,74 +453,35 @@ export default function ClassroomDetails() {
         
       } else {
         console.error("❌ TOGGLE STATUS API FAILED - Response not successful");
-        console.error("Response success flag:", response.data?.success);
-        console.error("Response message:", response.data?.message);
-        console.error("Response data structure:", response.data);
-        
         throw new Error(response.data?.message || "API response indicated failure");
       }
       
     } catch (error) {
       console.error("💥 TOGGLE STATUS FAILED - ERROR CAUGHT:");
       console.error("🚨 ERROR OBJECT:", error);
-      console.error("📛 ERROR NAME:", error.name);
-      console.error("📝 ERROR MESSAGE:", error.message);
-      console.error("🔗 ERROR CODE:", error.code);
       
-      // Detailed error analysis
-      if (error.response) {
-        console.error("📋 SERVER RESPONSE ERROR DETAILS:");
-        console.error("  Status:", error.response.status);
-        console.error("  Status Text:", error.response.statusText);
-        console.error("  Headers:", error.response.headers);
-        console.error("  Data:", error.response.data);
-        
-        if (error.response.data && error.response.data.errors) {
-          console.error("  Validation Errors:", error.response.data.errors);
-        }
-      } else if (error.request) {
-        console.error("🌐 NETWORK ERROR - No response received:");
-        console.error("  Request:", error.request);
-        console.error("  This usually indicates:");
-        console.error("  - CORS issues");
-        console.error("  - Network connectivity problems");
-        console.error("  - Server not responding");
-      } else {
-        console.error("⚡ SETUP ERROR - Request configuration issue:");
-        console.error("  Message:", error.message);
-      }
-      
-      // Show appropriate error message to user
       let errorMessage = "Failed to update classroom status";
       
       if (error.response?.status === 401) {
         errorMessage = "Authentication failed. Please log in again.";
-        console.error("🔐 AUTHENTICATION ERROR - Token may be invalid");
       } else if (error.response?.status === 403) {
         errorMessage = "You don't have permission to update classroom status.";
-        console.error("🚫 AUTHORIZATION ERROR - User lacks permission");
       } else if (error.response?.status === 404) {
         errorMessage = "Classroom not found. It may have been deleted.";
-        console.error("🔍 NOT FOUND ERROR - Classroom ID invalid");
       } else if (error.response?.status === 405) {
         errorMessage = "PATCH method not allowed for this endpoint.";
-        console.error("🔄 METHOD NOT ALLOWED - PATCH not supported");
       } else if (error.code === 'ERR_NETWORK') {
         errorMessage = "Network error. Please check your connection.";
-        console.error("📡 NETWORK CONNECTION ERROR");
       } else if (error.code === 'ECONNABORTED') {
         errorMessage = "Request timeout. Please try again.";
-        console.error("⏰ REQUEST TIMEOUT");
       } else {
         errorMessage = error.response?.data?.message || error.message || "Failed to update classroom status";
       }
       
-      console.error("📝 FINAL ERROR MESSAGE TO USER:", errorMessage);
       showMessage("danger", errorMessage);
       
     } finally {
       setUpdatingStatus(false);
-      console.log("⏳ Updating status state set to false");
       console.log("🔚 ========== TOGGLE CLASSROOM STATUS DEBUG END ==========");
     }
   };
@@ -600,7 +558,6 @@ export default function ClassroomDetails() {
 
     setEditingClassroom(true);
     try {
-      // Correct payload structure based on your API
       const payload = {
         class_name: editedClassName.trim(),
       };
@@ -683,7 +640,7 @@ export default function ClassroomDetails() {
     setNotes("");
   };
 
-  // Assign teacher - ENHANCED DEBUGGING VERSION
+  // Assign teacher
   const handleAssignTeacher = async () => {
     if (!canEdit || !selectedTeacher || !assignmentDate || !classroom?.classId)
       return;
@@ -714,7 +671,7 @@ export default function ClassroomDetails() {
       
       const payload = {
         class_id: classroom.classId,
-        teacher_id: teacherIdToUse, // Use tid if available
+        teacher_id: teacherIdToUse,
         crtid_date: assignmentDate,
         end_date: endDate || null,
         notes: notes || "",
@@ -723,7 +680,6 @@ export default function ClassroomDetails() {
       console.log("🚀 SENDING POST REQUEST to /classroom-teachers");
       console.log("📦 CORRECTED PAYLOAD:", JSON.stringify(payload, null, 2));
       console.log("🔑 Teacher ID being used:", teacherIdToUse);
-      console.log("🌐 Full URL: https://wstsc.org.au/backend/api/classroom-teachers");
       
       const response = await api.post("/classroom-teachers", payload);
       console.log("✅ ASSIGN TEACHER API SUCCESS RESPONSE:", response.data);
@@ -742,32 +698,6 @@ export default function ClassroomDetails() {
     } catch (error) {
       console.error("💥 ERROR assigning teacher:", error);
       
-      // Detailed error analysis
-      console.error("🚨 ERROR DETAILS:");
-      console.error("- Error name:", error.name);
-      console.error("- Error code:", error.code);
-      console.error("- Error message:", error.message);
-      
-      if (error.response) {
-        console.error("📋 ERROR RESPONSE DATA:", error.response.data);
-        console.error("🔢 ERROR RESPONSE STATUS:", error.response.status);
-        console.error("📋 ERROR RESPONSE HEADERS:", error.response.headers);
-        
-        if (error.response.data && error.response.data.errors) {
-          console.error("❌ VALIDATION ERRORS:", error.response.data.errors);
-          
-          // Log each validation error in detail
-          Object.entries(error.response.data.errors).forEach(([field, errors]) => {
-            console.error(`   ${field}:`, errors);
-          });
-        }
-      } else if (error.request) {
-        console.error("🌐 NETWORK ERROR - No response received:", error.request);
-      } else {
-        console.error("⚡ SETUP ERROR:", error.message);
-      }
-      
-      // More detailed error handling
       if (error.response?.data?.errors) {
         const errorMessages = Object.values(error.response.data.errors).flat();
         const fullErrorMessage = errorMessages.join(", ");
@@ -808,7 +738,7 @@ export default function ClassroomDetails() {
     setRemovingTeacher(false);
   };
 
-  // Remove teacher assignment - CORRECTED VERSION
+  // Remove teacher assignment
   const handleRemoveTeacher = async () => {
     if (!canEdit || !teacherToRemove) return;
 

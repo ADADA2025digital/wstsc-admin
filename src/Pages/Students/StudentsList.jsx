@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
 import Loader from "../../Pages/Loader";
+import { useUserData } from "../../hooks/useUserData";
 
 const StudentsList = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(new Date());
@@ -23,41 +24,17 @@ const StudentsList = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-  const [userData, setUserData] = useState(null);
+  const { userData } = useUserData();
   const navigate = useNavigate();
 
-  // Get user data from localStorage
-  useEffect(() => {
-    const userDataString = localStorage.getItem("userData");
-    if (userDataString) {
-      try {
-        const userData = JSON.parse(userDataString);
-        setUserData(userData);
-        
-        // Get role from primary_role
-        if (userData.primary_role && userData.primary_role.role_name) {
-          setUserRole(userData.primary_role.role_name);
-        } else {
-          console.warn("No primary role found in user data");
-          setUserRole("parent"); // Default to parent if no role found
-        }
-      } catch (error) {
-        console.error("Error parsing user data from localStorage:", error);
-        setUserRole("parent"); // Default to parent if error
-      }
-    } else {
-      console.warn("No user data found in localStorage");
-      setUserRole("parent"); // Default to parent if no user data
-    }
-  }, []);
+  const currentRole = userData?.primary_role?.role_name;
 
   // Format date from API response
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("en-AU"); // Australian date format
+      return date.toLocaleDateString("en-AU");
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Invalid Date";
@@ -67,7 +44,6 @@ const StudentsList = () => {
   // Get enrollment year from mainstream_enrollment_year
   const getEnrollmentYear = (enrollmentYear) => {
     if (!enrollmentYear) return "N/A";
-    // Extract year from string like "Year 8"
     const yearMatch = enrollmentYear.match(/\d+/);
     return yearMatch ? yearMatch[0] : enrollmentYear;
   };
@@ -76,12 +52,10 @@ const StudentsList = () => {
   const extractParentName = (student) => {
     if (!student) return "N/A";
 
-    // Method 1: Direct parent name field
     if (student.parent_name) {
       return student.parent_name;
     }
 
-    // Method 2: Parent carer object
     if (student.parent_carer_1) {
       const parent = student.parent_carer_1;
       if (typeof parent === 'string') {
@@ -90,11 +64,9 @@ const StudentsList = () => {
         if (parent.name) return parent.name;
         if (parent.full_name) return parent.full_name;
         if (parent.first_name && parent.last_name) return `${parent.first_name} ${parent.last_name}`;
-        if (parent.firstName && parent.lastName) return `${parent.firstName} ${parent.lastName}`;
       }
     }
 
-    // Method 3: Approved by field
     if (student.approved_by) {
       const approvedBy = student.approved_by;
       if (typeof approvedBy === 'string') {
@@ -106,7 +78,6 @@ const StudentsList = () => {
       }
     }
 
-    // Method 4: Parents array
     if (student.parents && Array.isArray(student.parents) && student.parents.length > 0) {
       const primaryParent = student.parents[0];
       if (primaryParent.name) return primaryParent.name;
@@ -114,7 +85,6 @@ const StudentsList = () => {
       if (primaryParent.first_name && primaryParent.last_name) return `${primaryParent.first_name} ${primaryParent.last_name}`;
     }
 
-    // Method 5: Primary parent field
     if (student.primary_parent) {
       const primaryParent = student.primary_parent;
       if (typeof primaryParent === 'string') {
@@ -126,7 +96,6 @@ const StudentsList = () => {
       }
     }
 
-    // Method 6: Emergency contact as fallback
     if (student.emergency_contact) {
       const emergencyContact = student.emergency_contact;
       if (typeof emergencyContact === 'string') {
@@ -147,42 +116,18 @@ const StudentsList = () => {
       setLoading(true);
       setError(null);
 
+      console.log(`🔄 Fetching students for role: ${currentRole}`);
       let response;
-      
-      if (userRole === "admin") {
+      let studentData = [];
+
+      if (currentRole === "admin") {
         // Admin: Get all students
         response = await api.get("/students");
-        console.log("Admin students response:", response.data);
+        console.log("📊 Admin API response:", response.data);
         
         if (response.data.success && response.data.data.students) {
-          // Debug: Check the structure of the first student to find parent fields
-          if (response.data.data.students.length > 0) {
-            const firstStudent = response.data.data.students[0];
-            console.log("=== DEBUG FIRST STUDENT ===");
-            console.log("Student ID:", firstStudent.studid);
-            console.log("Student Name:", firstStudent.student_name);
-            
-            // Find all keys that might contain parent info
-            const parentRelatedKeys = Object.keys(firstStudent).filter(key => 
-              key.toLowerCase().includes('parent') || 
-              key.toLowerCase().includes('carer') ||
-              key.toLowerCase().includes('approved') ||
-              key.toLowerCase().includes('emergency')
-            );
-            
-            console.log("Parent-related keys:", parentRelatedKeys);
-            
-            // Log the values of parent-related keys
-            parentRelatedKeys.forEach(key => {
-              console.log(`Key "${key}":`, firstStudent[key]);
-            });
-            console.log("=== END DEBUG ===");
-          }
-          
-          const formattedStudents = response.data.data.students.map((student, index) => {
+          studentData = response.data.data.students.map((student, index) => {
             const parentName = extractParentName(student);
-            
-            console.log(`Student ${student.studid} - Parent Name:`, parentName);
             
             return {
               id: student.studid,
@@ -198,15 +143,51 @@ const StudentsList = () => {
               raw_data: student
             };
           });
-          setStudents(formattedStudents);
         }
-      } else {
+
+      } else if (currentRole === "teacher") {
+        // Teacher: Get students from classrooms
+        const teacherId = userData?.user_id;
+        console.log(`👨‍🏫 Fetching teacher data for ID: ${teacherId}`);
+        
+        response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
+        console.log("📊 Teacher API response:", response.data);
+        
+        if (response.data.success && response.data.data) {
+          const teacherData = response.data.data;
+          
+          // Extract students from classrooms
+          if (teacherData.classrooms && Array.isArray(teacherData.classrooms)) {
+            teacherData.classrooms.forEach((classroom) => {
+              if (classroom.students && Array.isArray(classroom.students)) {
+                classroom.students.forEach((student) => {
+                  const studentObj = {
+                    id: student.student_id || student.id,
+                    student_id: student.student_id || student.id,
+                    full_name: student.student_name || student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown Student',
+                    preferred_name: student.preferred_name || student.preferred_first_name || "",
+                    gender: student.gender?.charAt(0).toUpperCase() + student.gender?.slice(1) || "Not specified",
+                    date_of_birth: formatDate(student.date_of_birth),
+                    enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
+                    status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
+                    classroom: classroom.classroom_name || classroom.name || "Not assigned",
+                    parent_name: extractParentName(student),
+                    raw_data: student
+                  };
+                  studentData.push(studentObj);
+                });
+              }
+            });
+          }
+        }
+
+      } else if (currentRole === "parent") {
         // Parent: Get their children
         response = await api.get("/my-enrollments");
-        console.log("Parent enrollments response:", response.data);
+        console.log("📊 Parent API response:", response.data);
         
         if (response.data.success && response.data.data.enrollments) {
-          const formattedStudents = response.data.data.enrollments.map((enrollment, index) => {
+          studentData = response.data.data.enrollments.map((enrollment, index) => {
             const student = enrollment.student;
             const parent = enrollment.parent_carer_1;
             
@@ -232,13 +213,15 @@ const StudentsList = () => {
               }
             };
           });
-          setStudents(formattedStudents);
         }
       }
       
+      console.log(`✅ Loaded ${studentData.length} students for ${currentRole}`);
+      setStudents(studentData);
       setLastRefreshTime(new Date());
+      
     } catch (err) {
-      console.error("Error fetching students:", err);
+      console.error("❌ Error fetching students:", err);
       setError(
         err.response?.data?.message || 
         err.message || 
@@ -251,15 +234,23 @@ const StudentsList = () => {
 
   // Initial data fetch
   useEffect(() => {
-    if (userRole) {
+    if (currentRole) {
       fetchStudents();
     }
-  }, [userRole]);
+  }, [currentRole]);
 
-  // DataTable initialization
+  // Refresh when role changes
   useEffect(() => {
-    if (students.length > 0 && userRole === "admin") {
-      console.log("Initializing DataTable with students:", students);
+    if (currentRole) {
+      console.log("🔄 Role changed, refreshing students");
+      fetchStudents();
+    }
+  }, [currentRole]);
+
+  // DataTable initialization for admin
+  useEffect(() => {
+    if (students.length > 0 && currentRole === "admin") {
+      console.log("Initializing DataTable for admin with students:", students);
 
       // Destroy existing DataTable if it exists
       if ($.fn.DataTable.isDataTable("#studentTable")) {
@@ -383,7 +374,7 @@ const StudentsList = () => {
         }
       };
     }
-  }, [students, navigate, userRole]);
+  }, [students, navigate, currentRole]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -420,15 +411,55 @@ const StudentsList = () => {
     }
   };
 
-  // Parent/Teacher View with Cards
-  const ParentTeacherView = () => (
+  // Get role-specific title and description
+  const getRoleSpecificContent = () => {
+    switch (currentRole) {
+      case "admin":
+        return {
+          title: "Students Management",
+          description: "Manage and view all student information",
+          icon: "bi-people",
+          emptyTitle: "No Students Found",
+          emptyDescription: "No students found in the system."
+        };
+      case "teacher":
+        return {
+          title: "My Students",
+          description: "View students from your classrooms",
+          icon: "bi-person-badge",
+          emptyTitle: "No Students Found",
+          emptyDescription: "No students are enrolled in your classrooms yet."
+        };
+      case "parent":
+        return {
+          title: "My Children",
+          description: "View your children's information",
+          icon: "bi-people",
+          emptyTitle: "No Children Found",
+          emptyDescription: "No approved enrollment found for your account."
+        };
+      default:
+        return {
+          title: "Students",
+          description: "Manage and view student information",
+          icon: "bi-people",
+          emptyTitle: "No Students Found",
+          emptyDescription: "No students found."
+        };
+    }
+  };
+
+  const roleContent = getRoleSpecificContent();
+
+  // Card View for all roles (used for teacher and parent, optional for admin)
+  const CardView = () => (
     <div className="container-fluid px-4 py-3">
       {/* Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="H4-heading fw-bold text-dark">Students</h4>
+          <h4 className="H4-heading fw-bold text-dark">{roleContent.title}</h4>
           <p className="text-muted mb-0">
-            Manage and view student information
+            {roleContent.description}
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
@@ -460,14 +491,18 @@ const StudentsList = () => {
           {/* Welcome Section */}
           <div className="text-center mb-5">
             <div className="mb-3">
-              <i className="bi bi-people display-4 text-primary opacity-75"></i>
+              <i className={`bi ${roleContent.icon} display-4 text-primary opacity-75`}></i>
             </div>
             <h5 className="fw-semibold text-dark mb-2">
-              Your Children's Information ({students.length})
+              {roleContent.title} ({students.length})
             </h5>
             <p className="text-muted mb-0">
-              You can view your children's information here. Contact the
-              school administration for any updates.
+              {currentRole === "parent" 
+                ? "You can view your children's information here. Contact the school administration for any updates."
+                : currentRole === "teacher"
+                ? "View and manage students enrolled in your classrooms."
+                : "Manage all student information in the system."
+              }
             </p>
           </div>
 
@@ -566,16 +601,18 @@ const StudentsList = () => {
                             </Col>
                           </Row>
 
-                          {/* Parent Information */}
-                          <div className="mb-4">
-                            <div className="d-flex align-items-center mb-2">
-                              <i className="bi bi-person-badge text-primary me-2 fs-14px"></i>
-                              <small className="text-muted">Parent</small>
+                          {/* Parent Information (show for admin and teacher) */}
+                          {(currentRole === "admin" || currentRole === "teacher") && (
+                            <div className="mb-4">
+                              <div className="d-flex align-items-center mb-2">
+                                <i className="bi bi-person-badge text-primary me-2 fs-14px"></i>
+                                <small className="text-muted">Parent</small>
+                              </div>
+                              <span className="fw-semibold text-dark d-block">
+                                {parentName}
+                              </span>
                             </div>
-                            <span className="fw-semibold text-dark d-block">
-                              {parentName}
-                            </span>
-                          </div>
+                          )}
 
                           {/* Action Button */}
                           <div className="d-flex justify-content-end">
@@ -609,10 +646,10 @@ const StudentsList = () => {
                 <i className="bi bi-person-x display-4 text-muted opacity-50"></i>
               </div>
               <h6 className="fw-semibold text-dark mb-2">
-                No Children Found
+                {roleContent.emptyTitle}
               </h6>
               <p className="text-muted mb-4">
-                No approved enrollment found for your account.
+                {roleContent.emptyDescription}
               </p>
               <Button
                 variant="outline-primary"
@@ -629,14 +666,14 @@ const StudentsList = () => {
     </div>
   );
 
-  // Loading state - UPDATED TO USE CUSTOM LOADER
+  // Loading state
   if (loading) {
     return <Loader />;
   }
 
-  // Show parent/teacher view for non-admin users
-  if (userRole !== "admin") {
-    return <ParentTeacherView />;
+  // Show card view for teacher and parent roles
+  if (currentRole === "teacher" || currentRole === "parent") {
+    return <CardView />;
   }
 
   // Admin view with DataTable
@@ -644,7 +681,7 @@ const StudentsList = () => {
     <div className="container-fluid px-4 py-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="H4-heading fw-bold">Students Management</h4>
+          <h4 className="H4-heading fw-bold">{roleContent.title}</h4>
           {userData && (
             <p className="text-muted mb-0">
               Welcome, {userData.name} ({userData.primary_role?.display_name})
@@ -688,7 +725,7 @@ const StudentsList = () => {
           {students.length === 0 ? (
             <div className="text-center py-4">
               <i className="bi bi-people display-4 text-muted mb-3"></i>
-              <p className="text-muted">No students found.</p>
+              <p className="text-muted">{roleContent.emptyDescription}</p>
               <Button onClick={handleRefresh} variant="outline-primary">
                 <i className="bi bi-arrow-clockwise me-2"></i>
                 Refresh

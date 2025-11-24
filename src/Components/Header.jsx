@@ -503,15 +503,9 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
               <span className="fw-light me-2">
                 Welcome to Western Sydney Tamil Study Center,
               </span>
-              <span className="fw-bold">{userData.name}</span>
-              {userData.primary_role && (
-                <span
-                  className="badge bg-light text-dark ms-2"
-                  key={userData.primary_role.role_name}
-                >
-                  {userData.primary_role.display_name}
-                </span>
-              )}
+              <span className="fw-bold" key={userData.primary_role.role_name}>
+                {userData.name} - {userData.primary_role.display_name}
+              </span>
             </div>
           )}
 

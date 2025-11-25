@@ -7,11 +7,11 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState([]); // New state for selected roles
   const [formData, setFormData] = useState({
     person_first_name: "",
     person_last_name: "",
     person_email: "",
-    role_id: "",
     schcode: "SCH01"
   });
 
@@ -29,9 +29,9 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         person_first_name: "",
         person_last_name: "",
         person_email: "",
-        role_id: "",
         schcode: "SCH01"
       });
+      setSelectedRoles([]); // Reset selected roles
       setErrors({});
       setSuccess("");
     }
@@ -54,6 +54,18 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRoleChange = (roleId) => {
+    setSelectedRoles(prev => {
+      if (prev.includes(roleId)) {
+        // Remove role if already selected
+        return prev.filter(id => id !== roleId);
+      } else {
+        // Add role if not selected
+        return [...prev, roleId];
+      }
+    });
   };
 
   const sendSetupEmail = async (personData) => {
@@ -96,9 +108,9 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
     setErrors({});
     setSuccess("");
 
-    // Validation
-    if (!formData.person_first_name || !formData.person_last_name || !formData.person_email || !formData.role_id) {
-      setErrors({ general: "All fields are required" });
+    // Validation - check if at least one role is selected
+    if (!formData.person_first_name || !formData.person_last_name || !formData.person_email || selectedRoles.length === 0) {
+      setErrors({ general: "All fields are required and at least one role must be selected" });
       setLoading(false);
       return;
     }
@@ -115,7 +127,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         person_first_name: formData.person_first_name.trim(),
         person_last_name: formData.person_last_name.trim(),
         person_email: formData.person_email.toLowerCase().trim(),
-        role_id: [parseInt(formData.role_id)],
+        role_id: selectedRoles.map(id => parseInt(id)), // Send array of selected role IDs
         schcode: formData.schcode
       };
 
@@ -277,25 +289,52 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
                   />
                 </div>
 
-                <div className="col-md-4 mb-3">
+                <div className="col-12 mb-3">
                   <label className="form-label">
-                    Role <span className="text-danger">*</span>
+                    Roles <span className="text-danger">*</span>
+                    <small className="text-muted ms-2">(Select one or more roles)</small>
                   </label>
-                  <select
-                    name="role_id"
-                    className="form-select"
-                    value={formData.role_id}
-                    onChange={handleInputChange}
-                    required
-                    disabled={loading}
-                  >
-                    <option value="">Select a role</option>
-                    {roles.map((role) => (
-                      <option key={role.roleid} value={role.roleid}>
-                        {role.display_name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="roles-checkbox-container" style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "0.375rem", padding: "1rem" }}>
+                    {loading ? (
+                      <div className="text-center">
+                        <div className="spinner-border spinner-border-sm" role="status">
+                          <span className="visually-hidden">Loading roles...</span>
+                        </div>
+                        <span className="ms-2">Loading roles...</span>
+                      </div>
+                    ) : roles.length > 0 ? (
+                      <div className="row">
+                        {roles.map((role) => (
+                          <div key={role.roleid} className="col-md-6 mb-2">
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id={`role-${role.roleid}`}
+                                value={role.roleid}
+                                checked={selectedRoles.includes(role.roleid)}
+                                onChange={() => handleRoleChange(role.roleid)}
+                                disabled={loading}
+                              />
+                              <label className="form-check-label" htmlFor={`role-${role.roleid}`}>
+                                {role.display_name}
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-muted text-center">No roles available</div>
+                    )}
+                  </div>
+                  {selectedRoles.length > 0 && (
+                    <div className="mt-2">
+                      <small className="text-success">
+                        <i className="bi bi-check-circle me-1"></i>
+                        {selectedRoles.length} role(s) selected
+                      </small>
+                    </div>
+                  )}
                 </div>
 
                 <div className="col-12 mt-3">

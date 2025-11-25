@@ -62,18 +62,30 @@ export default function ClassroomsList() {
     try {
       console.log("Fetching teacher data for user ID:", userId);
       
-      // Try multiple possible endpoints to get teacher ID
-      let teacherId = null;
+      // Option 1: Get teacher ID from user profile (most reliable)
+      try {
+        const profileResponse = await api.get("/profile/person");
+        console.log("Profile response:", profileResponse.data);
+        
+        // Extract teacher ID from role_specific_records
+        const teacherId = profileResponse.data.data?.profile?.role_specific_records?.teacher?.tid;
+        
+        if (teacherId) {
+          console.log("Found teacher ID via profile:", teacherId);
+          return teacherId;
+        }
+      } catch (error) {
+        console.warn("Failed to get teacher ID via profile endpoint:", error);
+      }
       
-      // Option 1: Try the teachers/user/{userId} endpoint
+      // Option 2: Try the teachers/user/{userId} endpoint as fallback
       try {
         const teacherResponse = await api.get(`/teachers/user/${userId}`);
         console.log("Teacher response:", teacherResponse.data);
         
-        // Try different possible paths for teacher ID
-        teacherId = teacherResponse.data.data?.tid || 
-                   teacherResponse.data.data?.teacher_id ||
-                   teacherResponse.data.data?.id;
+        const teacherId = teacherResponse.data.data?.tid || 
+                         teacherResponse.data.data?.teacher_id ||
+                         teacherResponse.data.data?.id;
         
         if (teacherId) {
           console.log("Found teacher ID via /teachers/user endpoint:", teacherId);
@@ -83,40 +95,23 @@ export default function ClassroomsList() {
         console.warn("Failed to get teacher ID via /teachers/user endpoint:", error);
       }
       
-      // Option 2: Try to get teacher profile directly
+      // Option 3: Try to get from teachers list
       try {
-        const profileResponse = await api.get(`/teachers`);
-        console.log("Teachers list response:", profileResponse.data);
+        const teachersResponse = await api.get("/teachers");
+        console.log("Teachers list response:", teachersResponse.data);
         
-        // Look for the teacher record that matches the current user
-        const teachers = profileResponse.data.data?.teachers || profileResponse.data.data || [];
+        const teachers = teachersResponse.data.data?.teachers || teachersResponse.data.data || [];
         const currentTeacher = teachers.find(teacher => 
           teacher.user_id === userId || teacher.uid === userId
         );
         
         if (currentTeacher) {
-          teacherId = currentTeacher.tid || currentTeacher.teacher_id || currentTeacher.id;
+          const teacherId = currentTeacher.tid || currentTeacher.teacher_id || currentTeacher.id;
           console.log("Found teacher ID via /teachers endpoint:", teacherId);
           return teacherId;
         }
       } catch (error) {
         console.warn("Failed to get teacher ID via /teachers endpoint:", error);
-      }
-      
-      // Option 3: Try user profile to see if teacher ID is there
-      try {
-        const userResponse = await api.get(`/users/${userId}`);
-        console.log("User profile response:", userResponse.data);
-        
-        teacherId = userResponse.data.data?.teacher_id || 
-                   userResponse.data.data?.tid;
-        
-        if (teacherId) {
-          console.log("Found teacher ID via user profile:", teacherId);
-          return teacherId;
-        }
-      } catch (error) {
-        console.warn("Failed to get teacher ID via user profile:", error);
       }
       
       console.warn("Could not find teacher ID for user:", userId);
@@ -141,7 +136,6 @@ export default function ClassroomsList() {
         response = await api.get("/classrooms");
         const classroomsData = await Promise.all(
           response.data.data.classrooms.map(async (cls) => {
-            // Fetch accurate student count for each classroom
             let studentCount = cls.current_students_count || 0;
             
             try {
@@ -149,7 +143,6 @@ export default function ClassroomsList() {
               studentCount = accurateCount;
             } catch (error) {
               console.warn(`Could not fetch accurate student count for class ${cls.class_id}:`, error);
-              // Use the existing count as fallback
             }
             
             return {
@@ -170,23 +163,29 @@ export default function ClassroomsList() {
         // Teacher: Get teacher-specific classrooms
         console.log("Fetching teacher classrooms for user ID:", userId);
         
-        // First, get the teacher ID
+        // Get the teacher ID from profile
         const teacherId = await getTeacherId();
         
         if (teacherId) {
           console.log("Using teacher ID:", teacherId);
           
           try {
-            // Use the classroom-teachers endpoint with the correct teacher ID
+            // Try the classroom-teachers endpoint with teacher ID
             response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
             console.log("Teacher classrooms response:", response.data);
             
-            // Map the response data and fetch student counts
+            // Handle different response structures
+            let classroomsArray = [];
+            if (response.data.data?.classrooms) {
+              classroomsArray = response.data.data.classrooms;
+            } else if (response.data.data) {
+              classroomsArray = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+            }
+            
             const classroomsData = await Promise.all(
-              response.data.data.classrooms.map(async (item) => {
+              classroomsArray.map(async (item) => {
                 const classroom = item.classroom || item;
                 
-                // Fetch accurate student count
                 let studentCount = classroom.current_students_count || 0;
                 try {
                   const accurateCount = await fetchClassroomStudentCount(classroom.class_id);
@@ -214,13 +213,12 @@ export default function ClassroomsList() {
           } catch (classroomError) {
             console.error("Error fetching teacher classrooms:", classroomError);
             
-            // Fallback: Try alternative endpoint
+            // Fallback: Try general classroom-teachers endpoint and filter
             try {
               console.log("Trying alternative endpoint: /classroom-teachers");
               const altResponse = await api.get("/classroom-teachers");
               console.log("Alternative endpoint response:", altResponse.data);
               
-              // Filter classrooms for this teacher
               const allClassrooms = altResponse.data.data?.classroom_teachers || altResponse.data.data || [];
               const teacherClassrooms = allClassrooms.filter(item => 
                 item.teacher_id === teacherId || item.tid === teacherId
@@ -230,7 +228,6 @@ export default function ClassroomsList() {
                 teacherClassrooms.map(async (item) => {
                   const classroom = item.classroom || item;
                   
-                  // Fetch accurate student count
                   let studentCount = classroom.current_students_count || 0;
                   try {
                     const accurateCount = await fetchClassroomStudentCount(classroom.class_id);
@@ -266,18 +263,14 @@ export default function ClassroomsList() {
           setError("Teacher profile not found. Please contact administrator.");
         }
       } else {
-        // Parent: Get parent's children classrooms using the my-enrollments endpoint
+        // Parent: Get parent's children classrooms
         try {
           console.log("Fetching parent enrollments for user ID:", userId);
           
-          // Use the my-enrollments endpoint as shown in your API
           response = await api.get("/my-enrollments");
           console.log("Parent enrollments response:", response.data);
           
-          // Extract classrooms from enrollments
           const enrollments = response.data.data?.enrollments || [];
-          
-          // Create a map to avoid duplicate classrooms (same class code)
           const classroomMap = new Map();
           
           enrollments.forEach(enrollment => {
@@ -286,7 +279,6 @@ export default function ClassroomsList() {
             if (classInfo?.enrol_class_in_WSTSC && classInfo?.status === "approved") {
               const classCode = classInfo.enrol_class_in_WSTSC;
               
-              // If we haven't seen this classroom before, add it
               if (!classroomMap.has(classCode)) {
                 classroomMap.set(classCode, {
                   id: classCode,
@@ -302,7 +294,6 @@ export default function ClassroomsList() {
                 });
               }
               
-              // Add student info to the classroom
               const classroom = classroomMap.get(classCode);
               classroom.students_info.push({
                 student_id: classInfo.student_id,
@@ -318,7 +309,6 @@ export default function ClassroomsList() {
             }
           });
           
-          // Convert map to array and update student counts
           const classroomsData = Array.from(classroomMap.values()).map(classroom => ({
             ...classroom,
             students: classroom.students_info.length
@@ -331,7 +321,6 @@ export default function ClassroomsList() {
           console.error("Error fetching parent enrollments:", parentError);
           
           if (parentError.response?.status === 404) {
-            console.log("Parent enrollments endpoint returned 404, no enrollments found");
             setClassrooms([]);
           } else if (parentError.response?.status === 401) {
             setError("Authentication failed. Please log in again.");
@@ -409,7 +398,6 @@ export default function ClassroomsList() {
     }
   };
 
-  // ... Rest of the code remains the same (create, delete, modal functions)
   // Create Classroom Functions
   const openCreateModal = () => {
     setShowCreateModal(true);
@@ -557,7 +545,6 @@ export default function ClassroomsList() {
     );
   }
 
-  // ... Rest of the JSX rendering code remains the same
   // Teacher view
   if (isTeacher) {
     return (
@@ -704,7 +691,6 @@ export default function ClassroomsList() {
     );
   }
 
-  // ... Rest of the JSX for parent and admin views remains the same
   // Parent view
   if (isParent) {
     return (
@@ -857,7 +843,7 @@ export default function ClassroomsList() {
     );
   }
 
-  // Admin view (same as before)
+  // Admin view
   return (
     <>
       <div className="container-fluid px-4 py-3">

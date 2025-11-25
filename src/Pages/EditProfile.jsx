@@ -277,12 +277,10 @@ const EditProfile = () => {
     marital_status: "",
     occupation: "",
     address_line1: "",
-    address_line2: "",
     city: "",
     state: "",
     postal_code: "",
     country: "",
-    suburb: "",
     address_type: "home",
   });
 
@@ -350,12 +348,10 @@ const EditProfile = () => {
           marital_status: profile.marital_status || "",
           occupation: profile.occupation || "",
           address_line1: profile.address?.address_line1 || "",
-          address_line2: profile.address?.address_line2 || "",
           city: profile.address?.city || "",
           state: profile.address?.state || "",
           postal_code: profile.address?.postal_code || "",
           country: profile.address?.country || "",
-          suburb: "", // Not in API response
           address_type: profile.address?.address_type || "home",
         };
 
@@ -427,7 +423,7 @@ const EditProfile = () => {
 
       setStatesList(formattedStates);
 
-      // Clear city and state if country changes and state is no longer valid
+      // Clear city if country changes and state is no longer valid
       if (
         formData.state &&
         !formattedStates.find((state) => state.value === formData.state)
@@ -436,7 +432,6 @@ const EditProfile = () => {
           ...prev,
           state: "",
           city: "",
-          suburb: "",
         }));
       }
     } catch (error) {
@@ -473,7 +468,6 @@ const EditProfile = () => {
         setFormData((prev) => ({
           ...prev,
           city: "",
-          suburb: "",
         }));
       }
     } catch (error) {
@@ -634,7 +628,6 @@ const EditProfile = () => {
         marital_status: formData.marital_status,
         occupation: formData.occupation,
         address_line1: formData.address_line1,
-        address_line2: formData.address_line2,
         city: formData.city,
         state: formData.state,
         postal_code: formData.postal_code,
@@ -1122,8 +1115,8 @@ const EditProfile = () => {
                           </Form.Group>
                         </div>
 
-                        {/* Country Select */}
-                        <div className="col-12">
+                        {/* Country and State/Province in one row */}
+                        <div className="col-md-6">
                           <SelectInput
                             id="country"
                             label="Country"
@@ -1141,7 +1134,6 @@ const EditProfile = () => {
                           />
                         </div>
 
-                        {/* State/Province Select */}
                         <div className="col-md-6">
                           <SelectInput
                             id="state"
@@ -1165,7 +1157,7 @@ const EditProfile = () => {
                           />
                         </div>
 
-                        {/* City Select */}
+                        {/* City and Postal Code in one row */}
                         <div className="col-md-6">
                           <SelectInput
                             id="city"
@@ -1187,32 +1179,6 @@ const EditProfile = () => {
                             isInvalid={!!getFieldError("city")}
                             errorMessage={getFieldError("city")}
                           />
-                        </div>
-
-                        {/* Suburb Input */}
-                        <div className="col-md-6">
-                          <Form.Group>
-                            <Form.Label>Suburb</Form.Label>
-                            <Form.Control
-                              type="text"
-                              name="suburb"
-                              value={formData.suburb}
-                              onChange={handleInputChange}
-                              placeholder="Enter suburb"
-                              disabled={!formData.city}
-                              className={`rounded-0 ${
-                                getFieldError("suburb") ? "is-invalid" : ""
-                              }`}
-                            />
-                            {getFieldError("suburb") && (
-                              <Form.Control.Feedback type="invalid">
-                                {getFieldError("suburb")}
-                              </Form.Control.Feedback>
-                            )}
-                            <Form.Text className="text-muted">
-                              Enter your local suburb/area
-                            </Form.Text>
-                          </Form.Group>
                         </div>
 
                         <div className="col-md-6">

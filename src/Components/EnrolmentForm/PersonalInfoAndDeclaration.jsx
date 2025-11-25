@@ -44,7 +44,7 @@ export default function PersonalInfoAndDeclaration({ onNext }) {
     setShowSuccessModal(false);
     resetForm();
     setHasSubmitted(false);
-    navigate("/");
+    navigate("/enrolments");
   };
 
   // Handle error modal close

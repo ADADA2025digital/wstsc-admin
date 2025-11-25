@@ -10,9 +10,10 @@ import emailjs from '@emailjs/browser';
 
 // Email.js configuration
 const EMAILJS_CONFIG = {
-  SERVICE_ID: 'service_atcmru7',
-  TEMPLATE_ID: 'template_stoertv',
-  PUBLIC_KEY: '1JhpDFWb4tZlLmkCh',
+  SERVICE_ID: 'service_1gocmzl',
+  TEMPLATE_ID: 'template_dpzhb0s',
+  REJECTION_TEMPLATE_ID: 'template_1ka5bgl',
+  PUBLIC_KEY: 'Ro7uPiRIt-owJl0Nn',
 };
 
 // Initialize Email.js
@@ -39,6 +40,45 @@ const getParentName = (parentData) => {
   if (relationship) return relationship;
   
   return 'Parent/Guardian';
+};
+
+// Debug EmailJS setup
+const debugEmailJSSetup = async () => {
+  console.log('🔧 EmailJS Configuration Debug:', {
+    serviceId: EMAILJS_CONFIG.SERVICE_ID,
+    rejectionTemplateId: EMAILJS_CONFIG.REJECTION_TEMPLATE_ID,
+    publicKey: EMAILJS_CONFIG.PUBLIC_KEY?.substring(0, 10) + '...',
+  });
+
+  // Test if the template exists by making a simple call
+  try {
+    const testParams = {
+      to_email: 'test@example.com',
+      student_name: 'Test Student',
+      enrolment_id: 'TEST123',
+      rejection_reason: 'Test reason',
+      parent_name: 'Test Parent',
+      from_name: 'WSTSC Administration',
+    };
+
+    console.log('🧪 Testing EmailJS template with params:', testParams);
+    
+    const testResponse = await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.REJECTION_TEMPLATE_ID,
+      testParams
+    );
+    
+    console.log('✅ Template test successful:', testResponse);
+    return { success: true, response: testResponse };
+  } catch (testError) {
+    console.error('❌ Template test failed:', {
+      status: testError.status,
+      text: testError.text,
+      details: testError
+    });
+    return { success: false, error: testError };
+  }
 };
 
 // Enhanced Email sending function with professional formatting
@@ -82,6 +122,117 @@ const sendAcceptanceEmail = async (studentData) => {
   }
 };
 
+// Helper function for template switching
+const sendRejectionEmailWithTemplate = async (studentData, rejectionReason, templateId) => {
+  try {
+    const parentEmail = studentData.parent_carer_1?.email;
+    const studentName = `${studentData.student.first_given_name} ${studentData.student.family_name}`;
+    const parentName = getParentName(studentData.parent_carer_1);
+
+    const templateParams = {
+      to_email: parentEmail,
+      student_name: studentName,
+      enrolment_id: studentData.student.enrollment_id || 'N/A',
+      enrolment_date: formatDateToMMDDYYYY(studentData.student.enrolment_date) || 'N/A',
+      rejection_date: new Date().toLocaleDateString('en-AU', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      rejection_reason: rejectionReason,
+      parent_name: parentName,
+      current_year: new Date().getFullYear(),
+      from_name: 'WSTSC Administration',
+    };
+
+    console.log(`🔧 Attempting to send with template: ${templateId}`, templateParams);
+
+    const response = await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      templateId,
+      templateParams
+    );
+
+    return { success: true, response };
+  } catch (error) {
+    console.error(`❌ Failed with template ${templateId}:`, error);
+    return { success: false, error };
+  }
+};
+
+// Enhanced Rejection Email sending function with professional formatting
+const sendRejectionEmail = async (studentData, rejectionReason) => {
+  try {
+    // Extract email and names from the normalized structure
+    const parentEmail = studentData.parent_carer_1?.email;
+    const studentName = `${studentData.student.first_given_name} ${studentData.student.family_name}`;
+    
+    const parentName = getParentName(studentData.parent_carer_1);
+
+    // Validate required fields
+    if (!parentEmail) {
+      throw new Error('No parent email available');
+    }
+
+    if (!EMAILJS_CONFIG.REJECTION_TEMPLATE_ID) {
+      throw new Error('Rejection template ID not properly configured');
+    }
+
+    // Create template parameters - match EXACTLY what's in your EmailJS template
+    const templateParams = {
+      to_email: parentEmail,
+      student_name: studentName,
+      enrolment_id: studentData.student.enrollment_id || 'N/A',
+      enrolment_date: formatDateToMMDDYYYY(studentData.student.enrolment_date) || 'N/A',
+      rejection_date: new Date().toLocaleDateString('en-AU', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      rejection_reason: rejectionReason,
+      parent_name: parentName,
+      current_year: new Date().getFullYear(),
+      from_name: 'WSTSC Administration',
+    };
+
+    console.log('📧 Sending professional rejection email with params:', templateParams);
+    console.log('🔧 Using rejection template ID:', EMAILJS_CONFIG.REJECTION_TEMPLATE_ID);
+
+    const response = await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.REJECTION_TEMPLATE_ID,
+      templateParams
+    );
+
+    console.log('✅ Professional rejection email sent successfully:', response);
+    return { success: true, response };
+  } catch (error) {
+    console.error('❌ Error sending professional rejection email:', error);
+    
+    // Enhanced error logging
+    console.error('🔍 EmailJS Error Analysis:', {
+      status: error.status,
+      text: error.text,
+      serviceId: EMAILJS_CONFIG.SERVICE_ID,
+      templateId: EMAILJS_CONFIG.REJECTION_TEMPLATE_ID,
+      publicKey: EMAILJS_CONFIG.PUBLIC_KEY?.substring(0, 10) + '...',
+      parentEmail: studentData.parent_carer_1?.email,
+      hasTemplateId: !!EMAILJS_CONFIG.REJECTION_TEMPLATE_ID
+    });
+    
+    return { 
+      success: false, 
+      error: {
+        message: error.text || error.message,
+        status: error.status,
+        details: `Service: ${EMAILJS_CONFIG.SERVICE_ID}, Template: ${EMAILJS_CONFIG.REJECTION_TEMPLATE_ID}`
+      }
+    };
+  }
+};
+
 const EnrolmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -94,6 +245,7 @@ const EnrolmentDetails = () => {
   const [rejectLoading, setRejectLoading] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [emailStatus, setEmailStatus] = useState(null);
+  const [rejectionEmailStatus, setRejectionEmailStatus] = useState(null);
   const [classrooms, setClassrooms] = useState([]);
   const [classroomLoading, setClassroomLoading] = useState(false);
 
@@ -101,6 +253,24 @@ const EnrolmentDetails = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+
+  // Debug EmailJS configuration on component mount
+  useEffect(() => {
+    console.log('🔧 EmailJS Configuration Debug:', {
+      serviceId: EMAILJS_CONFIG.SERVICE_ID,
+      acceptanceTemplateId: EMAILJS_CONFIG.TEMPLATE_ID,
+      rejectionTemplateId: EMAILJS_CONFIG.REJECTION_TEMPLATE_ID,
+      publicKey: EMAILJS_CONFIG.PUBLIC_KEY,
+      isRejectionTemplateConfigured: EMAILJS_CONFIG.REJECTION_TEMPLATE_ID !== 'template_rejection'
+    });
+
+    // Run debug test
+    debugEmailJSSetup().then(result => {
+      if (!result.success) {
+        console.warn('⚠️ EmailJS template test failed. Rejection emails may not work.');
+      }
+    });
+  }, []);
 
   // Get user role from localStorage on component mount
   useEffect(() => {
@@ -359,7 +529,7 @@ const EnrolmentDetails = () => {
 
   const handleBack = () => navigate("/enrolments");
 
-  // Function to handle email sending
+  // Function to handle acceptance email sending
   const sendAcceptanceEmailToParent = async () => {
     try {
       setEmailStatus('sending');
@@ -368,7 +538,7 @@ const EnrolmentDetails = () => {
         console.warn("⚠️ No parent email found, skipping email notification");
         setEmailStatus('no_email');
         setTimeout(() => setEmailStatus(null), 3000);
-        return;
+        return { success: false, error: 'No parent email' };
       }
 
       console.log("📧 Preparing to send acceptance email to:", studentData.parent_carer_1.email);
@@ -387,15 +557,81 @@ const EnrolmentDetails = () => {
         console.log("✅ Acceptance email sent successfully to parent");
         setEmailStatus('sent');
         setTimeout(() => setEmailStatus(null), 5000);
+        return { success: true };
       } else {
         console.warn("⚠️ Failed to send acceptance email:", emailResult.error);
         setEmailStatus('failed');
         setTimeout(() => setEmailStatus(null), 5000);
+        return { success: false, error: emailResult.error };
       }
     } catch (emailError) {
       console.error("❌ Error in email sending process:", emailError);
       setEmailStatus('failed');
       setTimeout(() => setEmailStatus(null), 5000);
+      return { success: false, error: emailError.message };
+    }
+  };
+
+  // Function to handle rejection email sending with fallback
+  const sendRejectionEmailToParent = async (rejectionReason) => {
+    try {
+      setRejectionEmailStatus('sending');
+      
+      if (!studentData?.parent_carer_1?.email) {
+        console.warn("⚠️ No parent email found, skipping rejection notification");
+        setRejectionEmailStatus('no_email');
+        setTimeout(() => setRejectionEmailStatus(null), 3000);
+        return { success: false, error: 'No parent email' };
+      }
+
+      console.log("📧 Preparing to send rejection email to:", studentData.parent_carer_1.email);
+
+      // Try primary template first
+      const emailResult = await sendRejectionEmail(studentData, rejectionReason);
+      
+      // If primary template fails, try alternative approach
+      if (!emailResult.success) {
+        console.warn('🔄 Primary template failed, trying simplified approach...');
+        
+        // Try with minimal parameters
+        const simplifiedResult = await sendRejectionEmailWithTemplate(
+          studentData, 
+          rejectionReason, 
+          EMAILJS_CONFIG.REJECTION_TEMPLATE_ID
+        );
+        
+        if (simplifiedResult.success) {
+          console.log("✅ Rejection email sent successfully with simplified approach");
+          setRejectionEmailStatus('sent');
+          setTimeout(() => setRejectionEmailStatus(null), 5000);
+          return { success: true };
+        }
+      }
+
+      if (emailResult.success) {
+        console.log("✅ Rejection email sent successfully to parent");
+        setRejectionEmailStatus('sent');
+        setTimeout(() => setRejectionEmailStatus(null), 5000);
+        return { success: true };
+      } else {
+        console.warn("⚠️ Failed to send rejection email:", emailResult.error);
+        
+        let errorMessage = "Failed to send rejection email";
+        if (emailResult.error?.status === 400) {
+          errorMessage = "Rejection email template configuration issue. Please check EmailJS template settings.";
+        } else if (emailResult.error?.message) {
+          errorMessage = emailResult.error.message;
+        }
+        
+        setRejectionEmailStatus('failed');
+        setTimeout(() => setRejectionEmailStatus(null), 5000);
+        return { success: false, error: errorMessage };
+      }
+    } catch (emailError) {
+      console.error("❌ Error in rejection email sending process:", emailError);
+      setRejectionEmailStatus('failed');
+      setTimeout(() => setRejectionEmailStatus(null), 5000);
+      return { success: false, error: emailError.message };
     }
   };
 
@@ -566,6 +802,17 @@ const EnrolmentDetails = () => {
           return updatedData;
         });
 
+        // Send rejection email to parent and handle the result
+        const emailResult = await sendRejectionEmailToParent(rejectionReason.trim());
+        
+        if (!emailResult.success) {
+          console.warn("⚠️ Enrolment rejected but email failed:", emailResult.error);
+          // Show specific error message for template configuration issues
+          if (emailResult.error?.includes('template')) {
+            console.error('🔧 Please check EmailJS template configuration for rejection emails');
+          }
+        }
+
         handleCloseRejectModal();
         setError(null);
 
@@ -725,6 +972,49 @@ const EnrolmentDetails = () => {
               <div>
                 <strong>Enrolment accepted - No parent email available</strong>
                 <div className="small">The enrolment was approved but no parent email was found for automatic notification.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Rejection Email Status Indicators */}
+          {rejectionEmailStatus === 'sending' && (
+            <div className="alert alert-info mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-envelope me-2 fs-5"></i>
+              <div>
+                <strong>Sending rejection notification...</strong>
+                <div className="small">Preparing and dispatching professional rejection email to parent</div>
+              </div>
+            </div>
+          )}
+          {rejectionEmailStatus === 'sent' && (
+            <div className="alert alert-success mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-check2-all me-2 fs-5"></i>
+              <div>
+                <strong>Rejection notification delivered!</strong>
+                <div className="small">Professional rejection email has been successfully sent to the parent</div>
+              </div>
+            </div>
+          )}
+          {rejectionEmailStatus === 'failed' && (
+            <div className="alert alert-warning mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-exclamation-triangle me-2 fs-5"></i>
+              <div>
+                <strong>Enrolment rejected - Email notification failed</strong>
+                <div className="small">
+                  The enrolment was rejected but we couldn't send the notification email. 
+                  {studentData?.parent_carer_1?.email && (
+                    <> Please notify the parent manually at: <strong>{studentData.parent_carer_1.email}</strong></>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {rejectionEmailStatus === 'no_email' && (
+            <div className="alert alert-warning mt-2 py-2 d-flex align-items-center" role="alert">
+              <i className="bi bi-info-circle me-2 fs-5"></i>
+              <div>
+                <strong>Enrolment rejected - No parent email available</strong>
+                <div className="small">The enrolment was rejected but no parent email was found for automatic notification.</div>
               </div>
             </div>
           )}

@@ -129,7 +129,7 @@ const Sidebar = ({
       return section === "dashboard";
     }
 
-    console.log(`🔄 Sidebar: Checking visibility for ${section} as ${userRole}`);
+    // console.log(`🔄 Sidebar: Checking visibility for ${section} as ${userRole}`);
 
     switch (section) {
       case "dashboard":

@@ -504,7 +504,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                 Welcome to Western Sydney Tamil Study Center,
               </span>
               <span className="fw-bold" key={userData.primary_role.role_name}>
-                {userData.name} - {userData.primary_role.display_name}
+                {userData.name} - {userData.primary_role.display_name} Dashboard
               </span>
             </div>
           )}

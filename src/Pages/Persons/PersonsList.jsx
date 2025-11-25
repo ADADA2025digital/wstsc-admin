@@ -33,12 +33,15 @@ export default function PersonsList() {
         const personsData = response.data.data.persons || [];
         console.log("Processed persons data:", personsData);
 
-        // Transform API data to match table structure
+        // Transform API data to match table structure - FIXED VERSION
         const formattedPersons = personsData.map((person, index) => {
           const user = person.user || {};
-          const roleData = user.role || {};
-          const displayName = roleData.display_name || "Unknown Role";
-          const roleName = roleData.role_name || "unknown";
+          const primaryRole = user.primary_role || {};
+          const allRoles = user.all_roles || [];
+          
+          // Use primary role for display
+          const displayName = primaryRole.display_name || "Unknown Role";
+          const roleName = primaryRole.role_name || "unknown";
 
           return {
             index: index + 1,
@@ -50,6 +53,9 @@ export default function PersonsList() {
             status: user.status === "active" ? "Active" : "Inactive",
             role: displayName,
             role_name: roleName,
+            // Store additional role information if needed
+            all_roles: allRoles,
+            primary_role: primaryRole,
             // Store original data for details page
             originalData: person,
           };
@@ -194,18 +200,30 @@ export default function PersonsList() {
     return data;
   };
 
-  // Custom render function for Role column with badge styling
+  // Custom render function for Role column with badge styling - FIXED VERSION
   const renderRoleColumn = (data, type, row) => {
     if (type === "display") {
-      const roleClass = getRoleBadgeClass(row.role_name);
+      // Use all_roles to display multiple roles if available
+      let rolesToDisplay = data;
+      let roleNameForBadge = row.role_name;
+      
+      // Show all roles if available and more than one role exists
+      if (row.all_roles && row.all_roles.length > 1) {
+        const roleNames = row.all_roles.map(role => role.display_name);
+        rolesToDisplay = roleNames.join(', ');
+        // Use primary role for badge styling
+        roleNameForBadge = row.primary_role?.role_name || row.role_name;
+      }
+      
+      const roleClass = getRoleBadgeClass(roleNameForBadge);
       return `
-        <span class="badge ${roleClass}">${data}</span>
+        <span class="badge ${roleClass}">${rolesToDisplay}</span>
       `;
     }
     return data;
   };
 
-  // Helper function to get badge class based on role
+  // Helper function to get badge class based on role - UPDATED
   const getRoleBadgeClass = (roleName) => {
     switch (roleName) {
       case "admin":

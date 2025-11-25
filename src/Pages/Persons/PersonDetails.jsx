@@ -27,6 +27,7 @@ const PersonDetails = () => {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -54,22 +55,37 @@ const PersonDetails = () => {
 
       console.log("Fetching person details for ID:", personId);
       
-      // Use the persons list endpoint and filter by peid, or use a specific endpoint if available
-      const response = await api.get("/admin/persons");
-      
-      if (response.data.success) {
-        const persons = response.data.data.persons || [];
-        const person = persons.find(p => p.peid === personId);
+      // Try to use a specific endpoint first, fall back to list endpoint
+      try {
+        // If your backend has a specific endpoint for single person
+        const response = await api.get(`/admin/persons/${personId}`);
         
-        if (person) {
-          console.log("Found person:", person);
-          transformPersonData(person);
+        if (response.data.success) {
+          console.log("Found person via specific endpoint");
+          transformPersonData(response.data.data.person);
         } else {
-          setError("Person not found");
-          setPersonData(null);
+          setError(response.data.message || "Failed to fetch person details");
         }
-      } else {
-        setError(response.data.message || "Failed to fetch person details");
+      } catch (endpointError) {
+        console.log("Specific endpoint failed, trying list endpoint:", endpointError);
+        
+        // Fallback to list endpoint
+        const response = await api.get("/admin/persons");
+        
+        if (response.data.success) {
+          const persons = response.data.data.persons || [];
+          const person = persons.find(p => p.peid === personId);
+          
+          if (person) {
+            console.log("Found person via list endpoint");
+            transformPersonData(person);
+          } else {
+            setError("Person not found");
+            setPersonData(null);
+          }
+        } else {
+          setError(response.data.message || "Failed to fetch person details");
+        }
       }
     } catch (err) {
       console.error("Error fetching person details:", err);
@@ -82,9 +98,106 @@ const PersonDetails = () => {
 
   // Transform API data to match component structure
   const transformPersonData = (apiData) => {
-    const user = apiData.user || {};
-    const roleData = user.role || {};
+    console.log("=== transformPersonData START ===");
+    console.log("Full API Data:", apiData);
     
+    const user = apiData.user || {};
+    
+    // Extract roles from different possible locations in the API response
+    const roles = user.roles || []; // This should contain the actual assigned roles (from Postman response)
+    const primaryRole = user.role || {}; // Primary role object
+    const primaryRoleId = user.role_id; // Primary role ID
+    
+    console.log("User object:", user);
+    console.log("Roles array:", roles);
+    console.log("Primary role object:", primaryRole);
+    console.log("Primary role ID:", primaryRoleId);
+
+    // If we have a roles array, use it. Otherwise, create one from the primary role
+    let effectiveRoles = [];
+    if (roles && roles.length > 0) {
+      effectiveRoles = roles;
+      console.log("Using roles from user.roles array");
+    } else if (primaryRole && primaryRole.roleid) {
+      effectiveRoles = [primaryRole];
+      console.log("Using role from user.role object");
+    } else if (primaryRoleId) {
+      // Create a minimal role object from the role_id
+      effectiveRoles = [{
+        roleid: primaryRoleId,
+        role_name: primaryRoleId === 3 ? 'teacher' : primaryRoleId === 4 ? 'parent' : 'unknown',
+        display_name: primaryRoleId === 3 ? 'Teacher' : primaryRoleId === 4 ? 'Parent' : 'Unknown'
+      }];
+      console.log("Using role from user.role_id");
+    }
+
+    console.log("Effective roles to use:", effectiveRoles);
+
+    // Log each role in the effective roles array
+    if (effectiveRoles.length > 0) {
+      console.log("Detailed roles analysis:");
+      effectiveRoles.forEach((role, index) => {
+        console.log(`Role ${index + 1}:`, {
+          roleid: role.roleid,
+          role_name: role.role_name,
+          display_name: role.display_name,
+          description: role.description
+        });
+      });
+    } else {
+      console.log("No roles found in any format");
+    }
+
+    // Determine current roles from the effective roles array
+    const hasTeacherRole = effectiveRoles.some(role => 
+      role.role_name === "teacher" || 
+      role.roleid === 3 ||
+      role.display_name === "Teacher"
+    );
+    const hasParentRole = effectiveRoles.some(role => 
+      role.role_name === "parent" || 
+      role.roleid === 4 ||
+      role.display_name === "Parent"
+    );
+    const hasAdminRole = effectiveRoles.some(role => role.role_name === "admin");
+    const hasStaffRole = effectiveRoles.some(role => role.role_name === "staff");
+    const hasStudentRole = effectiveRoles.some(role => role.role_name === "student");
+    
+    console.log("Role flags:", {
+      hasTeacherRole,
+      hasParentRole,
+      hasAdminRole,
+      hasStaffRole,
+      hasStudentRole
+    });
+
+    // Get role IDs from the effective roles array
+    const roleIds = effectiveRoles.map(role => role.roleid);
+    console.log("Extracted role IDs:", roleIds);
+    
+    // Create role display text
+    let roleDisplay = "";
+    const activeRoles = [];
+    
+    if (hasTeacherRole) activeRoles.push("Teacher");
+    if (hasParentRole) activeRoles.push("Parent");
+    if (hasAdminRole) activeRoles.push("Admin");
+    if (hasStaffRole) activeRoles.push("Staff");
+    if (hasStudentRole) activeRoles.push("Student");
+    
+    roleDisplay = activeRoles.join(" & ") || "No Role";
+    console.log("Role display text:", roleDisplay);
+
+    // Determine primary role name for badge styling
+    let primaryRoleName = "unknown";
+    if (hasTeacherRole) primaryRoleName = "teacher";
+    else if (hasParentRole) primaryRoleName = "parent";
+    else if (hasAdminRole) primaryRoleName = "admin";
+    else if (hasStaffRole) primaryRoleName = "staff";
+    else if (hasStudentRole) primaryRoleName = "student";
+
+    console.log("Primary role name for styling:", primaryRoleName);
+
     const transformedData = {
       // Basic info
       id: apiData.peid,
@@ -103,13 +216,17 @@ const PersonDetails = () => {
       person_status: apiData.person_status,
       
       // Role information
-      role: roleData.display_name || "Unknown Role",
-      role_name: roleData.role_name || "unknown",
-      role_id: roleData.roleid,
+      role: roleDisplay,
+      role_name: primaryRoleName,
+      role_ids: roleIds,
       
       // Personal details
       gender: apiData.person_gender,
       dob: apiData.person_dob,
+      nationality: apiData.person_nationality,
+      marital_status: apiData.person_marital_status,
+      occupation: apiData.person_occupation,
+      alternate_phone: apiData.person_alternate_phone,
       
       // Timestamps
       created_at: apiData.created_at,
@@ -117,16 +234,19 @@ const PersonDetails = () => {
       last_login: user.last_login,
       
       // Role flags for UI
-      has_teacher_role: roleData.role_name === "teacher",
-      has_parent_role: roleData.role_name === "parent",
-      has_admin_role: roleData.role_name === "admin",
-      has_staff_role: roleData.role_name === "staff",
-      has_student_role: roleData.role_name === "student",
+      has_teacher_role: hasTeacherRole,
+      has_parent_role: hasParentRole,
+      has_admin_role: hasAdminRole,
+      has_staff_role: hasStaffRole,
+      has_student_role: hasStudentRole,
       
-      // Store original API data
+      // Store original API data for debugging
       originalData: apiData
     };
 
+    console.log("Final transformed data:", transformedData);
+    console.log("=== transformPersonData END ===");
+    
     setPersonData(transformedData);
   };
 
@@ -184,20 +304,35 @@ const PersonDetails = () => {
   const handleOpenRoleModal = () => {
     if (!personData) return;
     
-    const initialSelectedRoles = [];
-    if (personData.has_teacher_role) initialSelectedRoles.push(3);
-    if (personData.has_parent_role) initialSelectedRoles.push(4);
+    console.log("=== handleOpenRoleModal START ===");
+    console.log("Current personData:", personData);
     
+    // Get current roles from personData - use role_ids if available, otherwise determine from flags
+    let initialSelectedRoles = [];
+    
+    if (personData.role_ids && personData.role_ids.length > 0) {
+      initialSelectedRoles = [...personData.role_ids];
+    } else {
+      // Fallback: determine from role flags
+      if (personData.has_teacher_role) initialSelectedRoles.push(3);
+      if (personData.has_parent_role) initialSelectedRoles.push(4);
+    }
+    
+    console.log("Initial selected roles for modal:", initialSelectedRoles);
     setSelectedRoles(initialSelectedRoles);
     setShowRoleModal(true);
+    
+    console.log("=== handleOpenRoleModal END ===");
   };
 
   const handleRoleCheckboxChange = (roleId, isChecked) => {
+    console.log(`Role checkbox changed: ${roleId}, checked: ${isChecked}`);
     if (isChecked) {
       setSelectedRoles(prev => [...prev, roleId]);
     } else {
       setSelectedRoles(prev => prev.filter(id => id !== roleId));
     }
+    console.log("Updated selectedRoles:", selectedRoles);
   };
 
   const handleRoleUpdate = async () => {
@@ -208,43 +343,47 @@ const PersonDetails = () => {
         return;
       }
 
-      // TODO: Implement API call to update roles
-      // This would require a new endpoint like: PUT /admin/persons/{peid}/roles
-      console.log("Updating roles for person:", personId, "with roles:", selectedRoles);
+      setRoleLoading(true);
+      setError("");
+
+      console.log("=== handleRoleUpdate START ===");
+      console.log("Updating roles for person:", personId);
+      console.log("Selected roles to update:", selectedRoles);
       
-      // For now, we'll update the local state
-      const hasTeacherRole = selectedRoles.includes(3);
-      const hasParentRole = selectedRoles.includes(4);
-      
-      let roleDisplay = "";
-      if (hasTeacherRole && hasParentRole) {
-        roleDisplay = "Teacher & Parent";
-      } else if (hasTeacherRole) {
-        roleDisplay = "Teacher";
-      } else if (hasParentRole) {
-        roleDisplay = "Parent";
+      // Make the actual API call to update roles
+      const response = await api.put(
+        `/admin/persons/${personId}`,
+        {
+          role_id: selectedRoles // This matches what your backend expects
+        }
+      );
+
+      console.log("API Response:", response.data);
+
+      if (response.data.success) {
+        // Update local state with the response data
+        const updatedPerson = response.data.data.person;
+        console.log("Updated person data from API:", updatedPerson);
+        
+        transformPersonData(updatedPerson); // This will update the state with fresh data
+        
+        setSuccessMessage("Roles updated successfully");
+        setShowRoleModal(false);
+        
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
       } else {
-        roleDisplay = "No Role";
+        throw new Error(response.data.message || "Failed to update roles");
       }
-
-      setPersonData(prevData => ({
-        ...prevData,
-        role: roleDisplay,
-        role_ids: selectedRoles,
-        has_teacher_role: hasTeacherRole,
-        has_parent_role: hasParentRole
-      }));
-
-      setSuccessMessage("Roles updated successfully");
-      setShowRoleModal(false);
       
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-      
+      console.log("=== handleRoleUpdate END ===");
     } catch (err) {
       console.error("Error updating roles:", err);
-      setError("Failed to update roles");
+      console.log("Error response:", err.response);
+      setError(err.response?.data?.message || "Failed to update roles");
+    } finally {
+      setRoleLoading(false);
     }
   };
 
@@ -418,16 +557,14 @@ const PersonDetails = () => {
                   <Badge className={getRoleBadgeClass(personData.role_name)}>
                     {personData.role}
                   </Badge>
-                  {(personData.has_teacher_role || personData.has_parent_role) && (
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={handleOpenRoleModal}
-                      className="py-0"
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={handleOpenRoleModal}
+                    className="py-0"
+                  >
+                    <i className="bi bi-pencil"></i>
+                  </Button>
                 </div>
               </div>
             </Col>
@@ -489,6 +626,24 @@ const PersonDetails = () => {
                             </p>
                           </div>
                         )}
+                        {personData.nationality && (
+                          <div>
+                            <span className="small text-muted">Nationality</span>
+                            <p className="mb-0 fw-medium text-dark">{personData.nationality}</p>
+                          </div>
+                        )}
+                        {personData.marital_status && (
+                          <div>
+                            <span className="small text-muted">Marital Status</span>
+                            <p className="mb-0 fw-medium text-dark">{personData.marital_status}</p>
+                          </div>
+                        )}
+                        {personData.occupation && (
+                          <div>
+                            <span className="small text-muted">Occupation</span>
+                            <p className="mb-0 fw-medium text-dark">{personData.occupation}</p>
+                          </div>
+                        )}
                       </div>
                     </InfoCard>
                   </Col>
@@ -505,22 +660,33 @@ const PersonDetails = () => {
                           </div>
                         </div>
                         <div>
-                          <span className="small text-muted">Role ID</span>
-                          <p className="mb-0 text-dark">{personData.role_id || "N/A"}</p>
+                          <span className="small text-muted">Role IDs</span>
+                          <p className="mb-0 text-dark">
+                            {personData.role_ids && personData.role_ids.length > 0 
+                              ? personData.role_ids.join(", ") 
+                              : "N/A"
+                            }
+                          </p>
                         </div>
-                        {(personData.has_teacher_role || personData.has_parent_role) && (
-                          <div>
-                            <span className="small text-muted">Actions</span>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={handleOpenRoleModal}
-                            >
-                              <i className="bi bi-pencil me-1"></i>
-                              Edit Roles
-                            </Button>
+                        <div>
+                          <span className="small text-muted">Role Details</span>
+                          <div className="small text-muted">
+                            {personData.has_teacher_role && <div>• Teacher Role (ID: 3)</div>}
+                            {personData.has_parent_role && <div>• Parent Role (ID: 4)</div>}
+                            {!personData.has_teacher_role && !personData.has_parent_role && <div>• No roles assigned</div>}
                           </div>
-                        )}
+                        </div>
+                        <div>
+                          <span className="small text-muted">Actions</span>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleOpenRoleModal}
+                          >
+                            <i className="bi bi-pencil me-1"></i>
+                            Edit Roles
+                          </Button>
+                        </div>
                       </div>
                     </InfoCard>
                   </Col>
@@ -545,6 +711,12 @@ const PersonDetails = () => {
                           <span className="small text-muted">Phone Number</span>
                           <p className="mb-0 text-dark">{personData.phone || "Not provided"}</p>
                         </div>
+                        {personData.alternate_phone && (
+                          <div>
+                            <span className="small text-muted">Alternate Phone</span>
+                            <p className="mb-0 text-dark">{personData.alternate_phone}</p>
+                          </div>
+                        )}
                       </div>
                     </InfoCard>
                   </Col>
@@ -649,16 +821,26 @@ const PersonDetails = () => {
           <Button 
             variant="secondary" 
             onClick={() => setShowRoleModal(false)}
+            disabled={roleLoading}
           >
             Cancel
           </Button>
           <Button 
             variant="primary" 
             onClick={handleRoleUpdate}
-            disabled={selectedRoles.length === 0}
+            disabled={selectedRoles.length === 0 || roleLoading}
           >
-            <i className="bi bi-check-lg me-2"></i>
-            Update Roles
+            {roleLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-check-lg me-2"></i>
+                Update Roles
+              </>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

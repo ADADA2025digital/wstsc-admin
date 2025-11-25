@@ -63,7 +63,7 @@ const Sidebar = ({
       return [];
     }
 
-    console.log(`🔄 Sidebar: Getting sub-items for ${section} as ${userRole}`);
+    // console.log(`🔄 Sidebar: Getting sub-items for ${section} as ${userRole}`);
 
     switch (section) {
       case "enrolment":

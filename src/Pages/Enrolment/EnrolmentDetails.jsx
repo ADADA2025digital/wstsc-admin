@@ -10,30 +10,60 @@ import emailjs from '@emailjs/browser';
 
 // Email.js configuration
 const EMAILJS_CONFIG = {
-  SERVICE_ID: 'service_1gocmzl',
-  TEMPLATE_ID: 'template_dpzhb0s',
-  PUBLIC_KEY: 'Ro7uPiRIt-owJl0Nn',
+  SERVICE_ID: 'service_atcmru7',
+  TEMPLATE_ID: 'template_stoertv',
+  PUBLIC_KEY: '1JhpDFWb4tZlLmkCh',
 };
 
 // Initialize Email.js
 emailjs.init(EMAILJS_CONFIG.PUBLIC_KEY);
 
+// Enhanced parent name extraction
+const getParentName = (parentData) => {
+  if (!parentData) return 'Parent/Guardian';
+  
+  // Try different name combinations
+  const firstName = parentData.first_name || parentData.given_name || '';
+  const lastName = parentData.last_name || parentData.family_name || '';
+  
+  const fullName = (firstName + ' ' + lastName).trim();
+  
+  if (fullName) return fullName;
+  
+  // Fallback to title + relationship
+  const title = parentData.title || '';
+  const relationship = parentData.relationship_to_student || '';
+  
+  if (title && relationship) return `${title} (${relationship})`;
+  if (title) return title;
+  if (relationship) return relationship;
+  
+  return 'Parent/Guardian';
+};
+
 // Enhanced Email sending function with professional formatting
-const sendAcceptanceEmail = async (parentEmail, studentName, enrolmentDetails) => {
+const sendAcceptanceEmail = async (studentData) => {
   try {
+    // Extract email and names from the normalized structure
+    const parentEmail = studentData.parent_carer_1?.email;
+    const studentName = `${studentData.student.first_given_name} ${studentData.student.family_name}`;
+    
+    const parentName = getParentName(studentData.parent_carer_1);
+
     const templateParams = {
       to_email: parentEmail,
       student_name: studentName,
-      enrolment_id: enrolmentDetails.enrollment_id || 'N/A',
-      enrolment_date: formatDateToMMDDYYYY(enrolmentDetails.enrolment_date) || 'N/A',
-      class_name: enrolmentDetails.classroom_info?.class_name || enrolmentDetails.enrol_class_in_WSTSC || 'To be assigned',
+      enrolment_id: studentData.student.enrollment_id || 'N/A',
+      enrolment_date: formatDateToMMDDYYYY(studentData.student.enrolment_date) || 'N/A',
+      class_name: studentData.student.classroom_info?.class_name || studentData.student.enrol_class_in_WSTSC || 'To be assigned',
       approved_date: new Date().toLocaleDateString('en-AU', { 
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
       }),
-      parent_name: (enrolmentDetails.parent_carer_1?.first_name + ' ' + enrolmentDetails.parent_carer_1?.last_name) || 'Parent/Guardian',
+      parent_name: parentName,
+      current_year: new Date().getFullYear(),
     };
 
     console.log('📧 Sending professional acceptance email with params:', templateParams);
@@ -244,6 +274,7 @@ const EnrolmentDetails = () => {
     };
 
     console.log("📊 FINAL NORMALIZED DATA - Classroom info:", normalizedData.student.classroom_info);
+    console.log("👨‍👩‍👧‍👦 Parent data:", normalizedData.parent_carer_1);
     return normalizedData;
   };
 
@@ -340,16 +371,17 @@ const EnrolmentDetails = () => {
         return;
       }
 
-      const parentEmail = studentData.parent_carer_1.email;
-      const studentName = `${studentData.student.first_given_name} ${studentData.student.family_name}`;
-      
-      console.log("📧 Preparing to send acceptance email to:", parentEmail);
+      console.log("📧 Preparing to send acceptance email to:", studentData.parent_carer_1.email);
 
-      const emailResult = await sendAcceptanceEmail(
-        parentEmail,
-        studentName,
-        studentData.student
-      );
+      // Debug parent data structure
+      console.log('🔍 Debug parent data structure:', {
+        parent_carer_1: studentData.parent_carer_1,
+        firstName: studentData.parent_carer_1?.first_name,
+        lastName: studentData.parent_carer_1?.last_name,
+        calculatedName: getParentName(studentData.parent_carer_1)
+      });
+
+      const emailResult = await sendAcceptanceEmail(studentData);
 
       if (emailResult.success) {
         console.log("✅ Acceptance email sent successfully to parent");

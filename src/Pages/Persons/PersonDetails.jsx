@@ -47,6 +47,38 @@ const PersonDetails = () => {
     return null;
   };
 
+  // Debug function to analyze API response structure
+  const debugApiResponse = (apiData) => {
+    console.log("=== API RESPONSE STRUCTURE DEBUG ===");
+    console.log("Full API Data:", apiData);
+    
+    if (apiData.user) {
+      console.log("User object keys:", Object.keys(apiData.user));
+      console.log("User object:", apiData.user);
+      
+      if (apiData.user.all_roles) {
+        console.log("all_roles:", apiData.user.all_roles);
+      } else {
+        console.log("No all_roles found in user object");
+      }
+      
+      if (apiData.user.primary_role) {
+        console.log("primary_role:", apiData.user.primary_role);
+      } else {
+        console.log("No primary_role found in user object");
+      }
+      
+      if (apiData.user.roles) {
+        console.log("roles:", apiData.user.roles);
+      } else {
+        console.log("No roles found in user object");
+      }
+    } else {
+      console.log("No user object found in API response");
+    }
+    console.log("=== END DEBUG ===");
+  };
+
   // Fetch person details from API
   const fetchPersonDetails = async (personId) => {
     try {
@@ -101,37 +133,44 @@ const PersonDetails = () => {
     console.log("=== transformPersonData START ===");
     console.log("Full API Data:", apiData);
     
+    // Debug the API response structure
+    debugApiResponse(apiData);
+    
     const user = apiData.user || {};
     
-    // Extract roles from different possible locations in the API response
-    const roles = user.roles || []; // This should contain the actual assigned roles (from Postman response)
-    const primaryRole = user.role || {}; // Primary role object
-    const primaryRoleId = user.role_id; // Primary role ID
+    // CORRECTED: Extract roles from the correct locations in API response
+    const allRoles = user.all_roles || []; // This contains all assigned roles
+    const primaryRole = user.primary_role || {}; // Primary role object
     
     console.log("User object:", user);
-    console.log("Roles array:", roles);
+    console.log("All roles array:", allRoles);
     console.log("Primary role object:", primaryRole);
-    console.log("Primary role ID:", primaryRoleId);
 
-    // If we have a roles array, use it. Otherwise, create one from the primary role
-    let effectiveRoles = [];
-    if (roles && roles.length > 0) {
-      effectiveRoles = roles;
-      console.log("Using roles from user.roles array");
-    } else if (primaryRole && primaryRole.roleid) {
-      effectiveRoles = [primaryRole];
-      console.log("Using role from user.role object");
-    } else if (primaryRoleId) {
-      // Create a minimal role object from the role_id
-      effectiveRoles = [{
-        roleid: primaryRoleId,
-        role_name: primaryRoleId === 3 ? 'teacher' : primaryRoleId === 4 ? 'parent' : 'unknown',
-        display_name: primaryRoleId === 3 ? 'Teacher' : primaryRoleId === 4 ? 'Parent' : 'Unknown'
-      }];
-      console.log("Using role from user.role_id");
+    // Combine primary role with all roles to get complete role list
+    let effectiveRoles = [...allRoles];
+    
+    // Add primary role if it's not already in the all_roles array
+    if (primaryRole && primaryRole.roleid && !effectiveRoles.some(role => role.roleid === primaryRole.roleid)) {
+      effectiveRoles.push(primaryRole);
+    }
+    
+    console.log("Combined effective roles:", effectiveRoles);
+
+    // If no roles found, try to create from available data
+    if (effectiveRoles.length === 0) {
+      console.log("No roles found in all_roles or primary_role, checking alternative locations");
+      
+      // Fallback: check if there's any role information in other fields
+      if (user.role_name || user.role_id) {
+        effectiveRoles = [{
+          roleid: user.role_id || 0,
+          role_name: user.role_name || 'unknown',
+          display_name: user.role_display_name || 'Unknown'
+        }];
+      }
     }
 
-    console.log("Effective roles to use:", effectiveRoles);
+    console.log("Final effective roles to use:", effectiveRoles);
 
     // Log each role in the effective roles array
     if (effectiveRoles.length > 0) {
@@ -307,15 +346,23 @@ const PersonDetails = () => {
     console.log("=== handleOpenRoleModal START ===");
     console.log("Current personData:", personData);
     
-    // Get current roles from personData - use role_ids if available, otherwise determine from flags
+    // Get current roles from personData - use role_ids if available
     let initialSelectedRoles = [];
     
     if (personData.role_ids && personData.role_ids.length > 0) {
       initialSelectedRoles = [...personData.role_ids];
+      console.log("Using role_ids from personData:", initialSelectedRoles);
     } else {
       // Fallback: determine from role flags
-      if (personData.has_teacher_role) initialSelectedRoles.push(3);
-      if (personData.has_parent_role) initialSelectedRoles.push(4);
+      console.log("No role_ids found, falling back to role flags");
+      if (personData.has_teacher_role) {
+        console.log("Adding teacher role (ID: 3)");
+        initialSelectedRoles.push(3);
+      }
+      if (personData.has_parent_role) {
+        console.log("Adding parent role (ID: 4)");
+        initialSelectedRoles.push(4);
+      }
     }
     
     console.log("Initial selected roles for modal:", initialSelectedRoles);
@@ -568,18 +615,18 @@ const PersonDetails = () => {
                 </div>
               </div>
             </Col>
-            <Col md={4}>
+            {/* <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">User ID</span>
                 <span className="fs-6 text-dark">{personData.user_id}</span>
               </div>
-            </Col>
-            <Col md={4}>
+            </Col> */}
+            {/* <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold text-muted">Person ID</span>
                 <span className="fs-6 text-dark">{personData.person_id}</span>
               </div>
-            </Col>
+            </Col> */}
           </Row>
         </Card.Body>
       </Card>
@@ -659,7 +706,7 @@ const PersonDetails = () => {
                             </Badge>
                           </div>
                         </div>
-                        <div>
+                        {/* <div>
                           <span className="small text-muted">Role IDs</span>
                           <p className="mb-0 text-dark">
                             {personData.role_ids && personData.role_ids.length > 0 
@@ -667,16 +714,21 @@ const PersonDetails = () => {
                               : "N/A"
                             }
                           </p>
-                        </div>
+                        </div> */}
                         <div>
                           <span className="small text-muted">Role Details</span>
                           <div className="small text-muted">
-                            {personData.has_teacher_role && <div>• Teacher Role (ID: 3)</div>}
-                            {personData.has_parent_role && <div>• Parent Role (ID: 4)</div>}
-                            {!personData.has_teacher_role && !personData.has_parent_role && <div>• No roles assigned</div>}
+                            {personData.has_teacher_role && <div>• Teacher Role</div>}
+                            {personData.has_parent_role && <div>• Parent Role</div>}
+                            {personData.has_admin_role && <div>• Admin Role</div>}
+                            {personData.has_staff_role && <div>• Staff Role</div>}
+                            {personData.has_student_role && <div>• Student Role</div>}
+                            {!personData.has_teacher_role && !personData.has_parent_role && 
+                             !personData.has_admin_role && !personData.has_staff_role && 
+                             !personData.has_student_role && <div>• No roles assigned</div>}
                           </div>
                         </div>
-                        <div>
+                        <div className="d-flex gap-3">
                           <span className="small text-muted">Actions</span>
                           <Button
                             variant="primary"

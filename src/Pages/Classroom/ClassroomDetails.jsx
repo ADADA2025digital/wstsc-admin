@@ -211,78 +211,72 @@ export default function ClassroomDetails() {
     }
   };
 
-  // Fetch class students using student-enrollment endpoint
+  // Fetch class students using the correct endpoint from your API
   const fetchClassStudents = async (classId) => {
     try {
       setLoadingStudents(true);
       console.log("👨‍🎓 START: Fetching students for class:", classId);
-      console.log("🌐 Using endpoint: /student-enrollment");
+      console.log("🌐 Using endpoint: /class-students/class/", classId);
 
-      const response = await api.get("/student-enrollment");
-      console.log("📦 STUDENT ENROLLMENT API RESPONSE:", response.data);
+      // Use the correct endpoint from your API example
+      const response = await api.get(`/class-students/class/${classId}`);
+      console.log("📦 CLASS STUDENTS API RESPONSE:", response.data);
 
       if (response.data && response.data.success) {
-        const allEnrollments = response.data.data.enrollments || [];
-        console.log("📋 ALL ENROLLMENTS:", allEnrollments);
+        const responseData = response.data.data;
+        console.log("📋 FULL RESPONSE DATA:", responseData);
 
-        // Filter enrollments for the current class
-        const classEnrollments = allEnrollments.filter(enrollment => 
-          enrollment.class_id === classId || enrollment.classroom_id === classId
-        );
-        
-        console.log("🎯 FILTERED ENROLLMENTS FOR THIS CLASS:", classEnrollments);
+        // Extract students from the correct response structure
+        const studentsList = responseData.students || [];
+        console.log("🎯 STUDENTS LIST FROM API:", studentsList);
 
-        // Map the enrollment data to a more usable format
-        const mappedStudents = classEnrollments.map((enrollment, index) => {
+        // Map the student data to a more usable format
+        const mappedStudents = studentsList.map((enrollment, index) => {
           const student = enrollment.student || {};
-          const person = student.person || {};
           
           return {
-            id: enrollment.se_id || enrollment.enrollment_id || index,
-            enrollmentId: enrollment.enrollment_id,
-            seId: enrollment.se_id,
-            studentId: enrollment.student_id,
+            id: enrollment.csid || enrollment.enrid || index,
+            csid: enrollment.csid,
+            enrid: enrollment.enrid,
+            studid: enrollment.studid,
             classId: enrollment.class_id,
-            classroomId: enrollment.classroom_id,
             
             // Student personal details
-            firstName: person.first_given_name || student.first_name,
-            familyName: person.family_name || student.last_name,
-            preferredName: person.preferred_name || student.preferred_name,
-            fullName: `${person.first_given_name || student.first_name || ''} ${person.family_name || student.last_name || ''}`.trim(),
-            
-            // Contact information
-            email: person.email || student.email,
-            phone: person.phone || student.phone,
+            firstName: student.first_name,
+            familyName: student.family_name,
+            preferredName: student.preferred_name,
+            fullName: student.full_name || `${student.first_name || ''} ${student.family_name || ''}`.trim(),
             
             // Demographic information
-            gender: person.gender || student.gender,
-            dateOfBirth: person.date_of_birth || student.date_of_birth,
+            gender: student.gender,
+            dateOfBirth: student.date_of_birth,
             
             // Enrollment details
-            enrollmentYear: enrollment.enrollment_year,
-            enrollmentDate: enrollment.enrollment_date,
+            enrollmentYear: enrollment.enr_year,
             isActive: enrollment.is_active,
-            status: enrollment.status,
             
-            // Additional details
-            gradeLevel: enrollment.grade_level,
-            section: enrollment.section,
+            // Timestamps
+            createdAt: enrollment.created_at,
+            updatedAt: enrollment.updated_at,
             
             rawData: enrollment,
-            rawStudentData: student,
-            rawPersonData: person
+            rawStudentData: student
           };
         });
 
         console.log("✅ MAPPED STUDENTS FOR CLASS:", mappedStudents);
         setStudents(mappedStudents);
+        
+        // Also update the student count from the API summary if available
+        const totalStudents = responseData.summary?.total_students || mappedStudents.length;
+        console.log("📊 TOTAL STUDENTS COUNT:", totalStudents);
+        
       } else {
-        console.error("❌ STUDENT ENROLLMENT API FAILED:", response.data);
+        console.error("❌ CLASS STUDENTS API FAILED:", response.data);
         setStudents([]);
       }
     } catch (error) {
-      console.error("💥 ERROR fetching student enrollments:", error);
+      console.error("💥 ERROR fetching class students:", error);
       console.error("Error response:", error.response?.data);
       showMessage(
         "danger",
@@ -832,7 +826,8 @@ export default function ClassroomDetails() {
     );
   }
 
-  const studentCount = students.length;
+  // Get student count from API summary or fallback to array length
+  const studentCount = classroom.rawData?.summary?.total_students || students.length;
   const teacherCount = assignedTeachers.length;
   const isActive = classroom.isActive;
 
@@ -1124,7 +1119,9 @@ export default function ClassroomDetails() {
 
                 <InfoCard title="" className="bg-secondary bg-opacity-10">
                   {assignedTeachers.length ? (
-                    <div className="list-group list-group-flush">
+                    <div 
+                      className="list-group list-group-flush scrollable-container"
+                    >
                       {assignedTeachers.map((teacher, index) => (
                         <div
                           key={teacher.assignmentId || index}
@@ -1227,7 +1224,9 @@ export default function ClassroomDetails() {
                       <p className="mt-2 text-muted">Loading students...</p>
                     </div>
                   ) : students.length > 0 ? (
-                    <div className="list-group list-group-flush">
+                    <div 
+                      className="list-group list-group-flush scrollable-container"
+                    >
                       {students.map((student, index) => (
                         <div
                           key={student.id}
@@ -1239,8 +1238,8 @@ export default function ClassroomDetails() {
                               <h6 className="mb-0 fw-semibold">{student.fullName}</h6>
                               <p className="mb-1 text-muted small">
                                 {student.preferredName && `Preferred: ${student.preferredName}`}
-                                {student.preferredName && student.enrollmentId && ' • '}
-                                {student.enrollmentId && `ID: ${student.enrollmentId}`}
+                                {student.preferredName && student.studid && ' • '}
+                                {student.studid && `ID: ${student.studid}`}
                               </p>
                               <p className="mb-0 text-muted small">
                                 DOB: {student.dateOfBirth ? 
@@ -1254,8 +1253,8 @@ export default function ClassroomDetails() {
                           <div className="d-flex align-items-center gap-2">
                             <Badge 
                               bg={
-                                student.gender === 'Female' ? 'info' : 
-                                student.gender === 'Male' ? 'primary' : 'secondary'
+                                student.gender === 'female' ? 'info' : 
+                                student.gender === 'male' ? 'primary' : 'secondary'
                               }
                               className="fs-7"
                             >
@@ -1270,7 +1269,6 @@ export default function ClassroomDetails() {
                           </div>
                         </div>
                       ))}
-                    
                     </div>
                   ) : (
                     <EmptyState
@@ -1552,6 +1550,43 @@ export default function ClassroomDetails() {
           </ButtonGlobal>
         </Modal.Footer>
       </Modal>
+
+      {/* Add CSS for scrollable container */}
+      <style>
+        {`
+          .scrollable-container {
+            max-height: calc(3 * 80px); /* Show exactly 3 items (approx 80px each) */
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 0.375rem;
+          }
+          
+          .scrollable-container::-webkit-scrollbar {
+            width: 6px;
+          }
+          
+          .scrollable-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+          }
+          
+          .scrollable-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+          }
+          
+          .scrollable-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+          }
+          
+          /* Ensure list group items have consistent height */
+          .list-group-item {
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+          }
+        `}
+      </style>
     </div>
   );
 }

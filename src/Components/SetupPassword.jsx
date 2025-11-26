@@ -207,31 +207,27 @@ const PasswordSetup = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            flexDirection: "column",
           }}
         >
-          <div className="container d-flex justify-content-center p-0">
-            <div className="col-12 col-md-4 d-flex justify-content-center">
-              <div className="card shadow-sm border-0">
-                <div className="card-body p-5 text-center">
-                  <h3 className="text-success">Password Set Successfully!</h3>
-                  <p className="text-muted mt-3">
-                    Your password has been set successfully. You can now login
-                    with your new password.
-                  </p>
-                  <p className="text-muted">Redirecting to login page...</p>
-                  
-                  <div className="mt-4">
-                    <Loader />
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Success Content */}
+          <div className="text-center mb-4">
+            <h3 className="text-success">Password Set Successfully!</h3>
+            <p className="text-muted mt-3">
+              Your password has been set successfully. You can now login with
+              your new password.
+            </p>
+            <p className="text-muted">Redirecting to login page...</p>
+          </div>
+
+          {/* Loader */}
+          <div className="mt-4">
+            <Loader />
           </div>
         </div>
       </div>
     );
   }
-
 
   return (
     <div className="container-fluid p-0">
@@ -250,7 +246,9 @@ const PasswordSetup = () => {
               <h5 className="title text-center fw-bold py-2">
                 Welcome {user?.name}, <br /> Setup Your Password
               </h5>
-              <p className="small text-center mb-1">Set your password and activate your account</p>
+              <p className="small text-center mb-1">
+                Set your password and activate your account
+              </p>
 
               <form
                 className="form w-100 d-flex flex-column gap-3 mb-3"

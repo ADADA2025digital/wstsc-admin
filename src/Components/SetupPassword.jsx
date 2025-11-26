@@ -208,25 +208,26 @@ if (success) {
           alignItems: "flex-start", // Changed from center to flex-start
           justifyContent: "center",
           flexDirection: "column",
-          paddingTop: "20vh", // Add padding to push content down from absolute top
         }}
       >
         {/* Success Content */}
-        <div className="text-center mb-4 w-100">
+        <div className="text-center mb-5 w-100">
           <h3 className="text-success">Password Set Successfully!</h3>
           <p className="text-muted mt-3">
             Your password has been set successfully. You can now login with
             your new password.
           </p>
-          <p className="text-muted">Redirecting to login page...</p>
+          <p className="text-muted mb-5">Redirecting to login page...</p>
         </div>
 
         {/* Loader */}
-        <div className="mt-4 w-100 text-center">
+        <div className="mt-5 w-100 text-center">
           <Loader />
         </div>
       </div>
     </div>
+
+    
   );
 }
 

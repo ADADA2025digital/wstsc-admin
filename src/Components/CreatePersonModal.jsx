@@ -40,16 +40,45 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
   const fetchRoles = async () => {
     try {
       setLoading(true);
+      console.log("Fetching roles from /roles endpoint...");
+      
       const response = await api.get("/roles");
+      console.log("Full API response:", response);
+      console.log("Response data:", response.data);
+      console.log("Response status:", response.status);
       
       if (response.data.success) {
+        console.log("Roles fetch successful, data:", response.data.data);
+        
         const uniqueRoles = response.data.data.filter((role, index, self) => 
           index === self.findIndex(r => r.role_name === role.role_name)
         );
+        
+        console.log("Unique roles after filtering:", uniqueRoles);
+        console.log("Number of unique roles:", uniqueRoles.length);
+        
+        // Log each role individually
+        uniqueRoles.forEach((role, index) => {
+          console.log(`Role ${index + 1}:`, {
+            roleid: role.roleid,
+            role_name: role.role_name,
+            display_name: role.display_name,
+            full_object: role
+          });
+        });
+        
         setRoles(uniqueRoles);
+      } else {
+        console.log("Roles fetch not successful, message:", response.data.message);
       }
     } catch (error) {
       console.error("Error fetching roles:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       setErrors({ general: "Failed to load roles. Please try again." });
     } finally {
       setLoading(false);
@@ -57,13 +86,20 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
   };
 
   const handleRoleChange = (roleId) => {
+    console.log("Role checkbox changed, roleId:", roleId);
+    console.log("Current selected roles before change:", selectedRoles);
+    
     setSelectedRoles(prev => {
       if (prev.includes(roleId)) {
         // Remove role if already selected
-        return prev.filter(id => id !== roleId);
+        const newRoles = prev.filter(id => id !== roleId);
+        console.log("Removed role, new selected roles:", newRoles);
+        return newRoles;
       } else {
         // Add role if not selected
-        return [...prev, roleId];
+        const newRoles = [...prev, roleId];
+        console.log("Added role, new selected roles:", newRoles);
+        return newRoles;
       }
     });
   };
@@ -130,6 +166,8 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         role_id: selectedRoles.map(id => parseInt(id)), // Send array of selected role IDs
         schcode: formData.schcode
       };
+
+      console.log("Submitting person data:", apiData);
 
       const response = await api.post("/admin/persons", apiData);
 

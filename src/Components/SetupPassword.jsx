@@ -212,8 +212,8 @@ if (success) {
       >
         {/* Success Content */}
         <div className="text-center mb-5 w-100">
-          <h3 className="text-success">Password Set Successfully!</h3>
-          <p className="text-muted mt-3">
+          <h3 className="text-dark text-semibold">Password Set Successfully!</h3>
+          <p className="text-muted mt-3 mb-5">
             Your password has been set successfully. You can now login with
             your new password.
           </p>

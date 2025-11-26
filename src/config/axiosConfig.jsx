@@ -17,7 +17,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // console.log('Making request to:', config.url);
     return config;
   },
   (error) => {
@@ -29,10 +28,6 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
-    // console.log('Response success:', {
-    //   status: response.status,
-    //   url: response.config.url
-    // });
     return response;
   },
   (error) => {
@@ -42,11 +37,21 @@ api.interceptors.response.use(
       url: error.config?.url
     });
     
-    // Auto logout on 401 Unauthorized
+    // Only logout on 401 if it's not a profile-related endpoint during setup
     if (error.response?.status === 401) {
+      const url = error.config?.url || '';
+      
+      // Don't auto-logout for profile endpoints during setup
+      if (url.includes('/profile/') && !url.includes('/check-completion')) {
+        console.log('Profile API 401 - might be expected during setup');
+        return Promise.reject(error);
+      }
+      
       // Clear authentication data
       localStorage.removeItem("userData");
       localStorage.removeItem("authenticated");
+      localStorage.removeItem("user_status");
+      localStorage.removeItem("profile_completed");
       Cookies.remove("token");
       Cookies.remove("user_id");
       Cookies.remove("role_id");

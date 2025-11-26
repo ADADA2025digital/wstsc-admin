@@ -10,10 +10,20 @@ const AuthGuard = ({ children }) => {
   useEffect(() => {
     const checkAuth = () => {
       const token = Cookies.get('token');
-      if (!token) {
+      const authenticated = localStorage.getItem('authenticated');
+      
+      console.log('AuthGuard - Checking:', {
+        token: !!token,
+        authenticated
+      });
+
+      if (!token || authenticated !== 'true') {
+        console.log('AuthGuard - Not authenticated, redirecting to login');
         navigate('/login');
         return;
       }
+      
+      console.log('AuthGuard - Authenticated, proceeding');
       setIsChecking(false);
     };
 

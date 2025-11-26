@@ -15,8 +15,10 @@ import InfoCard from "../Components/InfoCard";
 import SelectInput from "../Components/SelectInput";
 import { Country, State, City } from "country-state-city";
 import api from "../config/axiosConfig";
+import Cookies from "js-cookie";
+import { toast } from "react-toastify";
 
-// Nationalities array
+// Nationalities array (same as before)
 const nationalities = [
   "Afghan",
   "Albanian",
@@ -294,11 +296,33 @@ const EditProfile = () => {
   const [originalData, setOriginalData] = useState({});
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
-  // Fetch user profile on component mount
+  // Check authentication when component mounts
   useEffect(() => {
+    const token = Cookies.get('token');
+    const authenticated = localStorage.getItem('authenticated');
+    
+    console.log('EditProfile - Auth check:', {
+      token: !!token,
+      authenticated
+    });
+
+    if (!token || authenticated !== 'true') {
+      console.log('EditProfile: No auth, redirecting to login');
+      navigate('/login');
+      return;
+    }
+    
+    // If user_status is already active, they might be coming here directly
+    const userStatus = localStorage.getItem('user_status');
+    if (userStatus === 'active') {
+      console.log('EditProfile: Profile already completed, redirecting to home');
+      navigate('/');
+      return;
+    }
+
     fetchUserProfile();
     initializeCountries();
-  }, []);
+  }, [navigate]);
 
   // Update states when country changes
   useEffect(() => {
@@ -602,74 +626,111 @@ const EditProfile = () => {
     setProfilePicturePreview(profilePicture); // Reset to current profile picture
   };
 
-  // Submit form using axios
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  // Submit form using axios - FIXED VERSION
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!validateForm()) {
-    toast.error("Please fix the validation errors before submitting.");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const response = await api.post("/login", formData);
-
-    if (response.data.success) {
-      const { token, user } = response.data.data;
-
-      // Store token in cookies
-      Cookies.set("token", token, { expires: 7 });
-      Cookies.set("user_id", user.id, { expires: 7 });
-      Cookies.set("role_id", user.role_id, { expires: 7 });
-
-      // Handle remember me
-      if (rememberMe) {
-        const cookieOptions = {
-          expires: 30,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-        };
-
-        Cookies.set("rememberMe", "true", cookieOptions);
-        Cookies.set("rememberEmail", formData.email, cookieOptions);
-        Cookies.set("rememberPassword", formData.password, cookieOptions);
-        resetInactivityTimer();
-      } else {
-        clearRememberMeCookies();
-      }
-
-      // Store user data in localStorage
-      localStorage.setItem("userData", JSON.stringify(user));
-      localStorage.setItem("authenticated", "true");
-
-      toast.success("Login successful!");
-
-      // NEW: Check if user needs to complete profile
-      const isProfileComplete = await checkProfileCompletion(user.id);
-      
-      if (!isProfileComplete) {
-        // First login after password setup - set user_status to empty and redirect to update profile
-        localStorage.setItem("user_status", "");
-        navigate("/update-profile");
-        toast.info("Please complete your profile to continue");
-      } else {
-        // Normal login - set user_status to active and redirect to home
-        localStorage.setItem("user_status", "active");
-        navigate("/");
-      }
+    // Basic validation
+    if (!formData.first_name || !formData.last_name || !formData.phone) {
+      showMessage("warning", "Please fill in all required fields");
+      return;
     }
-  } catch (error) {
-    console.error("Login error:", error);
-    toast.error(
-      error.response?.data?.message ||
-        "Login failed. Please check your credentials and try again."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare data for API - match the expected request body structure
+      const updateData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        middle_name: formData.middle_name,
+        gender: formData.gender,
+        date_of_birth: formData.date_of_birth,
+        phone: formData.phone,
+        nationality: formData.nationality,
+        alternate_phone: formData.alternate_phone,
+        marital_status: formData.marital_status,
+        occupation: formData.occupation,
+        address_line1: formData.address_line1,
+        city: formData.city,
+        state: formData.state,
+        postal_code: formData.postal_code,
+        country: formData.country,
+        address_type: formData.address_type,
+      };
+
+      console.log("Sending update data:", updateData);
+
+      const response = await api.put("/profile/update", updateData);
+
+      if (response.data.success) {
+        showMessage(
+          "success",
+          response.data.message || "Profile updated successfully!"
+        );
+        setOriginalData({ ...formData });
+
+        // CRITICAL: Set user_status to "active" in localStorage
+        localStorage.setItem("user_status", "active");
+        localStorage.setItem("profile_completed", "true");
+
+        // Update userData in localStorage with completed profile info
+        const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+        const updatedUserData = {
+          ...userData,
+          profile_completed: true
+        };
+        localStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+        console.log('EditProfile - Profile completed, user_status set to active');
+
+        toast.success("Profile completed successfully! Redirecting...");
+
+        // Navigate to home after success - FIXED: Use immediate navigation without setTimeout
+        navigate("/", { replace: true });
+      } else {
+        throw new Error(response.data.message || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+
+      let errorMessage = "Error updating profile. Please try again.";
+
+      // Handle validation errors (422 status)
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data.errors;
+        if (validationErrors) {
+          // Set field-specific errors
+          setFieldErrors(validationErrors);
+
+          // Extract all validation error messages for the alert
+          errorMessage = Object.values(validationErrors)
+            .flat()
+            .map((error) => (typeof error === "string" ? error : String(error)))
+            .join(", ");
+
+          // Show validation alert without timer
+          setValidationAlert({
+            show: true,
+            message: errorMessage,
+          });
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+          showMessage("danger", errorMessage);
+        }
+      }
+      // Handle other API errors
+      else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+        showMessage("danger", errorMessage);
+      } else if (error.message) {
+        errorMessage = error.message;
+        showMessage("danger", errorMessage);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleCancel = () => {
     setFormData(originalData);
@@ -1136,7 +1197,7 @@ const handleSubmit = async (e) => {
                         <div className="col-md-6">
                           <SelectInput
                             id="city"
-                            label="City"
+                            label="City/Suburb"
                             value={formData.city}
                             onChange={(value) =>
                               handleSelectChange("city", value)

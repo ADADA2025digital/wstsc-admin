@@ -142,7 +142,7 @@ const Login = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // NEW: Check if user needs to complete profile
+  // Check if user needs to complete profile
   const checkProfileCompletion = async (userId) => {
     try {
       const response = await api.get(`/profile/check-completion/${userId}`);
@@ -153,73 +153,85 @@ const Login = () => {
     }
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!validateForm()) {
-    toast.error("Please fix the validation errors before submitting.");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const response = await api.post("/login", formData);
-
-    if (response.data.success) {
-      const { token, user } = response.data.data;
-
-      // Store token in cookies
-      Cookies.set("token", token, { expires: 7 });
-      Cookies.set("user_id", user.id, { expires: 7 });
-      Cookies.set("role_id", user.role_id, { expires: 7 });
-
-      // Handle remember me
-      if (rememberMe) {
-        const cookieOptions = {
-          expires: 30,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-        };
-
-        Cookies.set("rememberMe", "true", cookieOptions);
-        Cookies.set("rememberEmail", formData.email, cookieOptions);
-        Cookies.set("rememberPassword", formData.password, cookieOptions);
-        resetInactivityTimer();
-      } else {
-        clearRememberMeCookies();
-      }
-
-      // Store user data in localStorage
-      localStorage.setItem("userData", JSON.stringify(user));
-      localStorage.setItem("authenticated", "true");
-
-      toast.success("Login successful!");
-
-      // NEW: Check if user needs to complete profile
-      const isProfileComplete = await checkProfileCompletion(user.id);
-      
-      if (!isProfileComplete) {
-        // First login after password setup - set user_status to empty and redirect to update profile
-        localStorage.setItem("user_status", "");
-        navigate("/update-profile");
-        toast.info("Please complete your profile to continue");
-      } else {
-        // Normal login - set user_status to active and redirect to home
-        localStorage.setItem("user_status", "active");
-        navigate("/");
-      }
+    if (!validateForm()) {
+      toast.error("Please fix the validation errors before submitting.");
+      return;
     }
-  } catch (error) {
-    console.error("Login error:", error);
-    toast.error(
-      error.response?.data?.message ||
-        "Login failed. Please check your credentials and try again."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+
+    try {
+      const response = await api.post("/login", formData);
+
+      if (response.data.success) {
+        const { token, user } = response.data.data;
+
+        console.log('Login successful - Setting auth data:', {
+          token: !!token,
+          user: user.id,
+          profile_completed: user.profile_completed
+        });
+
+        // Store token in cookies
+        Cookies.set("token", token, { expires: 7 });
+        Cookies.set("user_id", user.id, { expires: 7 });
+        Cookies.set("role_id", user.role_id, { expires: 7 });
+
+        // Handle remember me
+        if (rememberMe) {
+          const cookieOptions = {
+            expires: 30,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+          };
+
+          Cookies.set("rememberMe", "true", cookieOptions);
+          Cookies.set("rememberEmail", formData.email, cookieOptions);
+          Cookies.set("rememberPassword", formData.password, cookieOptions);
+          resetInactivityTimer();
+        } else {
+          clearRememberMeCookies();
+        }
+
+        // Store user data in localStorage
+        localStorage.setItem("userData", JSON.stringify(user));
+        localStorage.setItem("authenticated", "true");
+
+        toast.success("Login successful!");
+
+        // Check if user needs to complete profile
+        const isProfileComplete = await checkProfileCompletion(user.id);
+        
+        console.log('Profile completion check result:', isProfileComplete);
+        
+        if (!isProfileComplete) {
+          // First login after password setup - set user_status to empty and redirect to update profile
+          localStorage.setItem("user_status", "");
+          console.log('Redirecting to update-profile - profile incomplete');
+          navigate("/update-profile", { replace: true });
+          toast.info("Please complete your profile to continue");
+        } else {
+          // Normal login - set user_status to active and redirect to home
+          localStorage.setItem("user_status", "active");
+          console.log('Redirecting to home - profile complete');
+          navigate("/", { replace: true });
+        }
+
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Login failed. Please check your credentials and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetInactivityTimer = () => {
     if (window.inactivityTimer) {
       clearTimeout(window.inactivityTimer);

@@ -1,3 +1,4 @@
+// src/App.js
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -32,11 +33,26 @@ import AuthGuard from "./Components/AuthGuard";
 import AssignPrincipal from "./Pages/Principal/AssignPrincipal";
 import { LoadingProvider } from "./Context/LoadingContext";
 
+// Temporary debug component
+const AuthDebugger = () => {
+  React.useEffect(() => {
+    console.log('=== AUTH DEBUG INFO ===');
+    console.log('Token:', document.cookie.includes('token'));
+    console.log('Authenticated:', localStorage.getItem('authenticated'));
+    console.log('User Status:', localStorage.getItem('user_status'));
+    console.log('Profile Completed:', localStorage.getItem('profile_completed'));
+    console.log('User Data exists:', !!localStorage.getItem('userData'));
+    console.log('========================');
+  }, []);
+
+  return null;
+};
+
 function App() {
   return (
     <LoadingProvider>
       <Router>
-        
+        <AuthDebugger />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />

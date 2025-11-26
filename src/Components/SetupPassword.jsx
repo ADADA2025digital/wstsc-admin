@@ -87,46 +87,53 @@ const PasswordSetup = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!validateForm()) {
-    return;
-  }
-
-  setLoading(true);
-  setErrors({});
-
-  try {
-    console.log("Setting up password with token:", token);
-    const response = await api.post("/password-setup/setup", {
-      token,
-      new_password: formData.new_password,
-      new_password_confirmation: formData.new_password_confirmation,
-    });
-
-    console.log("Password setup response:", response.data);
-
-    if (response.data.success) {
-      setSuccess(true);
-
-      // Set initial user_status to empty (user needs to complete profile)
-      localStorage.setItem("user_status", "");
-
-      // Redirect to login page after 3 seconds
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
-    } else {
-      throw new Error(response.data.message || "Failed to set password");
+    if (!validateForm()) {
+      return;
     }
-  } catch (error) {
-    console.error("Password setup error:", error);
-    // ... error handling
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      console.log("Setting up password with token:", token);
+      const response = await api.post("/password-setup/setup", {
+        token,
+        new_password: formData.new_password,
+        new_password_confirmation: formData.new_password_confirmation,
+      });
+
+      console.log("Password setup response:", response.data);
+
+      if (response.data.success) {
+        setSuccess(true);
+
+        // Set initial user_status to empty (user needs to complete profile)
+        localStorage.setItem("user_status", "");
+
+        // Redirect to login page after 3 seconds
+        setTimeout(() => {
+          navigate("/login");
+        }, 3000);
+      } else {
+        throw new Error(response.data.message || "Failed to set password");
+      }
+    } catch (error) {
+      console.error("Password setup error:", error);
+      if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else {
+        const errorMessage =
+          error.response?.data?.message ||
+          "Failed to set password. Please try again.";
+        setErrors({ general: errorMessage });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (verifying) {
     return (
@@ -244,7 +251,7 @@ const handleSubmit = async (e) => {
           <div className="col-12 col-md-4 d-flex justify-content-center">
             <div className="bg-white rounded-4 border p-4">
               <h5 className="title text-center fw-bold py-2">
-                Welcome {user.name}, <br /> Setup Your Password
+                Welcome {user?.name}, <br /> Setup Your Password
               </h5>
               <p className="small text-center mb-1">Set your password and activate your account</p>
 

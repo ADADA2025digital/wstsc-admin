@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
 import Loader from "../../Pages/Loader";
@@ -28,11 +28,17 @@ export default function ClassroomsList() {
   // Success message state
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Get user data from localStorage
+  // Get user data from localStorage with real-time updates
   const getUserData = () => {
     try {
       const userData = localStorage.getItem("userData");
-      return userData ? JSON.parse(userData) : null;
+      const parsedData = userData ? JSON.parse(userData) : null;
+      console.log("🔍 ClassroomsList - Current user data:", {
+        role: parsedData?.primary_role?.role_name,
+        uid: parsedData?.uid,
+        name: parsedData?.name
+      });
+      return parsedData;
     } catch (error) {
       console.error("Error parsing user data:", error);
       return null;
@@ -56,21 +62,27 @@ export default function ClassroomsList() {
       return count;
     } catch (error) {
       console.error(`Error fetching student count for class ${classId}:`, error);
-      return 0; // Return 0 as fallback
+      return 0;
     }
   };
 
-  // Function to get teacher ID for the current user
+  // Function to get teacher ID for the current user - SIMPLIFIED VERSION
   const getTeacherId = async () => {
     try {
       console.log("🔍 Fetching teacher data for user ID:", userId);
+      console.log("🔍 Current user role:", userRole);
       
-      // Option 1: Get teacher ID from user profile (most reliable)
+      // For teacher role, we should have the teacher ID in userData
+      if (userData?.teacher_id) {
+        console.log("✅ Found teacher ID in userData:", userData.teacher_id);
+        return userData.teacher_id;
+      }
+      
+      // Try profile endpoint first
       try {
         const profileResponse = await api.get("/profile/person");
         console.log("👤 Profile response:", profileResponse.data);
         
-        // Extract teacher ID from role_specific_records
         const teacherId = profileResponse.data.data?.profile?.role_specific_records?.teacher?.tid;
         
         if (teacherId) {
@@ -81,7 +93,7 @@ export default function ClassroomsList() {
         console.warn("❌ Failed to get teacher ID via profile endpoint:", error);
       }
       
-      // Option 2: Try the teachers/user/{userId} endpoint as fallback
+      // Try teachers/user endpoint
       try {
         const teacherResponse = await api.get(`/teachers/user/${userId}`);
         console.log("👨‍🏫 Teacher response:", teacherResponse.data);
@@ -98,25 +110,6 @@ export default function ClassroomsList() {
         console.warn("❌ Failed to get teacher ID via /teachers/user endpoint:", error);
       }
       
-      // Option 3: Try to get from teachers list
-      try {
-        const teachersResponse = await api.get("/teachers");
-        console.log("📋 Teachers list response:", teachersResponse.data);
-        
-        const teachers = teachersResponse.data.data?.teachers || teachersResponse.data.data || [];
-        const currentTeacher = teachers.find(teacher => 
-          teacher.user_id === userId || teacher.uid === userId
-        );
-        
-        if (currentTeacher) {
-          const teacherId = currentTeacher.tid || currentTeacher.teacher_id || currentTeacher.id;
-          console.log("✅ Found teacher ID via /teachers endpoint:", teacherId);
-          return teacherId;
-        }
-      } catch (error) {
-        console.warn("❌ Failed to get teacher ID via /teachers endpoint:", error);
-      }
-      
       console.warn("⚠️ Could not find teacher ID for user:", userId);
       return null;
       
@@ -126,36 +119,26 @@ export default function ClassroomsList() {
     }
   };
 
-  // UPDATED FUNCTION: Fetch teacher count for a classroom using the correct endpoint
+  // UPDATED: Fetch teacher count for a classroom
   const fetchClassroomTeacherCount = async (classId) => {
     try {
       console.log(`🔍 Fetching teachers for classroom ${classId}`);
-      
-      // Use the correct endpoint from your API documentation
       const response = await api.get(`/classroom-teachers/classroom/${classId}/teachers`);
       console.log(`📊 Classroom teachers response for ${classId}:`, response.data);
       
       let teachersCount = 0;
       
-      // Parse the response based on the actual API structure
       if (response.data.success) {
         const data = response.data.data;
         
-        // Count active teachers (status: "active" and is_current: true)
         if (data.teachers && Array.isArray(data.teachers)) {
           const activeTeachers = data.teachers.filter(teacher => 
             teacher.status === "active" && teacher.is_current === true
           );
           teachersCount = activeTeachers.length;
-          console.log(`👨‍🏫 Found ${teachersCount} active teachers for classroom ${classId} (total: ${data.teachers.length})`);
+          console.log(`👨‍🏫 Found ${teachersCount} active teachers for classroom ${classId}`);
         } else if (data.total !== undefined) {
           teachersCount = data.total;
-          console.log(`👨‍🏫 Using total count ${teachersCount} for classroom ${classId}`);
-        }
-        
-        // Also check if classroom data has current_teachers_count
-        if (data.classroom?.current_teachers_count) {
-          console.log(`📈 Classroom object has current_teachers_count: ${data.classroom.current_teachers_count}`);
         }
       }
       
@@ -163,235 +146,207 @@ export default function ClassroomsList() {
       
     } catch (error) {
       console.error(`❌ Error fetching teacher count for classroom ${classId}:`, error);
-      
-      // Fallback: Try alternative endpoint if primary fails
-      try {
-        console.log(`🔄 Trying alternative endpoint for classroom ${classId}`);
-        const altResponse = await api.get(`/classroom-teachers/class/${classId}`);
-        console.log(`📊 Alternative endpoint response:`, altResponse.data);
-        
-        if (altResponse.data.success) {
-          const teachers = altResponse.data.data?.classroom_teachers || altResponse.data.data || [];
-          const activeTeachers = teachers.filter(teacher => 
-            teacher.status === "active" && teacher.is_current !== false
-          );
-          const count = activeTeachers.length;
-          console.log(`👨‍🏫 Alternative endpoint found ${count} teachers for ${classId}`);
-          return count;
-        }
-      } catch (altError) {
-        console.warn(`❌ Alternative endpoint also failed for ${classId}:`, altError);
-      }
-      
       return 0;
     }
   };
 
-  // Fetch classrooms based on user role
-  const fetchClassrooms = async () => {
+  // UPDATED: Fetch classrooms based on user role - using useCallback
+  const fetchClassrooms = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Re-fetch user data to ensure we have the latest role
+      const currentUserData = getUserData();
+      const currentUserRole = currentUserData?.primary_role?.role_name;
+      const currentUserId = currentUserData?.uid;
+      
+      console.log("🔄 Fetching classrooms for:", {
+        role: currentUserRole,
+        userId: currentUserId,
+        isTeacher: currentUserRole === "teacher"
+      });
 
       let response;
       
-      if (userRole === "admin") {
+      if (currentUserRole === "admin") {
         // Admin: Get all classrooms
         console.log("🛠️ ADMIN: Fetching all classrooms");
         response = await api.get("/classrooms");
-        console.log("🏫 Raw admin classrooms response:", response.data);
         
         const classroomsData = await Promise.all(
           response.data.data.classrooms.map(async (cls) => {
-            console.log(`📚 Processing classroom: ${cls.class_name} (ID: ${cls.class_id}, C_ID: ${cls.c_id})`);
-            console.log(`📊 Raw classroom data:`, cls);
-            
             let studentCount = cls.current_students_count || 0;
             let teacherCount = cls.current_teachers_count || 0;
             
-            // Log the original counts from API
-            console.log(`📈 Original API counts - Students: ${cls.current_students_count}, Teachers: ${cls.current_teachers_count}`);
-            
             try {
-              const accurateStudentCount = await fetchClassroomStudentCount(cls.class_id);
-              studentCount = accurateStudentCount;
-              console.log(`👨‍🎓 Classroom ${cls.class_name} accurate student count: ${studentCount}`);
+              studentCount = await fetchClassroomStudentCount(cls.class_id);
             } catch (error) {
               console.warn(`Could not fetch accurate student count for class ${cls.class_id}:`, error);
             }
             
-            // Fetch accurate teacher count for admin using the correct endpoint
             try {
-              const accurateTeacherCount = await fetchClassroomTeacherCount(cls.class_id);
-              teacherCount = accurateTeacherCount;
-              console.log(`👨‍🏫 Classroom ${cls.class_name} accurate teacher count: ${teacherCount}`);
+              teacherCount = await fetchClassroomTeacherCount(cls.class_id);
             } catch (error) {
               console.warn(`Could not fetch accurate teacher count for class ${cls.class_id}:`, error);
             }
             
-            const classroomData = {
+            return {
               id: cls.c_id,
               c_id: cls.c_id,
               name: cls.class_name,
               code: cls.class_id,
               status: cls.is_active ? "Active" : "Inactive",
               students: studentCount,
-              teachers: teacherCount, // Use the accurate count
+              teachers: teacherCount,
               is_active: cls.is_active,
               created_at: cls.created_at,
-              rawData: cls // Include raw data for debugging
             };
-            
-            console.log(`✅ Final classroom data for ${cls.class_name}:`, classroomData);
-            return classroomData;
           })
         );
         
-        console.log("🎯 FINAL ADMIN CLASSROOMS DATA:", classroomsData);
         setClassrooms(classroomsData);
         
-      } else if (userRole === "teacher") {
+      } else if (currentUserRole === "teacher") {
         // Teacher: Get teacher-specific classrooms
-        console.log("👨‍🏫 TEACHER: Fetching teacher-specific classrooms for user ID:", userId);
+        console.log("👨‍🏫 TEACHER: Fetching assigned classrooms");
         
-        // Get the teacher ID from profile
         const teacherId = await getTeacherId();
         
-        if (teacherId) {
-          console.log("🎯 Using teacher ID:", teacherId);
-          
-          try {
-            // Try the classroom-teachers endpoint with teacher ID
-            response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
-            console.log("📋 Teacher classrooms response:", response.data);
-            
-            // Handle different response structures
-            let classroomsArray = [];
-            if (response.data.data?.classrooms) {
-              classroomsArray = response.data.data.classrooms;
-            } else if (response.data.data) {
-              classroomsArray = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
-            }
-            
-            console.log(`📚 Found ${classroomsArray.length} classrooms for teacher`);
-            
-            const classroomsData = await Promise.all(
-              classroomsArray.map(async (item, index) => {
-                const classroom = item.classroom || item;
-                console.log(`🔄 Processing teacher classroom ${index + 1}:`, classroom);
-                
-                let studentCount = classroom.current_students_count || 0;
-                let teacherCount = classroom.current_teachers_count || 1; // Default to 1 for teacher's own classrooms
-                
-                // Log original counts
-                console.log(`📈 Original counts - Students: ${classroom.current_students_count}, Teachers: ${classroom.current_teachers_count}`);
-                
-                try {
-                  const accurateStudentCount = await fetchClassroomStudentCount(classroom.class_id);
-                  studentCount = accurateStudentCount;
-                } catch (error) {
-                  console.warn(`Could not fetch accurate student count for class ${classroom.class_id}:`, error);
-                }
-                
-                // For teacher view, try to get accurate teacher count
-                try {
-                  const accurateTeacherCount = await fetchClassroomTeacherCount(classroom.class_id);
-                  teacherCount = accurateTeacherCount;
-                } catch (error) {
-                  console.warn(`Could not fetch accurate teacher count for class ${classroom.class_id}:`, error);
-                }
-                
-                const result = {
-                  id: classroom.c_id || classroom.class_id,
-                  c_id: classroom.c_id || classroom.class_id,
-                  name: classroom.class_name,
-                  code: classroom.class_id,
-                  status: classroom.is_active ? "Active" : "Inactive",
-                  students: studentCount,
-                  teachers: teacherCount,
-                  is_active: classroom.is_active,
-                  created_at: classroom.created_at,
-                  rawData: classroom
-                };
-                
-                console.log(`✅ Final teacher classroom data:`, result);
-                return result;
-              })
-            );
-            
-            console.log("🎯 FINAL TEACHER CLASSROOMS DATA:", classroomsData);
-            setClassrooms(classroomsData);
-            
-          } catch (classroomError) {
-            console.error("❌ Error fetching teacher classrooms:", classroomError);
-            
-            // Fallback: Try general classroom-teachers endpoint and filter
-            try {
-              console.log("🔄 Trying alternative endpoint: /classroom-teachers");
-              const altResponse = await api.get("/classroom-teachers");
-              console.log("📋 Alternative endpoint response:", altResponse.data);
-              
-              const allClassrooms = altResponse.data.data?.classroom_teachers || altResponse.data.data || [];
-              const teacherClassrooms = allClassrooms.filter(item => 
-                item.teacher_id === teacherId || item.tid === teacherId
-              );
-              
-              console.log(`📚 Found ${teacherClassrooms.length} classrooms via alternative endpoint`);
-              
-              const classroomsData = await Promise.all(
-                teacherClassrooms.map(async (item) => {
-                  const classroom = item.classroom || item;
-                  
-                  let studentCount = classroom.current_students_count || 0;
-                  let teacherCount = classroom.current_teachers_count || 1;
-                  
-                  try {
-                    const accurateStudentCount = await fetchClassroomStudentCount(classroom.class_id);
-                    studentCount = accurateStudentCount;
-                  } catch (error) {
-                    console.warn(`Could not fetch accurate student count for class ${classroom.class_id}:`, error);
-                  }
-                  
-                  try {
-                    const accurateTeacherCount = await fetchClassroomTeacherCount(classroom.class_id);
-                    teacherCount = accurateTeacherCount;
-                  } catch (error) {
-                    console.warn(`Could not fetch accurate teacher count for class ${classroom.class_id}:`, error);
-                  }
-                  
-                  return {
-                    id: classroom.c_id || classroom.class_id,
-                    c_id: classroom.c_id || classroom.class_id,
-                    name: classroom.class_name,
-                    code: classroom.class_id,
-                    status: classroom.is_active ? "Active" : "Inactive",
-                    students: studentCount,
-                    teachers: teacherCount,
-                    is_active: classroom.is_active,
-                    created_at: classroom.created_at,
-                  };
-                })
-              );
-              
-              setClassrooms(classroomsData);
-            } catch (altError) {
-              console.error("❌ Alternative endpoint also failed:", altError);
-              setClassrooms([]);
-              setError("Unable to load your classrooms. Please contact administrator.");
-            }
-          }
-        } else {
-          console.warn("⚠️ Teacher ID not found for user:", userId);
+        if (!teacherId) {
+          console.error("❌ No teacher ID found for current user");
           setClassrooms([]);
           setError("Teacher profile not found. Please contact administrator.");
+          return;
         }
+        
+        console.log("🎯 Using teacher ID:", teacherId);
+        
+        // Use the API endpoint from your documentation
+        response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
+        console.log("📋 Teacher classrooms API response:", response.data);
+        
+        // Parse the response according to your API structure
+        let classroomsArray = [];
+        if (response.data.data?.classrooms) {
+          classroomsArray = response.data.data.classrooms;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          classroomsArray = response.data.data;
+        }
+        
+        console.log(`📚 Found ${classroomsArray.length} classrooms for teacher`);
+        
+        // DETAILED DEBUGGING: Analyze each classroom assignment
+        console.log("🔍 DETAILED CLASSROOM ASSIGNMENT ANALYSIS:");
+        classroomsArray.forEach((item, index) => {
+          console.log(`Assignment ${index + 1}:`, {
+            classroom_name: item.classroom?.class_name,
+            classroom_id: item.classroom?.class_id,
+            assignment_status: item.status,
+            is_current: item.is_current,
+            classroom_is_active: item.classroom?.is_active,
+            crtid: item.crtid,
+            teacher_id: item.teacher_id,
+            start_date: item.crtid_date,
+            end_date: item.end_date,
+            notes: item.notes
+          });
+          
+          // Check each condition separately
+          const isActiveAssignment = item.status === "active";
+          const isCurrentAssignment = item.is_current === true;
+          const classroomIsActive = item.classroom?.is_active === true;
+          const isNotExpired = !item.end_date || new Date(item.end_date) > new Date();
+          
+          console.log(`   Conditions for ${item.classroom?.class_name}:`);
+          console.log(`   - Assignment active (status === "active"): ${isActiveAssignment}`);
+          console.log(`   - Assignment current (is_current === true): ${isCurrentAssignment}`);
+          console.log(`   - Classroom active: ${classroomIsActive}`);
+          console.log(`   - Not expired: ${isNotExpired}`);
+          console.log(`   - SHOULD INCLUDE: ${isActiveAssignment && isCurrentAssignment && classroomIsActive && isNotExpired}`);
+        });
+
+        // STRICT FILTERING: Only include classrooms that meet ALL criteria
+        const activeClassrooms = classroomsArray.filter(item => {
+          const isActiveAssignment = item.status === "active";
+          const isCurrentAssignment = item.is_current === true;
+          const classroomIsActive = item.classroom?.is_active === true;
+          const isNotExpired = !item.end_date || new Date(item.end_date) > new Date();
+          
+          const shouldInclude = isActiveAssignment && isCurrentAssignment && classroomIsActive && isNotExpired;
+          
+          if (!shouldInclude) {
+            console.log(`❌ EXCLUDING ${item.classroom?.class_name} - doesn't meet all criteria`);
+          } else {
+            console.log(`✅ INCLUDING ${item.classroom?.class_name} - meets all criteria`);
+          }
+          
+          return shouldInclude;
+        });
+        
+        console.log(`✅ Filtered to ${activeClassrooms.length} active classroom assignments (from ${classroomsArray.length} total)`);
+        
+        // MANUAL OVERRIDE: If you want to show only specific classrooms, uncomment and modify this section
+        // Replace "ADV_001" with the actual classroom code that should be assigned
+        /*
+        const specificClassroomCode = "ADV_001"; // Change this to the specific classroom code
+        const manuallyFilteredClassrooms = activeClassrooms.filter(item => 
+          item.classroom?.class_id === specificClassroomCode
+        );
+        
+        console.log(`🔧 MANUAL FILTER: Showing only ${manuallyFilteredClassrooms.length} classroom(s) with code ${specificClassroomCode}`);
+        const finalClassrooms = manuallyFilteredClassrooms.length > 0 ? manuallyFilteredClassrooms : activeClassrooms;
+        */
+        
+        // Use the filtered classrooms (or manually filtered if enabled)
+        const finalClassrooms = activeClassrooms;
+        
+        const classroomsData = await Promise.all(
+          finalClassrooms.map(async (item) => {
+            // Extract classroom data from the response structure
+            const classroom = item.classroom || item;
+            
+            let studentCount = classroom.current_students_count || 0;
+            let teacherCount = classroom.current_teachers_count || 1;
+            
+            try {
+              studentCount = await fetchClassroomStudentCount(classroom.class_id);
+            } catch (error) {
+              console.warn(`Could not fetch student count for ${classroom.class_id}:`, error);
+            }
+            
+            try {
+              teacherCount = await fetchClassroomTeacherCount(classroom.class_id);
+            } catch (error) {
+              console.warn(`Could not fetch teacher count for ${classroom.class_id}:`, error);
+            }
+            
+            return {
+              id: classroom.c_id || classroom.class_id,
+              c_id: classroom.c_id || classroom.class_id,
+              name: classroom.class_name,
+              code: classroom.class_id,
+              status: classroom.is_active ? "Active" : "Inactive",
+              students: studentCount,
+              teachers: teacherCount,
+              is_active: classroom.is_active,
+              created_at: classroom.created_at,
+              // Include assignment details for debugging
+              assignment_status: item.status,
+              is_current: item.is_current,
+              assignment_data: item
+            };
+          })
+        );
+        
+        console.log("🎯 FINAL TEACHER CLASSROOMS:", classroomsData);
+        setClassrooms(classroomsData);
+        
       } else {
         // Parent: Get parent's children classrooms
         try {
-          console.log("👨‍👧 PARENT: Fetching parent enrollments for user ID:", userId);
-          
+          console.log("👨‍👧 PARENT: Fetching parent enrollments");
           response = await api.get("/my-enrollments");
-          console.log("📋 Parent enrollments response:", response.data);
           
           const enrollments = response.data.data?.enrollments || [];
           const classroomMap = new Map();
@@ -437,19 +392,11 @@ export default function ClassroomsList() {
             students: classroom.students_info.length
           }));
           
-          console.log("🎯 FINAL PARENT CLASSROOMS DATA:", classroomsData);
           setClassrooms(classroomsData);
           
         } catch (parentError) {
           console.error("❌ Error fetching parent enrollments:", parentError);
-          
-          if (parentError.response?.status === 404) {
-            setClassrooms([]);
-          } else if (parentError.response?.status === 401) {
-            setError("Authentication failed. Please log in again.");
-          } else {
-            setError("Failed to load your children's classrooms. Please try again.");
-          }
+          setClassrooms([]);
         }
       }
     } catch (err) {
@@ -458,33 +405,44 @@ export default function ClassroomsList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userData?.uid, userData?.primary_role?.role_name]);
 
+  // FIXED: useEffect with proper dependencies
   useEffect(() => {
+    console.log("🎯 ClassroomsList useEffect triggered", {
+      userRole,
+      userId,
+      classroomsCount: classrooms.length
+    });
     fetchClassrooms();
-  }, [userRole, userId]);
+  }, [fetchClassrooms]);
 
-  // Debug useEffect to analyze current state
+  // Add listener for role changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "userData") {
+        console.log("🔄 Storage change detected - refreshing classrooms");
+        fetchClassrooms();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [fetchClassrooms]);
+
+  // Debug current state
   useEffect(() => {
     if (classrooms.length > 0) {
-      console.log("🔍 CURRENT CLASSROOMS STATE ANALYSIS:");
+      console.log("🔍 CURRENT CLASSROOMS ANALYSIS:");
+      console.log(`Role: ${userRole}, Total classrooms: ${classrooms.length}`);
       classrooms.forEach((cls, index) => {
-        console.log(`Classroom ${index + 1}:`, {
-          name: cls.name,
-          code: cls.code,
-          students: cls.students,
-          teachers: cls.teachers,
-          rawTeachers: cls.rawData?.current_teachers_count,
-          id: cls.id,
-          c_id: cls.c_id
-        });
+        console.log(`Classroom ${index + 1}: ${cls.name} (${cls.code}) - Students: ${cls.students}, Teachers: ${cls.teachers}`);
       });
-      
-      const totalStudents = classrooms.reduce((sum, cls) => sum + (cls.students || 0), 0);
-      const totalTeachers = classrooms.reduce((sum, cls) => sum + (cls.teachers || 0), 0);
-      console.log(`📊 TOTALS - Students: ${totalStudents}, Teachers: ${totalTeachers}`);
     }
-  }, [classrooms]);
+  }, [classrooms, userRole]);
 
   const filtered = classrooms.filter((c) => {
     const q = query.trim().toLowerCase();
@@ -711,9 +669,9 @@ export default function ClassroomsList() {
         <div className="row align-items-center mb-4">
           <div className="col-md-4">
             <h4 className="H4-heading fw-bold m-0">
-              Classrooms
+              My Classrooms
               <small className="text-muted ms-2 fs-6">
-                (Your Assigned Classrooms)
+                (Assigned to Me)
               </small>
             </h4>
           </div>
@@ -726,7 +684,7 @@ export default function ClassroomsList() {
                 </span>
                 <input
                   className="form-control"
-                  placeholder="Search your classrooms..."
+                  placeholder="Search my classrooms..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -748,8 +706,7 @@ export default function ClassroomsList() {
           <div className="row mb-3">
             <div className="col-md-6">
               <p className="mb-0">
-                Showing {filtered.length} of {classrooms.length} assigned
-                classrooms
+                Showing {filtered.length} of {classrooms.length} assigned classrooms
                 {totalStudents > 0 && (
                   <span className="text-muted ms-2">
                     • Total Students: <strong>{totalStudents}</strong>

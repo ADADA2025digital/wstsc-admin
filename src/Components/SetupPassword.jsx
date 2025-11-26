@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../config/axiosConfig";
+import Loader from "../Pages/Loader";
 
 const PasswordSetup = () => {
   const [searchParams] = useSearchParams();
@@ -212,20 +213,15 @@ const PasswordSetup = () => {
             <div className="col-12 col-md-4 d-flex justify-content-center">
               <div className="card shadow-sm border-0">
                 <div className="card-body p-5 text-center">
-                  <i className="bi bi-check-circle text-success display-1"></i>
-                  <h3 className="mt-4 text-success">
-                    Password Set Successfully!
-                  </h3>
+                  <h3 className="text-success">Password Set Successfully!</h3>
                   <p className="text-muted mt-3">
                     Your password has been set successfully. You can now login
                     with your new password.
                   </p>
                   <p className="text-muted">Redirecting to login page...</p>
-                  <div
-                    className="spinner-border text-primary mt-3"
-                    role="status"
-                  >
-                    <span className="visually-hidden">Loading...</span>
+                  
+                  <div className="mt-4">
+                    <Loader />
                   </div>
                 </div>
               </div>
@@ -235,6 +231,7 @@ const PasswordSetup = () => {
       </div>
     );
   }
+
 
   return (
     <div className="container-fluid p-0">

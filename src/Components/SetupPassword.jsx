@@ -18,6 +18,8 @@ const PasswordSetup = () => {
   const [verifying, setVerifying] = useState(true);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Verify token on component mount
   useEffect(() => {
@@ -67,6 +69,14 @@ const PasswordSetup = () => {
     if (errors.general) {
       setErrors((prev) => ({ ...prev, general: "" }));
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   const validateForm = () => {
@@ -197,39 +207,37 @@ const PasswordSetup = () => {
     );
   }
 
-if (success) {
-  return (
-    <div className="container-fluid p-0">
-      <div
-        className="login-container bg-light w-100"
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "flex-start", // Changed from center to flex-start
-          justifyContent: "center",
-          flexDirection: "column",
-        }}
-      >
-        {/* Success Content */}
-        <div className="text-center mb-5 w-100">
-          <h3 className="text-dark text-semibold">Password Set Successfully!</h3>
-          <p className="text-muted mt-3 mb-5">
-            Your password has been set successfully. You can now login with
-            your new password.
-          </p>
-          <p className="text-muted mb-5">Redirecting to login page...</p>
-        </div>
+  if (success) {
+    return (
+      <div className="container-fluid p-0">
+        <div
+          className="login-container bg-light w-100"
+          style={{
+            height: "100vh",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            flexDirection: "column",
+          }}
+        >
+          {/* Success Content */}
+          <div className="text-center mb-5 w-100">
+            <h3 className="text-dark text-semibold">Password Set Successfully!</h3>
+            <p className="text-muted mt-3 mb-5">
+              Your password has been set successfully. You can now login with
+              your new password.
+            </p>
+            <p className="text-muted mb-5">Redirecting to login page...</p>
+          </div>
 
-        {/* Loader */}
-        <div className="mt-5 w-100 text-center">
-          <Loader />
+          {/* Loader */}
+          <div className="mt-5 w-100 text-center">
+            <Loader />
+          </div>
         </div>
       </div>
-    </div>
-
-    
-  );
-}
+    );
+  }
 
   return (
     <div className="container-fluid p-0">
@@ -299,23 +307,45 @@ if (success) {
                 {/* New Password Field */}
                 <div>
                   <label className="form-label fw-semibold">New Password</label>
-                  <input
-                    type="password"
-                    name="new_password"
-                    className={`form-control input border ${
-                      errors.new_password ? "is-invalid" : ""
-                    }`}
-                    value={formData.new_password}
-                    onChange={handleChange}
-                    placeholder="Enter new password"
-                    required
-                    minLength="6"
-                  />
-                  {errors.new_password && (
-                    <div className="invalid-feedback">
-                      {errors.new_password}
-                    </div>
-                  )}
+                  <div className="input-group">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="new_password"
+                      className={`form-control input border border-end-0 ${
+                        errors.new_password ? "is-invalid" : ""
+                      }`}
+                      value={formData.new_password}
+                      onChange={handleChange}
+                      placeholder="Enter new password"
+                      required
+                      minLength="6"
+                    />
+                    <span
+                      className="d-flex align-items-center"
+                      onClick={togglePasswordVisibility}
+                      style={{
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "teal",
+                        borderLeft: "none",
+                        border: "1px solid #dee2e6",
+                        padding: "12px 15px",
+                        borderTopRightRadius: "20px",
+                        borderBottomRightRadius: "20px",
+                      }}
+                    >
+                      {showPassword ? (
+                        <i className="bi bi-eye-slash-fill"></i>
+                      ) : (
+                        <i className="bi bi-eye-fill"></i>
+                      )}
+                    </span>
+                    {errors.new_password && (
+                      <div className="invalid-feedback d-block">
+                        {errors.new_password}
+                      </div>
+                    )}
+                  </div>
                   <div className="form-text">
                     Password must be at least 6 characters long
                   </div>
@@ -326,17 +356,39 @@ if (success) {
                   <label className="form-label fw-semibold">
                     Confirm New Password
                   </label>
-                  <input
-                    type="password"
-                    name="new_password_confirmation"
-                    className={`form-control input border ${
-                      errors.new_password_confirmation ? "is-invalid" : ""
-                    }`}
-                    value={formData.new_password_confirmation}
-                    onChange={handleChange}
-                    placeholder="Confirm new password"
-                    required
-                  />
+                  <div className="input-group">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="new_password_confirmation"
+                      className={`form-control input border border-end-0 ${
+                        errors.new_password_confirmation ? "is-invalid" : ""
+                      }`}
+                      value={formData.new_password_confirmation}
+                      onChange={handleChange}
+                      placeholder="Confirm new password"
+                      required
+                    />
+                    <span
+                      className="d-flex align-items-center"
+                      onClick={toggleConfirmPasswordVisibility}
+                      style={{
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "teal",
+                        borderLeft: "none",
+                        border: "1px solid #dee2e6",
+                        padding: "12px 15px",
+                        borderTopRightRadius: "20px",
+                        borderBottomRightRadius: "20px",
+                      }}
+                    >
+                      {showConfirmPassword ? (
+                        <i className="bi bi-eye-slash-fill"></i>
+                      ) : (
+                        <i className="bi bi-eye-fill"></i>
+                      )}
+                    </span>
+                  </div>
                   {errors.new_password_confirmation && (
                     <div className="invalid-feedback">
                       {errors.new_password_confirmation}

@@ -603,98 +603,73 @@ const EditProfile = () => {
   };
 
   // Submit form using axios
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    // Basic validation
-    if (!formData.first_name || !formData.last_name || !formData.phone) {
-      showMessage("warning", "Please fill in all required fields");
-      return;
-    }
+  if (!validateForm()) {
+    toast.error("Please fix the validation errors before submitting.");
+    return;
+  }
 
-    setIsSubmitting(true);
+  setLoading(true);
 
-    try {
-      // Prepare data for API - match the expected request body structure
-      const updateData = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        middle_name: formData.middle_name,
-        gender: formData.gender,
-        date_of_birth: formData.date_of_birth,
-        phone: formData.phone,
-        nationality: formData.nationality,
-        alternate_phone: formData.alternate_phone,
-        marital_status: formData.marital_status,
-        occupation: formData.occupation,
-        address_line1: formData.address_line1,
-        city: formData.city,
-        state: formData.state,
-        postal_code: formData.postal_code,
-        country: formData.country,
-        address_type: formData.address_type,
-      };
+  try {
+    const response = await api.post("/login", formData);
 
-      // Debug: log the data being sent
-      console.log("Sending update data:", updateData);
+    if (response.data.success) {
+      const { token, user } = response.data.data;
 
-      const response = await api.put("/profile/update", updateData);
+      // Store token in cookies
+      Cookies.set("token", token, { expires: 7 });
+      Cookies.set("user_id", user.id, { expires: 7 });
+      Cookies.set("role_id", user.role_id, { expires: 7 });
 
-      if (response.data.success) {
-        showMessage(
-          "success",
-          response.data.message || "Profile updated successfully!"
-        );
-        setOriginalData({ ...formData });
+      // Handle remember me
+      if (rememberMe) {
+        const cookieOptions = {
+          expires: 30,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+        };
 
-        // Mark profile as completed in local storage
-        localStorage.setItem("profile_completed", "true");
-
-        // Navigate back after success
-        setTimeout(() => navigate(-1), 2000);
+        Cookies.set("rememberMe", "true", cookieOptions);
+        Cookies.set("rememberEmail", formData.email, cookieOptions);
+        Cookies.set("rememberPassword", formData.password, cookieOptions);
+        resetInactivityTimer();
       } else {
-        throw new Error(response.data.message || "Failed to update profile");
+        clearRememberMeCookies();
       }
-    } catch (error) {
-      console.error("Error updating profile:", error);
 
-      let errorMessage = "Error updating profile. Please try again.";
+      // Store user data in localStorage
+      localStorage.setItem("userData", JSON.stringify(user));
+      localStorage.setItem("authenticated", "true");
 
-      // Handle validation errors (422 status)
-      if (error.response?.status === 422) {
-        const validationErrors = error.response.data.errors;
-        if (validationErrors) {
-          // Set field-specific errors
-          setFieldErrors(validationErrors);
+      toast.success("Login successful!");
 
-          // Extract all validation error messages for the alert
-          errorMessage = Object.values(validationErrors)
-            .flat()
-            .map((error) => (typeof error === "string" ? error : String(error)))
-            .join(", ");
-
-          // Show validation alert without timer
-          setValidationAlert({
-            show: true,
-            message: errorMessage,
-          });
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-          showMessage("danger", errorMessage);
-        }
+      // NEW: Check if user needs to complete profile
+      const isProfileComplete = await checkProfileCompletion(user.id);
+      
+      if (!isProfileComplete) {
+        // First login after password setup - set user_status to empty and redirect to update profile
+        localStorage.setItem("user_status", "");
+        navigate("/update-profile");
+        toast.info("Please complete your profile to continue");
+      } else {
+        // Normal login - set user_status to active and redirect to home
+        localStorage.setItem("user_status", "active");
+        navigate("/");
       }
-      // Handle other API errors
-      else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-        showMessage("danger", errorMessage);
-      } else if (error.message) {
-        errorMessage = error.message;
-        showMessage("danger", errorMessage);
-      }
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  } catch (error) {
+    console.error("Login error:", error);
+    toast.error(
+      error.response?.data?.message ||
+        "Login failed. Please check your credentials and try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCancel = () => {
     setFormData(originalData);

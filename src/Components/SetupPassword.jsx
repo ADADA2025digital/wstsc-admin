@@ -87,50 +87,46 @@ const PasswordSetup = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!validateForm()) {
-      return;
+  if (!validateForm()) {
+    return;
+  }
+
+  setLoading(true);
+  setErrors({});
+
+  try {
+    console.log("Setting up password with token:", token);
+    const response = await api.post("/password-setup/setup", {
+      token,
+      new_password: formData.new_password,
+      new_password_confirmation: formData.new_password_confirmation,
+    });
+
+    console.log("Password setup response:", response.data);
+
+    if (response.data.success) {
+      setSuccess(true);
+
+      // Set initial user_status to empty (user needs to complete profile)
+      localStorage.setItem("user_status", "");
+
+      // Redirect to login page after 3 seconds
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
+    } else {
+      throw new Error(response.data.message || "Failed to set password");
     }
-
-    setLoading(true);
-    setErrors({});
-
-    try {
-      console.log("Setting up password with token:", token);
-      const response = await api.post("/password-setup/setup", {
-        token,
-        new_password: formData.new_password,
-        new_password_confirmation: formData.new_password_confirmation,
-      });
-
-      console.log("Password setup response:", response.data);
-
-      if (response.data.success) {
-        setSuccess(true);
-
-        // Redirect to login page after 3 seconds
-        setTimeout(() => {
-          navigate("/login");
-        }, 3000);
-      } else {
-        throw new Error(response.data.message || "Failed to set password");
-      }
-    } catch (error) {
-      console.error("Password setup error:", error);
-      if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors);
-      } else {
-        const errorMessage =
-          error.response?.data?.message ||
-          "Failed to set password. Please try again.";
-        setErrors({ general: errorMessage });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error("Password setup error:", error);
+    // ... error handling
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (verifying) {
     return (

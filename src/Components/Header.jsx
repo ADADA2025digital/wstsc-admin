@@ -277,21 +277,26 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [loggingOut, switchingProfile]);
 
-  const actuallyLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userData");
-    localStorage.removeItem("authenticated");
-    localStorage.removeItem("profileImage");
-    localStorage.removeItem("roleSwitchComplete");
-    localStorage.removeItem("lastRoleSwitch");
+const actuallyLogout = () => {
+  // Clear all authentication data
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("userData");
+  localStorage.removeItem("authenticated");
+  localStorage.removeItem("profileImage");
+  localStorage.removeItem("roleSwitchComplete");
+  localStorage.removeItem("lastRoleSwitch");
+  
+  // Clear the user_status specifically
+  localStorage.removeItem("user_status");
+  localStorage.removeItem("profile_completed");
 
-    const cookies = Cookies.get();
-    Object.keys(cookies).forEach((cookieName) => {
-      Cookies.remove(cookieName);
-    });
+  const cookies = Cookies.get();
+  Object.keys(cookies).forEach((cookieName) => {
+    Cookies.remove(cookieName);
+  });
 
-    window.location.href = "/login";
-  };
+  window.location.href = "/login";
+};
 
   const confirmLogout = () => {
     setLoggingOut(true);

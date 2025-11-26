@@ -197,37 +197,38 @@ const PasswordSetup = () => {
     );
   }
 
-  if (success) {
-    return (
-      <div className="container-fluid p-0">
-        <div
-          className="login-container bg-light w-100"
-          style={{
-            height: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-          }}
-        >
-          {/* Success Content */}
-          <div className="text-center mb-4">
-            <h3 className="text-success">Password Set Successfully!</h3>
-            <p className="text-muted mt-3">
-              Your password has been set successfully. You can now login with
-              your new password.
-            </p>
-            <p className="text-muted">Redirecting to login page...</p>
-          </div>
+if (success) {
+  return (
+    <div className="container-fluid p-0">
+      <div
+        className="login-container bg-light w-100"
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "flex-start", // Changed from center to flex-start
+          justifyContent: "center",
+          flexDirection: "column",
+          paddingTop: "20vh", // Add padding to push content down from absolute top
+        }}
+      >
+        {/* Success Content */}
+        <div className="text-center mb-4 w-100">
+          <h3 className="text-success">Password Set Successfully!</h3>
+          <p className="text-muted mt-3">
+            Your password has been set successfully. You can now login with
+            your new password.
+          </p>
+          <p className="text-muted">Redirecting to login page...</p>
+        </div>
 
-          {/* Loader */}
-          <div className="mt-4">
-            <Loader />
-          </div>
+        {/* Loader */}
+        <div className="mt-4 w-100 text-center">
+          <Loader />
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="container-fluid p-0">

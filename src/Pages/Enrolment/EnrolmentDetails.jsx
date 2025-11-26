@@ -1241,10 +1241,57 @@ const EnrolmentDetails = () => {
                     <InfoCard title="Medical Details" className="bg-secondary bg-opacity-10" emptyState={!medical_details} emptyMessage="No medical information available">
                       {medical_details && (
                         <Row className="g-4">
-                          <Col md={3}><div><span className="small">Asthma</span><p className="mb-0"><span className={`badge ${medical_details.asthma === "Yes" || medical_details.asthma === true ? "bg-success" : "bg-secondary"}`}>{medical_details.asthma?.toString() || "No"}</span></p></div></Col>
-                          <Col md={3}><div><span className="small">Major Illness</span><p className="mb-0"><span className={`badge ${medical_details.major_illness === "Yes" || medical_details.major_illness === true ? "bg-success" : "bg-secondary"}`}>{medical_details.major_illness?.toString() || "No"}</span></p></div></Col>
-                          <Col md={3}><div><span className="small">Allergies</span><p className="mb-0"><span className={`badge ${medical_details.allergies === "Yes" || medical_details.allergies === true ? "bg-success" : "bg-secondary"}`}>{medical_details.allergies?.toString() || "No"}</span></p></div></Col>
-                          <Col md={3}><div><span className="small">Special Learning Needs</span><p className="mb-0"><span className={`badge ${medical_details.special_learning_needs === "Yes" || medical_details.special_learning_needs === true ? "bg-success" : "bg-secondary"}`}>{medical_details.special_learning_needs?.toString() || "No"}</span></p>{medical_details.special_learning_needs_details && (<small className="text-muted">Details: {medical_details.special_learning_needs_details}</small>)}</div></Col>
+                          <Col md={3}>
+                            <div>
+                              <span className="small">Asthma</span>
+                              <p className="mb-0">
+                                <span className={`badge ${
+                                  medical_details.asthma === "Yes" || medical_details.asthma === true ? "bg-success" : "bg-secondary"
+                                }`}>
+                                  {medical_details.asthma === true ? "Yes" : medical_details.asthma === false ? "No" : medical_details.asthma || "No"}
+                                </span>
+                              </p>
+                            </div>
+                          </Col>
+                          <Col md={3}>
+                            <div>
+                              <span className="small">Major Illness</span>
+                              <p className="mb-0">
+                                <span className={`badge ${
+                                  medical_details.major_illness === "Yes" || medical_details.major_illness === true ? "bg-success" : "bg-secondary"
+                                }`}>
+                                  {medical_details.major_illness === true ? "Yes" : medical_details.major_illness === false ? "No" : medical_details.major_illness || "No"}
+                                </span>
+                              </p>
+                            </div>
+                          </Col>
+                          <Col md={3}>
+                            <div>
+                              <span className="small">Allergies</span>
+                              <p className="mb-0">
+                                <span className={`badge ${
+                                  medical_details.allergies === "Yes" || medical_details.allergies === true ? "bg-success" : "bg-secondary"
+                                }`}>
+                                  {medical_details.allergies === true ? "Yes" : medical_details.allergies === false ? "No" : medical_details.allergies || "No"}
+                                </span>
+                              </p>
+                            </div>
+                          </Col>
+                          <Col md={3}>
+                            <div>
+                              <span className="small">Special Learning Needs</span>
+                              <p className="mb-0">
+                                <span className={`badge ${
+                                  medical_details.special_learning_needs === "Yes" || medical_details.special_learning_needs === true ? "bg-success" : "bg-secondary"
+                                }`}>
+                                  {medical_details.special_learning_needs === true ? "Yes" : medical_details.special_learning_needs === false ? "No" : medical_details.special_learning_needs || "No"}
+                                </span>
+                              </p>
+                              {medical_details.special_learning_needs_details && (
+                                <small className="text-muted">Details: {medical_details.special_learning_needs_details}</small>
+                              )}
+                            </div>
+                          </Col>
                         </Row>
                       )}
                     </InfoCard>

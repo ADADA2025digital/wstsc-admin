@@ -188,6 +188,10 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
 
   const sendSetupEmail = async (personData) => {
     try {
+      // Get all selected role names
+      const selectedRoleNames = personData.all_roles.map(role => role.display_name || role.role_name);
+      const rolesText = selectedRoleNames.join(', ');
+
       const templateParams = {
         to_name: `${personData.first_name} ${personData.last_name}`,
         to_email: personData.email,
@@ -196,8 +200,15 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         from_name: "Western Sydney Tamil Study Centre",
         school_name: "Western Sydney Tamil Study Centre",
         support_email: "info@wstsc.org.au",
-        person_type: personData.primary_role?.display_name || "User",
+        person_type: rolesText, // Now contains all roles separated by commas
+        all_roles: rolesText, // Additional parameter with all roles
+        roles_list: selectedRoleNames.join(', '), // Comma separated string of all roles
+        roles_count: selectedRoleNames.length, // Number of roles
+        first_name: personData.first_name,
+        last_name: personData.last_name
       };
+
+      console.log("Sending email with parameters:", templateParams);
 
       const response = await emailjs.send(
         EMAILJS_CONFIG.serviceId,
@@ -205,6 +216,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         templateParams
       );
 
+      console.log("Email sent successfully:", response);
       return response.status === 200;
     } catch (error) {
       console.error('Email sending failed:', error);
@@ -267,19 +279,35 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
           });
         }
 
-        sendSetupEmail({
+        // Get the display names for all selected roles
+        const allSelectedRoles = roles.filter(role => 
+          selectedRoles.includes(role.roleid)
+        );
+
+        console.log("All selected roles for email:", allSelectedRoles);
+
+        // Send setup email with all roles
+        const emailSent = await sendSetupEmail({
           setup_url,
           expires_at,
           person_name: `${person.person_first_name} ${person.person_last_name}`,
           email: person.person_email,
           first_name: person.person_first_name,
           last_name: person.person_last_name,
-          primary_role: user.primary_role
+          primary_role: user.primary_role,
+          all_roles: allSelectedRoles, // Pass all selected roles
+          role_ids: selectedRoles
         });
+
+        if (emailSent) {
+          setSuccess("Person created successfully and setup email sent!");
+        } else {
+          setSuccess("Person created successfully but failed to send setup email.");
+        }
 
         setTimeout(() => {
           onClose();
-        }, 1000);
+        }, 2000);
 
       } else {
         setErrors({
@@ -446,7 +474,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
                     <div className="mt-2">
                       <small className="text-success">
                         <i className="bi bi-check-circle me-1"></i>
-                        {selectedRoles.length} role(s) selected
+                        {selectedRoles.length} role(s) selected: {roles.filter(role => selectedRoles.includes(role.roleid)).map(role => role.display_name).join(', ')}
                       </small>
                     </div>
                   )}
@@ -460,7 +488,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
                   <div className="alert alert-info">
                     <small>
                       <i className="bi bi-info-circle me-2"></i>
-                      The person will receive a setup link via email to create their password.
+                      The person will receive a setup link via email to create their password. All assigned roles ({selectedRoles.length}) will be listed in the email.
                     </small>
                   </div>
                 </div>

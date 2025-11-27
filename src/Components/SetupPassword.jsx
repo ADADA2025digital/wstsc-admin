@@ -223,11 +223,10 @@ const PasswordSetup = () => {
           {/* Success Content */}
           <div className="text-center mb-5 w-100">
             <h3 className="text-dark text-semibold">Password Set Successfully!</h3>
-            <p className="text-muted mt-3 mb-5">
+            <p className="text-muted mt-1 mb-5">
               Your password has been set successfully. You can now login with
               your new password.
             </p>
-            <p className="text-muted mb-5">Redirecting to login page...</p>
           </div>
 
           {/* Loader */}

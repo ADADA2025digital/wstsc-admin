@@ -22,6 +22,7 @@ const AssignPrincipal = () => {
   const [persons, setPersons] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [loadingPersons, setLoadingPersons] = useState(true);
+  const [loadingTeachers, setLoadingTeachers] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState(null);
@@ -36,10 +37,9 @@ const AssignPrincipal = () => {
     status: "active"
   });
 
-  // Fetch all persons from the API
+  // Fetch all persons from the API (for nominator/seconder selection)
   const fetchPersons = async () => {
     try {
-      setLoadingPersons(true);
       setError(null);
       console.log("🟡 Starting to fetch persons from /admin/persons...");
       
@@ -49,29 +49,88 @@ const AssignPrincipal = () => {
       if (response.data.success) {
         const allPersons = response.data.data.persons || [];
         console.log(`📊 Total persons loaded: ${allPersons.length}`);
-        
         setPersons(allPersons);
-        
-        // Filter teachers from persons (users with teacher role)
-        const teacherPersons = allPersons.filter(person => 
-          person.user?.role?.role_name === "teacher"
-        );
-        console.log(`👨‍🏫 Teachers found: ${teacherPersons.length}`);
-        
-        setTeachers(teacherPersons);
       } else {
         console.error("❌ API returned success: false", response.data);
         setError("Failed to fetch persons");
         setPersons([]);
-        setTeachers([]);
       }
     } catch (err) {
       console.error("❌ Error fetching persons:", err);
       setError("Failed to load persons data");
       setPersons([]);
-      setTeachers([]);
     } finally {
       setLoadingPersons(false);
+    }
+  };
+
+  // Fetch available teachers from the dedicated API endpoint
+  const fetchTeachers = async () => {
+    try {
+      setLoadingTeachers(true);
+      setError(null);
+      console.log("🟡 Starting to fetch teachers from /classroom-teachers/available-teachers...");
+      
+      const response = await api.get("/classroom-teachers/available-teachers");
+      console.log("✅ Teachers API response:", response);
+      
+      if (response.data.success) {
+        const teachersData = response.data.data.teachers || [];
+        console.log(`👨‍🏫 Teachers loaded: ${teachersData.length}`);
+        
+        // Transform the teacher data to match our expected format
+        const transformedTeachers = teachersData.map(teacher => ({
+          // Map the API response to our expected person structure
+          peid: teacher.person?.peid || `T${teacher.tid}`,
+          person_first_name: teacher.person?.first_name || teacher.name?.split(' ')[0] || '',
+          person_last_name: teacher.person?.last_name || teacher.name?.split(' ').slice(1).join(' ') || '',
+          full_name: teacher.person?.full_name || teacher.name || '',
+          person_email: teacher.person?.email || teacher.email || '',
+          person_phone: teacher.person?.phone || teacher.phone || '',
+          person_status: teacher.status || 'active',
+          person_dob: null, // Not provided in the API
+          user: {
+            uid: teacher.uid,
+            last_login: null, // Not provided in the API
+            role: teacher.role || {
+              roleid: teacher.role?.roleid,
+              role_name: teacher.role?.role_name || 'teacher',
+              display_name: teacher.role?.display_name || 'Teacher'
+            }
+          },
+          // Keep original data for reference
+          originalData: teacher
+        }));
+
+        console.log("📋 Transformed teachers:", transformedTeachers);
+        setTeachers(transformedTeachers);
+      } else {
+        console.error("❌ Teachers API returned success: false", response.data);
+        setError("Failed to fetch teachers");
+        setTeachers([]);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching teachers:", err);
+      setError("Failed to load teachers data");
+      setTeachers([]);
+    } finally {
+      setLoadingTeachers(false);
+    }
+  };
+
+  // Load both persons and teachers
+  const loadData = async () => {
+    setLoadingPersons(true);
+    setLoadingTeachers(true);
+    
+    try {
+      await Promise.all([
+        fetchPersons(),
+        fetchTeachers()
+      ]);
+    } catch (error) {
+      console.error("❌ Error loading data:", error);
+      setError("Failed to load required data");
     }
   };
 
@@ -91,7 +150,8 @@ const AssignPrincipal = () => {
       peid: teacher.peid,
       full_name: teacher.full_name,
       user_id: teacher.user?.uid,
-      role: teacher.user?.role
+      role: teacher.user?.role,
+      originalData: teacher.originalData
     });
     setSelectedTeacher(teacher);
     setSuccessMessage("");
@@ -159,10 +219,9 @@ const AssignPrincipal = () => {
       setAssigningPrincipal(true);
       setError("");
 
-      // Try different field names for teacher ID
+      // Use teacher_id from the original API data
       const submissionData = {
-        // Try teacher_id instead of tid
-        teacher_id: Number(selectedTeacher.user.uid),
+        teacher_id: Number(selectedTeacher.originalData?.tid || selectedTeacher.user.uid),
         position: String(formData.position).trim(),
         year: Number(formData.year),
         nominated_by: String(nominator.peid).trim(),
@@ -183,6 +242,7 @@ const AssignPrincipal = () => {
           name: selectedTeacher.full_name,
           peid: selectedTeacher.peid,
           user_id: selectedTeacher.user?.uid,
+          teacher_id: selectedTeacher.originalData?.tid,
           email: selectedTeacher.person_email
         },
         nominator: {
@@ -272,7 +332,9 @@ const AssignPrincipal = () => {
 
   // Get role badge variant
   const getRoleVariant = (roleName) => {
-    switch (roleName) {
+    if (!roleName) return "secondary";
+    
+    switch (roleName.toLowerCase()) {
       case "admin":
         return "danger";
       case "teacher":
@@ -286,9 +348,20 @@ const AssignPrincipal = () => {
     }
   };
 
+  // Get role display name
+  const getRoleDisplayName = (person) => {
+    if (!person.user || !person.user.role) return "No Role";
+    
+    return person.user.role.display_name || 
+           person.user.role.role_name || 
+           "Unknown Role";
+  };
+
   // Get status variant
   const getStatusVariant = (status) => {
-    switch (status?.toLowerCase()) {
+    if (!status) return "secondary";
+    
+    switch (status.toLowerCase()) {
       case "active":
         return "success";
       case "inactive":
@@ -340,7 +413,7 @@ const AssignPrincipal = () => {
   };
 
   useEffect(() => {
-    fetchPersons();
+    loadData();
   }, []);
 
   // Log when selections change
@@ -351,6 +424,8 @@ const AssignPrincipal = () => {
       seconder: seconder ? seconder.full_name : "None"
     });
   }, [selectedTeacher, nominator, seconder]);
+
+  const isLoading = loadingPersons || loadingTeachers;
 
   return (
     <Container fluid className="px-4 py-3">
@@ -428,21 +503,21 @@ const AssignPrincipal = () => {
               </div>
 
               {/* Teachers List */}
-              {loadingPersons ? (
+              {isLoading ? (
                 <div className="text-center py-5">
                   <Spinner animation="border" variant="primary" size="lg" />
                   <p className="mt-3 text-muted">Loading teachers...</p>
                 </div>
               ) : filteredTeachers.length === 0 ? (
                 <div className="text-center py-5">
-                  <i className="bi bi-person-badge display-1 text-muted mb-3"></i>
+                  <i className="bi bi-person-x display-1 text-muted mb-3"></i>
                   <h5 className="text-muted">
-                    {searchTerm ? "No teachers found" : "No teachers available"}
+                    {searchTerm ? "No teachers found" : "No Teachers Available"}
                   </h5>
                   <p className="text-muted">
                     {searchTerm 
                       ? "Try adjusting your search terms" 
-                      : "There are no teachers in the system"
+                      : "There are no available teachers in the system."
                     }
                   </p>
                   {searchTerm && (
@@ -462,8 +537,9 @@ const AssignPrincipal = () => {
                         <th width="60px" className="text-center">Select</th>
                         <th>Teacher Details</th>
                         <th>Contact</th>
+                        <th>Role</th>
                         <th>Status</th>
-                        <th>Last Activity</th>
+                        <th>Teacher ID</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -497,15 +573,10 @@ const AssignPrincipal = () => {
                               <div>
                                 <h6 className="mb-1">{teacher.full_name}</h6>
                                 <div className="d-flex flex-wrap gap-1">
-                                  <Badge bg="success" className="fs-7">
-                                    Teacher
+                                  <Badge bg="primary" className="fs-7">
+                                    {teacher.peid}
                                   </Badge>
                                 </div>
-                                {teacher.person_dob && (
-                                  <small className="text-muted">
-                                    DOB: {formatDate(teacher.person_dob)}
-                                  </small>
-                                )}
                               </div>
                             </div>
                           </td>
@@ -513,7 +584,7 @@ const AssignPrincipal = () => {
                             <div>
                               <div className="mb-1">
                                 <i className="bi bi-envelope text-muted me-1"></i>
-                                <small>{teacher.person_email}</small>
+                                <small>{teacher.person_email || "No email"}</small>
                               </div>
                               {teacher.person_phone && (
                                 <div>
@@ -524,17 +595,22 @@ const AssignPrincipal = () => {
                             </div>
                           </td>
                           <td>
+                            <Badge bg={getRoleVariant(teacher.user?.role?.role_name)}>
+                              {getRoleDisplayName(teacher)}
+                            </Badge>
+                          </td>
+                          <td>
                             <Badge bg={getStatusVariant(teacher.person_status)}>
-                              {teacher.person_status}
+                              {teacher.person_status || "Unknown"}
                             </Badge>
                           </td>
                           <td>
                             <div className="text-center">
                               <small className="text-muted d-block">
-                                {formatDate(teacher.user?.last_login)}
+                                TID: {teacher.originalData?.tid || "N/A"}
                               </small>
                               <small className="text-muted">
-                                Last Login
+                                UID: {teacher.user?.uid || "N/A"}
                               </small>
                             </div>
                           </td>
@@ -572,7 +648,7 @@ const AssignPrincipal = () => {
                         <option value="">Choose a nominator...</option>
                         {persons.map((person) => (
                           <option key={person.peid} value={person.peid}>
-                            {person.full_name} - {person.user?.role?.display_name}
+                            {person.full_name} - {getRoleDisplayName(person)}
                           </option>
                         ))}
                       </Form.Select>
@@ -594,7 +670,7 @@ const AssignPrincipal = () => {
                             <strong>{nominator.full_name}</strong>
                             <div>
                               <Badge bg={getRoleVariant(nominator.user?.role?.role_name)}>
-                                {nominator.user?.role?.display_name}
+                                {getRoleDisplayName(nominator)}
                               </Badge>
                             </div>
                             <small className="text-muted">{nominator.person_email}</small>
@@ -614,7 +690,7 @@ const AssignPrincipal = () => {
                         <option value="">Choose a seconder...</option>
                         {persons.map((person) => (
                           <option key={person.peid} value={person.peid}>
-                            {person.full_name}- {person.user?.role?.display_name}
+                            {person.full_name} - {getRoleDisplayName(person)}
                           </option>
                         ))}
                       </Form.Select>
@@ -636,7 +712,7 @@ const AssignPrincipal = () => {
                             <strong>{seconder.full_name}</strong>
                             <div>
                               <Badge bg={getRoleVariant(seconder.user?.role?.role_name)}>
-                                {seconder.user?.role?.display_name}
+                                {getRoleDisplayName(seconder)}
                               </Badge>
                             </div>
                             <small className="text-muted">{seconder.person_email}</small>
@@ -677,21 +753,36 @@ const AssignPrincipal = () => {
                         <i className="bi bi-person-fill fs-4"></i>
                       </div>
                       <h6 className="mb-1">{selectedTeacher.full_name}</h6>
+                      <Badge bg={getRoleVariant(selectedTeacher.user?.role?.role_name)}>
+                        {getRoleDisplayName(selectedTeacher)}
+                      </Badge>
                     </div>
                     <Table borderless size="sm">
                       <tbody>
                         <tr>
-                          <td className="fw-bold text-muted" width="40%">Email:</td>
-                          <td>{selectedTeacher.person_email}</td>
+                          <td className="fw-bold text-muted" width="40%">PEID:</td>
+                          <td>{selectedTeacher.peid}</td>
+                        </tr>
+                        <tr>
+                          <td className="fw-bold text-muted">Email:</td>
+                          <td>{selectedTeacher.person_email || "No email"}</td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">Status:</td>
                           <td>
                             <Badge bg={getStatusVariant(selectedTeacher.person_status)}>
-                              {selectedTeacher.person_status}
+                              {selectedTeacher.person_status || "Unknown"}
                             </Badge>
                           </td>
-                        </tr>                      
+                        </tr>
+                        <tr>
+                          <td className="fw-bold text-muted">Teacher ID:</td>
+                          <td>{selectedTeacher.originalData?.tid || "N/A"}</td>
+                        </tr>
+                        <tr>
+                          <td className="fw-bold text-muted">User ID:</td>
+                          <td>{selectedTeacher.user?.uid || "N/A"}</td>
+                        </tr>
                       </tbody>
                     </Table>
                   </div>

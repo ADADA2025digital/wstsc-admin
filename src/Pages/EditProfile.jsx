@@ -1155,103 +1155,138 @@ const EditProfile = () => {
             </Tab>
 
             {/* Profile Picture Tab */}
-            <Tab eventKey="picture" title="Profile Picture">
-              <div className="p-4">
-                <Row className="g-4">
-                  <Col md={12}>
-                    <InfoCard title="Profile Picture" className="bg-white">
-                      <Row className="align-items-center">
-                        {/* Left Side - Profile Picture Preview */}
-                        <Col md={6} className="text-center">
-                          <div className="mb-4">
-                            {profilePicturePreview ? (
-                              <Image
-                                src={profilePicturePreview}
-                                alt="Profile preview"
-                                roundedCircle
-                                style={{
-                                  width: "200px",
-                                  height: "200px",
-                                  objectFit: "cover",
-                                  border: "3px solid #dee2e6",
-                                }}
-                              />
-                            ) : (
-                              <div
-                                className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto"
-                                style={{
-                                  width: "200px",
-                                  height: "200px",
-                                  border: "3px dashed #dee2e6",
-                                }}
-                              >
-                                <i className="bi bi-person fs-1 text-muted"></i>
-                              </div>
-                            )}
-                          </div>
-                        </Col>
-
-                        {/* Right Side - Form Controls */}
-                        <Col md={6}>
-                          {/* File Input */}
-                          <Form.Group className="mb-3">
-                            <Form.Label className="d-block text-start">
-                              Choose a new profile picture
-                            </Form.Label>
-                            <Form.Control
-                              type="file"
-                              accept="image/*"
-                              onChange={handleProfilePictureChange}
-                              style={{ maxWidth: "100%" }}
-                              className="rounded-0 w-100"
-                            />
-                            <Form.Text className="text-muted d-block text-start">
-                              Supported formats: JPEG, PNG, GIF. Max size: 5MB
-                            </Form.Text>
-                          </Form.Group>
-
-                          {/* Action Buttons */}
-                          <div className="d-flex gap-2 justify-content-start">
-                            <ButtonGlobal
-                              onClick={handleProfilePictureUpload}
-                              className="btn custom-btn"
-                              disabled={
-                                !profilePictureFile || isUploadingPicture
-                              }
-                            >
-                              <i className="bi bi-upload me-1"></i>
-                              {isUploadingPicture
-                                ? "Uploading..."
-                                : "Upload Picture"}
-                            </ButtonGlobal>
-
-                            {profilePictureFile && (
-                              <ButtonGlobal
-                                onClick={handleRemovePicture}
-                                className="btn btn-outline-secondary"
-                                disabled={isUploadingPicture}
-                              >
-                                <i className="bi bi-x me-1"></i>
-                                Cancel
-                              </ButtonGlobal>
-                            )}
-                          </div>
-
-                          {/* Current Picture Info */}
-                          {profilePicture && !profilePictureFile && (
-                            <div className="mt-3">
-                              <p className="text-muted small mb-0 text-start">
-                                Current profile picture is active
-                              </p>
-                            </div>
-                          )}
-                        </Col>
-                      </Row>
-                    </InfoCard>
-                  </Col>
-                </Row>
+{/* Profile Picture Tab */}
+<Tab eventKey="picture" title="Profile Picture">
+  <div className="p-4">
+    <Row className="g-4">
+      <Col md={12}>
+        <InfoCard title="Profile Picture" className="bg-white">
+          <Row className="align-items-center">
+            {/* Left Side - Profile Picture Preview */}
+            <Col md={6} className="text-center">
+              <div className="mb-4 position-relative">
+                {profilePicturePreview ? (
+                  <div className="position-relative">
+                    <Image
+                      src={profilePicturePreview}
+                      alt="Profile preview"
+                      roundedCircle
+                      style={{
+                        width: "200px",
+                        height: "200px",
+                        objectFit: "cover",
+                        border: "3px solid #dee2e6",
+                      }}
+                    />
+                    {/* Plus icon overlay on existing image */}
+                    <div 
+                      className="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center cursor-pointer"
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        border: "3px solid white",
+                      }}
+                      onClick={() => document.getElementById('profile-picture-input').click()}
+                    >
+                      <i className="bi bi-plus text-white fs-6"></i>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto cursor-pointer position-relative"
+                    style={{
+                      width: "200px",
+                      height: "200px",
+                      border: "3px dashed #dee2e6",
+                    }}
+                    onClick={() => document.getElementById('profile-picture-input').click()}
+                  >
+                    <i className="bi bi-person fs-1 text-muted"></i>
+                    {/* Plus icon in center for empty state */}
+                    <div 
+                      className="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center"
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        border: "3px solid white",
+                      }}
+                    >
+                      <i className="bi bi-plus text-white fs-6"></i>
+                    </div>
+                  </div>
+                )}
               </div>
-            </Tab>
+            </Col>
+
+            {/* Right Side - Form Controls */}
+            <Col md={6}>
+              {/* Hidden File Input (for plus icon) */}
+              <Form.Control
+                id="profile-picture-input"
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePictureChange}
+                style={{ display: 'none' }}
+                className="rounded-0 w-100"
+              />
+
+              {/* Visible File Input (original) */}
+              <Form.Group className="mb-3">
+                <Form.Label className="d-block text-start">
+                  Choose a new profile picture
+                </Form.Label>
+                <Form.Control
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  style={{ maxWidth: "100%" }}
+                  className="rounded-0 w-100"
+                />
+                <Form.Text className="text-muted d-block text-start">
+                  Supported formats: JPEG, PNG, GIF. Max size: 5MB
+                </Form.Text>
+              </Form.Group>
+
+              {/* Action Buttons */}
+              <div className="d-flex gap-2 justify-content-start">
+                <ButtonGlobal
+                  onClick={handleProfilePictureUpload}
+                  className="btn custom-btn"
+                  disabled={!profilePictureFile || isUploadingPicture}
+                >
+                  <i className="bi bi-upload me-1"></i>
+                  {isUploadingPicture
+                    ? "Uploading..."
+                    : "Upload Picture"}
+                </ButtonGlobal>
+
+                {profilePictureFile && (
+                  <ButtonGlobal
+                    onClick={handleRemovePicture}
+                    className="btn btn-outline-secondary"
+                    disabled={isUploadingPicture}
+                  >
+                    <i className="bi bi-x me-1"></i>
+                    Cancel
+                  </ButtonGlobal>
+                )}
+              </div>
+
+              {/* Current Picture Info */}
+              {profilePicture && !profilePictureFile && (
+                <div className="mt-3">
+                  <p className="text-muted small mb-0 text-start">
+                    Current profile picture is active
+                  </p>
+                </div>
+              )}
+            </Col>
+          </Row>
+        </InfoCard>
+      </Col>
+    </Row>
+  </div>
+</Tab>
           </Tabs>
         </div>
       </div>

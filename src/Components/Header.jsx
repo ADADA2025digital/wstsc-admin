@@ -6,6 +6,7 @@ import Profile from "../assets/Images/profile.jpeg";
 import HeaderIcon from "../Components/HeaderIcon";
 import Dropdown from "../Components/Dropdown";
 import Icon from "../Components/SideBarIcon";
+import Loader from "../Pages/Loader";
 import Cookies from "js-cookie";
 import api from "../config/axiosConfig";
 import { useLoading } from "../Context/LoadingContext";
@@ -23,7 +24,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
   const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [isSwitchProfileOpen, setSwitchProfileOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDarkModeLoading, setIsDarkModeLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [rotate, setRotate] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -332,26 +333,26 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [loggingOut, switchingProfile]);
 
-const actuallyLogout = () => {
-  // Clear all authentication data
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("userData");
-  localStorage.removeItem("authenticated");
-  localStorage.removeItem("profileImage");
-  localStorage.removeItem("roleSwitchComplete");
-  localStorage.removeItem("lastRoleSwitch");
-  
-  // Clear the user_status specifically
-  localStorage.removeItem("user_status");
-  localStorage.removeItem("profile_completed");
+  const actuallyLogout = () => {
+    // Clear all authentication data
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("authenticated");
+    localStorage.removeItem("profileImage");
+    localStorage.removeItem("roleSwitchComplete");
+    localStorage.removeItem("lastRoleSwitch");
+    
+    // Clear the user_status specifically
+    localStorage.removeItem("user_status");
+    localStorage.removeItem("profile_completed");
 
-  const cookies = Cookies.get();
-  Object.keys(cookies).forEach((cookieName) => {
-    Cookies.remove(cookieName);
-  });
+    const cookies = Cookies.get();
+    Object.keys(cookies).forEach((cookieName) => {
+      Cookies.remove(cookieName);
+    });
 
-  window.location.href = "/login";
-};
+    window.location.href = "/login";
+  };
 
   const confirmLogout = () => {
     setLoggingOut(true);
@@ -472,14 +473,15 @@ const actuallyLogout = () => {
   }, []);
 
   const toggleDarkMode = () => {
-    setIsLoading(true);
+    setIsDarkModeLoading(true);
+    
     setTimeout(() => {
       const newMode = !isDarkMode;
       setIsDarkMode(newMode);
       document.body.classList.toggle("dark-mode", newMode);
       localStorage.setItem("darkMode", newMode);
-      setIsLoading(false);
-    }, 500);
+      setIsDarkModeLoading(false);
+    }, 800);
   };
 
   useEffect(() => {
@@ -505,9 +507,13 @@ const actuallyLogout = () => {
 
   return (
     <>
-      {isLoading && (
-        <div className="backdrop">
-          <div className="spinner"></div>
+      {/* Dark Mode Loader using your custom Loader component */}
+      {isDarkModeLoading && (
+        <div className="backdrop" style={{ zIndex: 9999 }}>
+          <Loader />
+          <div className="text-white mt-3 text-center">
+            {isDarkMode ? "Switching to Light Mode..." : "Switching to Dark Mode..."}
+          </div>
         </div>
       )}
 
@@ -582,6 +588,7 @@ const actuallyLogout = () => {
             <HeaderIcon
               type={isDarkMode ? "bi-brightness-high" : "bi-moon-stars"}
               onClick={toggleDarkMode}
+              disabled={isDarkModeLoading}
             />
           )}
 
@@ -804,6 +811,7 @@ const actuallyLogout = () => {
           <HeaderIcon
             type={isDarkMode ? "bi-brightness-high" : "bi-moon-stars"}
             onClick={toggleDarkMode}
+            disabled={isDarkModeLoading}
           />
         </nav>
       )}
@@ -818,7 +826,6 @@ const actuallyLogout = () => {
         >
           <div
             className="modal-dialog modal-dialog-centered"
-            style={{ maxWidth: "500px" }}
           >
             <div className="modal-content">
               <div className="modal-header">

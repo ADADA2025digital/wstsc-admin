@@ -163,6 +163,40 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
     }
   };
 
+  // Listen for profile updates from EditProfile
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      console.log("🔄 Header: Profile update event received", event.detail);
+      if (event.detail?.photo_url) {
+        console.log("📸 Header: Updating profile image to:", event.detail.photo_url);
+        setProfileImage(event.detail.photo_url);
+      }
+      fetchUserProfile(); // Refresh entire profile data
+    };
+
+    const handleForceRefresh = () => {
+      console.log("🔄 Header: Force refresh triggered");
+      fetchUserProfile();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('forceRefresh', handleForceRefresh);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('forceRefresh', handleForceRefresh);
+    };
+  }, []);
+
+  // Listen for userData changes from the hook
+  useEffect(() => {
+    if (userData?.photo_url && userData.photo_url !== profileImage) {
+      console.log("🔄 Header: userData photo_url changed", userData.photo_url);
+      setProfileImage(userData.photo_url);
+    }
+  }, [userData?.photo_url]);
+
+  // Enhanced fetchUserProfile to handle photo updates
   useEffect(() => {
     fetchUserProfile();
   }, [userData]);
@@ -176,6 +210,27 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
       );
     }
   }, [userData]);
+
+  // Simple polling as fallback (optional)
+  useEffect(() => {
+    const pollUserData = () => {
+      try {
+        const storedUserData = localStorage.getItem("userData");
+        if (storedUserData) {
+          const parsedData = JSON.parse(storedUserData);
+          if (parsedData.photo_url && parsedData.photo_url !== profileImage) {
+            console.log("🔄 Header: Detected photo URL change via polling");
+            setProfileImage(parsedData.photo_url);
+          }
+        }
+      } catch (error) {
+        console.error("Error polling user data:", error);
+      }
+    };
+
+    const interval = setInterval(pollUserData, 3000); // Check every 3 seconds
+    return () => clearInterval(interval);
+  }, [profileImage]);
 
   const toggleBellDropdown = () => {
     setBellDropdownOpen((s) => !s);

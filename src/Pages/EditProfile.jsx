@@ -17,6 +17,7 @@ import { Country, State, City } from "country-state-city";
 import api from "../config/axiosConfig";
 import Cookies from "js-cookie";
 import { toast } from "react-toastify";
+import { useUserData } from "../hooks/useUserData";
 
 // Nationalities array
 const nationalities = [
@@ -63,6 +64,7 @@ const nationalities = [
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  const { updateUserData } = useUserData();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -382,7 +384,7 @@ const EditProfile = () => {
     }
   };
 
-  // Upload profile picture using axios
+  // Upload profile picture using axios - UPDATED VERSION
   const handleProfilePictureUpload = async () => {
     if (!profilePictureFile) {
       showMessage("warning", "Please select a picture to upload");
@@ -412,6 +414,24 @@ const EditProfile = () => {
         if (newPhotoUrl) {
           setProfilePicture(newPhotoUrl);
           setProfilePicturePreview(newPhotoUrl);
+          
+          // 🔥 CRITICAL: Update localStorage and emit event
+          const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+          const updatedUserData = {
+            ...userData,
+            photo_url: newPhotoUrl
+          };
+          localStorage.setItem("userData", JSON.stringify(updatedUserData));
+          
+          // Update the global user data hook
+          updateUserData(updatedUserData);
+          
+          // Emit custom event to notify Header component
+          window.dispatchEvent(new CustomEvent('profileUpdated', {
+            detail: { photo_url: newPhotoUrl }
+          }));
+          
+          console.log("📸 EditProfile: Profile picture updated and event emitted");
         }
 
         // Clear the file input but DON'T refresh the entire form data
@@ -512,6 +532,9 @@ const EditProfile = () => {
           is_first_login: false
         };
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
+        
+        // Update global user data
+        updateUserData(updatedUserData);
 
         // NEW: Only set user_status to "active" and redirect if this was mandatory first-time completion
         if (isMandatoryProfile) {
@@ -535,6 +558,9 @@ const EditProfile = () => {
           // For voluntary updates, just show success message and stay on the page
           console.log('✅ EditProfile - VOLUNTARY profile update completed');
           toast.success("Profile updated successfully!");
+          
+          // Emit event to update header
+          window.dispatchEvent(new CustomEvent('profileUpdated'));
         }
       } else {
         throw new Error(response.data.message || "Failed to update profile");

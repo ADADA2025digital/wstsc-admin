@@ -142,15 +142,78 @@ const Login = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Check if user needs to complete profile
+  // Check if user profile is complete by checking if they have basic info
   const checkProfileCompletion = async (userId) => {
     try {
-      const response = await api.get(`/profile/check-completion/${userId}`);
-      return response.data.data?.profile_completed || false;
+      console.log('Checking profile completion for user:', userId);
+      
+      // Try to get the user's profile data
+      const response = await api.get("/profile/person");
+      console.log('Profile API response:', response.data);
+
+      if (response.data.success && response.data.data.profile) {
+        const profile = response.data.data.profile;
+        
+        // Check if essential profile fields are filled
+        const hasEssentialInfo = profile.first_name && 
+                                profile.last_name && 
+                                profile.phone;
+        
+        console.log('Profile completion check:', {
+          hasFirstName: !!profile.first_name,
+          hasLastName: !!profile.last_name,
+          hasPhone: !!profile.phone,
+          isComplete: hasEssentialInfo
+        });
+
+        return hasEssentialInfo;
+      }
+      
+      return false;
     } catch (error) {
       console.error("Error checking profile completion:", error);
+      
+      // If we can't check via API, check localStorage for existing data
+      const existingUserData = localStorage.getItem('userData');
+      if (existingUserData) {
+        try {
+          const userData = JSON.parse(existingUserData);
+          // Check if we previously marked profile as completed
+          if (userData.profile_completed !== undefined) {
+            console.log('Using existing userData profile_completed status:', userData.profile_completed);
+            return userData.profile_completed;
+          }
+        } catch (e) {
+          console.error('Error parsing existing userData:', e);
+        }
+      }
+      
       return false;
     }
+  };
+
+  // Simplified profile completion logic based on first login
+  const determineProfileStatus = (loginResponse) => {
+    const { is_first_login, user } = loginResponse.data;
+    
+    console.log('Determining profile status:', {
+      is_first_login,
+      user_phone: user.phone,
+      user_name: user.name
+    });
+
+    // If it's first login OR user has no phone number (incomplete profile), require profile completion
+    if (is_first_login || !user.phone) {
+      return {
+        needsProfile: true,
+        reason: is_first_login ? 'first_login' : 'missing_phone'
+      };
+    }
+
+    return {
+      needsProfile: false,
+      reason: 'profile_complete'
+    };
   };
 
   const handleSubmit = async (e) => {
@@ -167,18 +230,28 @@ const Login = () => {
       const response = await api.post("/login", formData);
 
       if (response.data.success) {
-        const { token, user } = response.data.data;
+        const { token, user, is_first_login } = response.data.data;
 
-        console.log('Login successful - Setting auth data:', {
+        console.log('Login successful - Full response:', {
           token: !!token,
-          user: user.id,
-          profile_completed: user.profile_completed
+          user: user,
+          is_first_login: is_first_login,
+          full_response: response.data
         });
 
         // Store token in cookies
         Cookies.set("token", token, { expires: 7 });
-        Cookies.set("user_id", user.id, { expires: 7 });
-        Cookies.set("role_id", user.role_id, { expires: 7 });
+        
+        // Store user ID
+        if (user.uid) {
+          Cookies.set("user_id", user.uid, { expires: 7 });
+        } else if (user.id) {
+          Cookies.set("user_id", user.id, { expires: 7 });
+        }
+        
+        if (user.primary_role?.roleid) {
+          Cookies.set("role_id", user.primary_role.roleid, { expires: 7 });
+        }
 
         // Handle remember me
         if (rememberMe) {
@@ -196,27 +269,37 @@ const Login = () => {
           clearRememberMeCookies();
         }
 
-        // Store user data in localStorage
-        localStorage.setItem("userData", JSON.stringify(user));
+        // Enhanced user data storage with profile completion status
+        const profileStatus = determineProfileStatus(response.data);
+        const userDataWithCompletion = {
+          ...user,
+          profile_completed: !profileStatus.needsProfile,
+          is_first_login: is_first_login
+        };
+        
+        localStorage.setItem("userData", JSON.stringify(userDataWithCompletion));
         localStorage.setItem("authenticated", "true");
 
         toast.success("Login successful!");
 
-        // Check if user needs to complete profile
-        const isProfileComplete = await checkProfileCompletion(user.id);
-        
-        console.log('Profile completion check result:', isProfileComplete);
-        
-        if (!isProfileComplete) {
-          // First login after password setup - set user_status to empty and redirect to update profile
+        // Simplified decision logic based on first login and profile status
+        console.log('Login decision factors:', {
+          is_first_login,
+          user_phone: user.phone,
+          profileStatus,
+          userData: userDataWithCompletion
+        });
+
+        if (profileStatus.needsProfile) {
+          // Profile needs completion - clear status and go to update profile
           localStorage.setItem("user_status", "");
-          console.log('Redirecting to update-profile - profile incomplete');
+          console.log('❌ Profile needs completion - redirecting to UPDATE PROFILE');
           navigate("/update-profile", { replace: true });
           toast.info("Please complete your profile to continue");
         } else {
-          // Normal login - set user_status to active and redirect to home
+          // Profile is complete - set active status and go to home
           localStorage.setItem("user_status", "active");
-          console.log('Redirecting to home - profile complete');
+          console.log('✅ Profile complete - redirecting to HOME');
           navigate("/", { replace: true });
         }
 
@@ -255,11 +338,6 @@ const Login = () => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
-  };
-
-  const handleClearRememberMe = () => {
-    clearRememberMeCookies();
-    toast.info("Saved login credentials cleared");
   };
 
   return (

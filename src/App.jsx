@@ -5,6 +5,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./App.css";
 import "./assets/Styles/Style.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Cookies from "js-cookie";
 import RootLayout from "./Pages/layout";
 import Home from "./Pages/Home";
 import UserAccount from "./Pages/UserAccount";
@@ -36,16 +37,56 @@ import { LoadingProvider } from "./Context/LoadingContext";
 // Temporary debug component
 const AuthDebugger = () => {
   React.useEffect(() => {
+    const debugInfo = {
+      'Token': !!Cookies.get('token'),
+      'Authenticated': localStorage.getItem('authenticated'),
+      'User Status': localStorage.getItem('user_status'),
+      'User Data': localStorage.getItem('userData') ? 'Exists' : 'Missing',
+      'Profile Completed': localStorage.getItem('userData') ? 
+        JSON.parse(localStorage.getItem('userData')).profile_completed : 'N/A'
+    };
+    
     console.log('=== AUTH DEBUG INFO ===');
-    console.log('Token:', document.cookie.includes('token'));
-    console.log('Authenticated:', localStorage.getItem('authenticated'));
-    console.log('User Status:', localStorage.getItem('user_status'));
-    console.log('Profile Completed:', localStorage.getItem('profile_completed'));
-    console.log('User Data exists:', !!localStorage.getItem('userData'));
+    Object.entries(debugInfo).forEach(([key, value]) => {
+      console.log(`${key}:`, value);
+    });
     console.log('========================');
   }, []);
 
   return null;
+};
+
+// Status Debugger Component
+const StatusDebugger = () => {
+  const [debugInfo, setDebugInfo] = React.useState({});
+
+  React.useEffect(() => {
+    const updateDebugInfo = () => {
+      setDebugInfo({
+        'Token': !!Cookies.get('token'),
+        'Authenticated': localStorage.getItem('authenticated'),
+        'User Status': localStorage.getItem('user_status'),
+        'User Data': localStorage.getItem('userData') ? JSON.parse(localStorage.getItem('userData')) : 'Missing',
+        'Profile Completed': localStorage.getItem('userData') ? 
+          JSON.parse(localStorage.getItem('userData')).profile_completed : 'N/A'
+      });
+    };
+
+    updateDebugInfo();
+    
+    // Update on storage changes
+    const handleStorageChange = () => updateDebugInfo();
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  return (
+    <div style={{ position: 'fixed', bottom: 10, right: 10, background: 'white', padding: '10px', border: '1px solid #ccc', zIndex: 9999, fontSize: '12px', maxWidth: '300px' }}>
+      <h6>Auth Debug Info:</h6>
+      <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+    </div>
+  );
 };
 
 function App() {
@@ -53,6 +94,8 @@ function App() {
     <LoadingProvider>
       <Router>
         <AuthDebugger />
+        {/* Uncomment the line below for debugging */}
+        {/* <StatusDebugger /> */}
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />

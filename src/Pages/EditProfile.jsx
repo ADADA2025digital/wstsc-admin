@@ -18,233 +18,47 @@ import api from "../config/axiosConfig";
 import Cookies from "js-cookie";
 import { toast } from "react-toastify";
 
-// Nationalities array (same as before)
+// Nationalities array
 const nationalities = [
-  "Afghan",
-  "Albanian",
-  "Algerian",
-  "American",
-  "Andorran",
-  "Angolan",
-  "Anguillan",
-  "Argentine",
-  "Armenian",
-  "Australian",
-  "Austrian",
-  "Azerbaijani",
-  "Bahamian",
-  "Bahraini",
-  "Bangladeshi",
-  "Barbadian",
-  "Belarusian",
-  "Belgian",
-  "Belizean",
-  "Beninese",
-  "Bermudian",
-  "Bhutanese",
-  "Bolivian",
-  "Botswanan",
-  "Brazilian",
-  "British",
-  "British Virgin Islander",
-  "Bruneian",
-  "Bulgarian",
-  "Burkinan",
-  "Burmese",
-  "Burundian",
-  "Cambodian",
-  "Cameroonian",
-  "Canadian",
-  "Cape Verdean",
-  "Cayman Islander",
-  "Central African",
-  "Chadian",
-  "Chilean",
-  "Chinese",
-  "Citizen of Antigua and Barbuda",
-  "Citizen of Bosnia and Herzegovina",
-  "Citizen of Guinea-Bissau",
-  "Citizen of Kiribati",
-  "Citizen of Seychelles",
-  "Citizen of the Dominican Republic",
-  "Citizen of Vanuatu ",
-  "Colombian",
-  "Comoran",
-  "Congolese (Congo)",
-  "Congolese (DRC)",
-  "Cook Islander",
-  "Costa Rican",
-  "Croatian",
-  "Cuban",
-  "Cymraes",
-  "Cymro",
-  "Cypriot",
-  "Czech",
-  "Danish",
-  "Djiboutian",
-  "Dominican",
-  "Dutch",
-  "East Timorese",
-  "Ecuadorean",
-  "Egyptian",
-  "Emirati",
-  "English",
-  "Equatorial Guinean",
-  "Eritrean",
-  "Estonian",
-  "Ethiopian",
-  "Faroese",
-  "Fijian",
-  "Filipino",
-  "Finnish",
-  "French",
-  "Gabonese",
-  "Gambian",
-  "Georgian",
-  "German",
-  "Ghanaian",
-  "Gibraltarian",
-  "Greek",
-  "Greenlandic",
-  "Grenadian",
-  "Guamanian",
-  "Guatemalan",
-  "Guinean",
-  "Guyanese",
-  "Haitian",
-  "Honduran",
-  "Hong Konger",
-  "Hungarian",
-  "Icelandic",
-  "Indian",
-  "Indonesian",
-  "Iranian",
-  "Iraqi",
-  "Irish",
-  "Israeli",
-  "Italian",
-  "Ivorian",
-  "Jamaican",
-  "Japanese",
-  "Jordanian",
-  "Kazakh",
-  "Kenyan",
-  "Kittitian",
-  "Kosovan",
-  "Kuwaiti",
-  "Kyrgyz",
-  "Lao",
-  "Latvian",
-  "Lebanese",
-  "Liberian",
-  "Libyan",
-  "Liechtenstein citizen",
-  "Lithuanian",
-  "Luxembourger",
-  "Macanese",
-  "Macedonian",
-  "Malagasy",
-  "Malawian",
-  "Malaysian",
-  "Maldivian",
-  "Malian",
-  "Maltese",
-  "Marshallese",
-  "Martiniquais",
-  "Mauritanian",
-  "Mauritian",
-  "Mexican",
-  "Micronesian",
-  "Moldovan",
-  "Monegasque",
-  "Mongolian",
-  "Montenegrin",
-  "Montserratian",
-  "Moroccan",
-  "Mosotho",
-  "Mozambican",
-  "Namibian",
-  "Nauruan",
-  "Nepalese",
-  "New Zealander",
-  "Nicaraguan",
-  "Nigerian",
-  "Nigerien",
-  "Niuean",
-  "North Korean",
-  "Northern Irish",
-  "Norwegian",
-  "Omani",
-  "Pakistani",
-  "Palauan",
-  "Palestinian",
-  "Panamanian",
-  "Papua New Guinean",
-  "Paraguayan",
-  "Peruvian",
-  "Pitcairn Islander",
-  "Polish",
-  "Portuguese",
-  "Prydeinig",
-  "Puerto Rican",
-  "Qatari",
-  "Romanian",
-  "Russian",
-  "Rwandan",
-  "Salvadorean",
-  "Sammarinese",
-  "Samoan",
-  "Sao Tomean",
-  "Saudi Arabian",
-  "Scottish",
-  "Senegalese",
-  "Serbian",
-  "Sierra Leonean",
-  "Singaporean",
-  "Slovak",
-  "Slovenian",
-  "Solomon Islander",
-  "Somali",
-  "South African",
-  "South Korean",
-  "South Sudanese",
-  "Spanish",
-  "Sri Lankan",
-  "St Helenian",
-  "St Lucian",
-  "Stateless",
-  "Sudanese",
-  "Surinamese",
-  "Swazi",
-  "Swedish",
-  "Swiss",
-  "Syrian",
-  "Taiwanese",
-  "Tajik",
-  "Tanzanian",
-  "Thai",
-  "Togolese",
-  "Tongan",
-  "Trinidadian",
-  "Tristanian",
-  "Tunisian",
-  "Turkish",
-  "Turkmen",
-  "Turks and Caicos Islander",
-  "Tuvaluan",
-  "Ugandan",
-  "Ukrainian",
-  "Uruguayan",
-  "Uzbek",
-  "Vatican citizen",
-  "Venezuelan",
-  "Vietnamese",
-  "Vincentian",
-  "Wallisian",
-  "Welsh",
-  "Yemeni",
-  "Zambian",
-  "Zimbabwean",
+  "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", 
+  "Anguillan", "Argentine", "Armenian", "Australian", "Austrian", "Azerbaijani",
+  "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian",
+  "Belizean", "Beninese", "Bermudian", "Bhutanese", "Bolivian", "Botswanan",
+  "Brazilian", "British", "British Virgin Islander", "Bruneian", "Bulgarian",
+  "Burkinan", "Burmese", "Burundian", "Cambodian", "Cameroonian", "Canadian",
+  "Cape Verdean", "Cayman Islander", "Central African", "Chadian", "Chilean",
+  "Chinese", "Citizen of Antigua and Barbuda", "Citizen of Bosnia and Herzegovina",
+  "Citizen of Guinea-Bissau", "Citizen of Kiribati", "Citizen of Seychelles",
+  "Citizen of the Dominican Republic", "Citizen of Vanuatu", "Colombian",
+  "Comoran", "Congolese (Congo)", "Congolese (DRC)", "Cook Islander", "Costa Rican",
+  "Croatian", "Cuban", "Cymraes", "Cymro", "Cypriot", "Czech", "Danish",
+  "Djiboutian", "Dominican", "Dutch", "East Timorese", "Ecuadorean", "Egyptian",
+  "Emirati", "English", "Equatorial Guinean", "Eritrean", "Estonian", "Ethiopian",
+  "Faroese", "Fijian", "Filipino", "Finnish", "French", "Gabonese", "Gambian",
+  "Georgian", "German", "Ghanaian", "Gibraltarian", "Greek", "Greenlandic",
+  "Grenadian", "Guamanian", "Guatemalan", "Guinean", "Guyanese", "Haitian",
+  "Honduran", "Hong Konger", "Hungarian", "Icelandic", "Indian", "Indonesian",
+  "Iranian", "Iraqi", "Irish", "Israeli", "Italian", "Ivorian", "Jamaican",
+  "Japanese", "Jordanian", "Kazakh", "Kenyan", "Kittitian", "Kosovan", "Kuwaiti",
+  "Kyrgyz", "Lao", "Latvian", "Lebanese", "Liberian", "Libyan", "Liechtenstein citizen",
+  "Lithuanian", "Luxembourger", "Macanese", "Macedonian", "Malagasy", "Malawian",
+  "Malaysian", "Maldivian", "Malian", "Maltese", "Marshallese", "Martiniquais",
+  "Mauritanian", "Mauritian", "Mexican", "Micronesian", "Moldovan", "Monegasque",
+  "Mongolian", "Montenegrin", "Montserratian", "Moroccan", "Mosotho", "Mozambican",
+  "Namibian", "Nauruan", "Nepalese", "New Zealander", "Nicaraguan", "Nigerian",
+  "Nigerien", "Niuean", "North Korean", "Northern Irish", "Norwegian", "Omani",
+  "Pakistani", "Palauan", "Palestinian", "Panamanian", "Papua New Guinean",
+  "Paraguayan", "Peruvian", "Pitcairn Islander", "Polish", "Portuguese", "Prydeinig",
+  "Puerto Rican", "Qatari", "Romanian", "Russian", "Rwandan", "Salvadorean",
+  "Sammarinese", "Samoan", "Sao Tomean", "Saudi Arabian", "Scottish", "Senegalese",
+  "Serbian", "Sierra Leonean", "Singaporean", "Slovak", "Slovenian", "Solomon Islander",
+  "Somali", "South African", "South Korean", "South Sudanese", "Spanish", "Sri Lankan",
+  "St Helenian", "St Lucian", "Stateless", "Sudanese", "Surinamese", "Swazi",
+  "Swedish", "Swiss", "Syrian", "Taiwanese", "Tajik", "Tanzanian", "Thai", "Togolese",
+  "Tongan", "Trinidadian", "Tristanian", "Tunisian", "Turkish", "Turkmen",
+  "Turks and Caicos Islander", "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan",
+  "Uzbek", "Vatican citizen", "Venezuelan", "Vietnamese", "Vincentian", "Wallisian",
+  "Welsh", "Yemeni", "Zambian", "Zimbabwean",
 ];
 
 const EditProfile = () => {
@@ -639,7 +453,7 @@ const EditProfile = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare data for API - match the expected request body structure
+      // Prepare data for API
       const updateData = {
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -672,22 +486,36 @@ const EditProfile = () => {
 
         // CRITICAL: Set user_status to "active" in localStorage
         localStorage.setItem("user_status", "active");
-        localStorage.setItem("profile_completed", "true");
 
         // Update userData in localStorage with completed profile info
         const userData = JSON.parse(localStorage.getItem("userData") || "{}");
         const updatedUserData = {
           ...userData,
-          profile_completed: true
+          profile_completed: true,
+          // Update profile fields in userData for consistency
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          name: `${formData.first_name} ${formData.last_name}`.trim()
         };
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
 
-        console.log('EditProfile - Profile completed, user_status set to active');
+        console.log('✅ EditProfile - Profile completed, user_status set to ACTIVE');
+        console.log('Updated userData:', updatedUserData);
 
         toast.success("Profile completed successfully! Redirecting...");
 
-        // Navigate to home after success - FIXED: Use immediate navigation without setTimeout
-        navigate("/", { replace: true });
+        // Use a slightly longer timeout to ensure everything is committed
+        setTimeout(() => {
+          console.log('🔄 EditProfile - Final auth status before navigation:', {
+            user_status: localStorage.getItem('user_status'),
+            userData: JSON.parse(localStorage.getItem('userData') || '{}'),
+            token: !!Cookies.get('token')
+          });
+          
+          // Use window.location for a hard redirect to ensure clean state
+          window.location.href = "/";
+        }, 1500);
       } else {
         throw new Error(response.data.message || "Failed to update profile");
       }
@@ -825,6 +653,23 @@ const EditProfile = () => {
           >
             <i className="bi bi-floppy me-1"></i>{" "}
             {isSubmitting ? "Saving..." : "Save Changes"}
+          </ButtonGlobal>
+
+          {/* Temporary debug button - remove after testing */}
+          <ButtonGlobal
+            onClick={() => {
+              localStorage.setItem("user_status", "active");
+              const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+              localStorage.setItem("userData", JSON.stringify({
+                ...userData,
+                profile_completed: true
+              }));
+              toast.success("Manual status set to active!");
+            }}
+            className="btn btn-warning"
+          >
+            <i className="bi bi-bug me-1"></i>
+            Debug: Set Status Active
           </ButtonGlobal>
         </div>
       </div>

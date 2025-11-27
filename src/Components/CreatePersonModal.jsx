@@ -7,7 +7,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
-  const [selectedRoles, setSelectedRoles] = useState([]); // New state for selected roles
+  const [selectedRoles, setSelectedRoles] = useState([]);
   const [formData, setFormData] = useState({
     person_first_name: "",
     person_last_name: "",
@@ -21,6 +21,9 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
     publicKey: 'Ro7uPiRIt-owJl0Nn',
   };
 
+  // Roles to hide from selection - case insensitive
+  const ROLES_TO_HIDE = ['staff', 'student'];
+
   useEffect(() => {
     if (isOpen) {
       emailjs.init(EMAILJS_CONFIG.publicKey);
@@ -31,7 +34,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         person_email: "",
         schcode: "SCH01"
       });
-      setSelectedRoles([]); // Reset selected roles
+      setSelectedRoles([]);
       setErrors({});
       setSuccess("");
     }
@@ -50,15 +53,25 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
       if (response.data.success) {
         console.log("Roles fetch successful, data:", response.data.data);
         
+        // First filter out duplicate roles
         const uniqueRoles = response.data.data.filter((role, index, self) => 
           index === self.findIndex(r => r.role_name === role.role_name)
         );
+
+        // Then filter out roles that should be hidden (case insensitive)
+        const filteredRoles = uniqueRoles.filter(role => {
+          const roleNameLower = role.role_name.toLowerCase();
+          const shouldHide = ROLES_TO_HIDE.some(hiddenRole => 
+            roleNameLower.includes(hiddenRole.toLowerCase())
+          );
+          return !shouldHide;
+        });
         
-        console.log("Unique roles after filtering:", uniqueRoles);
-        console.log("Number of unique roles:", uniqueRoles.length);
+        console.log("Filtered roles after hiding staff and students:", filteredRoles);
+        console.log("Number of filtered roles:", filteredRoles.length);
         
         // Log each role individually
-        uniqueRoles.forEach((role, index) => {
+        filteredRoles.forEach((role, index) => {
           console.log(`Role ${index + 1}:`, {
             roleid: role.roleid,
             role_name: role.role_name,
@@ -67,7 +80,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
           });
         });
         
-        setRoles(uniqueRoles);
+        setRoles(filteredRoles);
       } else {
         console.log("Roles fetch not successful, message:", response.data.message);
       }
@@ -85,18 +98,87 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
     }
   };
 
+  // Alternative approach - if you want exact matching but case insensitive:
+  const fetchRolesAlternative = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/roles");
+      
+      if (response.data.success) {
+        const uniqueRoles = response.data.data.filter((role, index, self) => 
+          index === self.findIndex(r => r.role_name === role.role_name)
+        );
+
+        // More precise filtering - check both role_name and display_name
+        const filteredRoles = uniqueRoles.filter(role => {
+          const roleNameLower = role.role_name.toLowerCase();
+          const displayNameLower = role.display_name?.toLowerCase() || '';
+          
+          // Hide if role_name or display_name contains "staff" or "student"
+          const shouldHide = 
+            roleNameLower.includes('staff') ||
+            roleNameLower.includes('student') ||
+            displayNameLower.includes('staff') ||
+            displayNameLower.includes('student');
+            
+          return !shouldHide;
+        });
+        
+        setRoles(filteredRoles);
+      }
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      setErrors({ general: "Failed to load roles. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Even more precise approach - check the actual role names in your system
+  const fetchRolesPrecise = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/roles");
+      
+      if (response.data.success) {
+        const uniqueRoles = response.data.data.filter((role, index, self) => 
+          index === self.findIndex(r => r.role_name === role.role_name)
+        );
+
+        // Log all roles to see what we're working with
+        console.log("All available roles:", uniqueRoles.map(r => ({
+          roleid: r.roleid,
+          role_name: r.role_name,
+          display_name: r.display_name
+        })));
+
+        // Filter out specific roles - adjust these based on your actual role names
+        const filteredRoles = uniqueRoles.filter(role => {
+          const roleNameLower = role.role_name.toLowerCase();
+          // Add any variations of staff/student roles you want to hide
+          return !['staff', 'student', 'students'].includes(roleNameLower);
+        });
+        
+        setRoles(filteredRoles);
+      }
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      setErrors({ general: "Failed to load roles. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRoleChange = (roleId) => {
     console.log("Role checkbox changed, roleId:", roleId);
     console.log("Current selected roles before change:", selectedRoles);
     
     setSelectedRoles(prev => {
       if (prev.includes(roleId)) {
-        // Remove role if already selected
         const newRoles = prev.filter(id => id !== roleId);
         console.log("Removed role, new selected roles:", newRoles);
         return newRoles;
       } else {
-        // Add role if not selected
         const newRoles = [...prev, roleId];
         console.log("Added role, new selected roles:", newRoles);
         return newRoles;
@@ -144,7 +226,6 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
     setErrors({});
     setSuccess("");
 
-    // Validation - check if at least one role is selected
     if (!formData.person_first_name || !formData.person_last_name || !formData.person_email || selectedRoles.length === 0) {
       setErrors({ general: "All fields are required and at least one role must be selected" });
       setLoading(false);
@@ -163,7 +244,7 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
         person_first_name: formData.person_first_name.trim(),
         person_last_name: formData.person_last_name.trim(),
         person_email: formData.person_email.toLowerCase().trim(),
-        role_id: selectedRoles.map(id => parseInt(id)), // Send array of selected role IDs
+        role_id: selectedRoles.map(id => parseInt(id)),
         schcode: formData.schcode
       };
 
@@ -174,10 +255,8 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
       if (response.data.success) {
         const { setup_url, expires_at, person, user } = response.data.data;
         
-        // Show success message
         setSuccess("Person created successfully! Sending setup email...");
 
-        // Notify parent component
         if (onPersonCreated) {
           onPersonCreated({
             ...person,
@@ -188,7 +267,6 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
           });
         }
 
-        // Send email in background
         sendSetupEmail({
           setup_url,
           expires_at,
@@ -199,7 +277,6 @@ const CreatePersonModal = ({ isOpen, onClose, onPersonCreated }) => {
           primary_role: user.primary_role
         });
 
-        // Close modal after showing success message briefly
         setTimeout(() => {
           onClose();
         }, 1000);

@@ -74,6 +74,9 @@ const EditProfile = () => {
     message: "",
   });
 
+  // NEW: Track if this is mandatory first-time profile completion
+  const [isMandatoryProfile, setIsMandatoryProfile] = useState(false);
+
   // Location data states
   const [countriesList, setCountriesList] = useState([]);
   const [statesList, setStatesList] = useState([]);
@@ -126,12 +129,23 @@ const EditProfile = () => {
       return;
     }
     
-    // If user_status is already active, they might be coming here directly
+    // NEW: Check if this is mandatory first-time profile completion
     const userStatus = localStorage.getItem('user_status');
-    if (userStatus === 'active') {
-      console.log('EditProfile: Profile already completed, redirecting to home');
-      navigate('/');
-      return;
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    
+    console.log('EditProfile - User status check:', {
+      userStatus,
+      userData,
+      is_first_login: userData.is_first_login
+    });
+
+    // If user_status is empty AND it's first login, then it's mandatory
+    if ((!userStatus || userStatus === '') && userData.is_first_login) {
+      setIsMandatoryProfile(true);
+      console.log('✅ EditProfile - This is MANDATORY first-time profile completion');
+    } else {
+      setIsMandatoryProfile(false);
+      console.log('✅ EditProfile - This is VOLUNTARY profile update');
     }
 
     fetchUserProfile();
@@ -484,9 +498,6 @@ const EditProfile = () => {
         );
         setOriginalData({ ...formData });
 
-        // CRITICAL: Set user_status to "active" in localStorage
-        localStorage.setItem("user_status", "active");
-
         // Update userData in localStorage with completed profile info
         const userData = JSON.parse(localStorage.getItem("userData") || "{}");
         const updatedUserData = {
@@ -496,26 +507,35 @@ const EditProfile = () => {
           first_name: formData.first_name,
           last_name: formData.last_name,
           phone: formData.phone,
-          name: `${formData.first_name} ${formData.last_name}`.trim()
+          name: `${formData.first_name} ${formData.last_name}`.trim(),
+          // Clear the first login flag after successful profile completion
+          is_first_login: false
         };
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
 
-        console.log('✅ EditProfile - Profile completed, user_status set to ACTIVE');
-        console.log('Updated userData:', updatedUserData);
-
-        toast.success("Profile completed successfully! Redirecting...");
-
-        // Use a slightly longer timeout to ensure everything is committed
-        setTimeout(() => {
-          console.log('🔄 EditProfile - Final auth status before navigation:', {
-            user_status: localStorage.getItem('user_status'),
-            userData: JSON.parse(localStorage.getItem('userData') || '{}'),
-            token: !!Cookies.get('token')
-          });
+        // NEW: Only set user_status to "active" and redirect if this was mandatory first-time completion
+        if (isMandatoryProfile) {
+          localStorage.setItem("user_status", "active");
+          console.log('✅ EditProfile - MANDATORY profile completed, user_status set to ACTIVE');
           
-          // Use window.location for a hard redirect to ensure clean state
-          window.location.href = "/";
-        }, 1500);
+          toast.success("Profile completed successfully! Redirecting to dashboard...");
+
+          // Use a slightly longer timeout to ensure everything is committed
+          setTimeout(() => {
+            console.log('🔄 EditProfile - Final auth status before navigation:', {
+              user_status: localStorage.getItem('user_status'),
+              userData: JSON.parse(localStorage.getItem('userData') || '{}'),
+              token: !!Cookies.get('token')
+            });
+            
+            // Use window.location for a hard redirect to ensure clean state
+            window.location.href = "/";
+          }, 1500);
+        } else {
+          // For voluntary updates, just show success message and stay on the page
+          console.log('✅ EditProfile - VOLUNTARY profile update completed');
+          toast.success("Profile updated successfully!");
+        }
       } else {
         throw new Error(response.data.message || "Failed to update profile");
       }
@@ -561,12 +581,26 @@ const EditProfile = () => {
   };
 
   const handleCancel = () => {
-    setFormData(originalData);
-    setProfilePictureFile(null);
-    setProfilePicturePreview(profilePicture);
-    setFieldErrors({});
-    setValidationAlert({ show: false, message: "" });
-    navigate(-1);
+    // NEW: Different behavior for mandatory vs voluntary profile updates
+    if (isMandatoryProfile) {
+      // For mandatory profile completion, show warning but allow going back
+      if (window.confirm("You need to complete your profile to access the dashboard. Are you sure you want to cancel?")) {
+        setFormData(originalData);
+        setProfilePictureFile(null);
+        setProfilePicturePreview(profilePicture);
+        setFieldErrors({});
+        setValidationAlert({ show: false, message: "" });
+        navigate(-1);
+      }
+    } else {
+      // For voluntary updates, normal cancel behavior
+      setFormData(originalData);
+      setProfilePictureFile(null);
+      setProfilePicturePreview(profilePicture);
+      setFieldErrors({});
+      setValidationAlert({ show: false, message: "" });
+      navigate(-1);
+    }
   };
 
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -622,12 +656,31 @@ const EditProfile = () => {
         </Alert>
       )}
 
+      {/* NEW: Mandatory Profile Completion Alert */}
+      {isMandatoryProfile && (
+        <Alert variant="info" className="mb-3">
+          <Alert.Heading>
+            <i className="bi bi-info-circle me-2"></i>
+            Complete Your Profile
+          </Alert.Heading>
+          <p className="mb-0">
+            Welcome! Before you can access the dashboard, please complete your profile information. 
+            This is required for your first login.
+          </p>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="fw-bold mb-1">Edit Profile</h4>
+          <h4 className="fw-bold mb-1">
+            {isMandatoryProfile ? "Complete Your Profile" : "Edit Profile"}
+          </h4>
           <p className="text-muted mb-0">
-            Update your personal information and preferences
+            {isMandatoryProfile 
+              ? "Please provide your information to continue" 
+              : "Update your personal information and preferences"
+            }
             {hasChanges && (
               <Badge bg="warning" text="dark" className="ms-2">
                 Unsaved Changes
@@ -643,7 +696,7 @@ const EditProfile = () => {
             disabled={isSubmitting}
           >
             <i className="bi bi-arrow-left me-2"></i>
-            Back
+            {isMandatoryProfile ? "Cancel" : "Back"}
           </ButtonGlobal>
 
           <ButtonGlobal
@@ -652,7 +705,10 @@ const EditProfile = () => {
             disabled={isSubmitting || !hasChanges}
           >
             <i className="bi bi-floppy me-1"></i>{" "}
-            {isSubmitting ? "Saving..." : "Save Changes"}
+            {isSubmitting 
+              ? "Saving..." 
+              : isMandatoryProfile ? "Complete Profile" : "Save Changes"
+            }
           </ButtonGlobal>
 
           {/* Temporary debug button - remove after testing */}
@@ -662,7 +718,8 @@ const EditProfile = () => {
               const userData = JSON.parse(localStorage.getItem("userData") || "{}");
               localStorage.setItem("userData", JSON.stringify({
                 ...userData,
-                profile_completed: true
+                profile_completed: true,
+                is_first_login: false
               }));
               toast.success("Manual status set to active!");
             }}

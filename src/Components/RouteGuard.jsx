@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import Loader from '../Pages/Loader';
 
 const RouteGuard = ({ children, requireProfileComplete = false }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ const RouteGuard = ({ children, requireProfileComplete = false }) => {
           authenticated,
           userStatus,
           requireProfileComplete,
-          currentPath: window.location.pathname
+          currentPath: location.pathname
         });
 
         if (!token || authenticated !== 'true') {
@@ -30,7 +31,8 @@ const RouteGuard = ({ children, requireProfileComplete = false }) => {
         }
 
         // If profile completion is required, check user_status
-        if (requireProfileComplete) {
+        // BUT allow access to update-profile route even if profile is not complete
+        if (requireProfileComplete && location.pathname !== '/update-profile') {
           console.log('RouteGuard - Checking user_status:', userStatus);
 
           // If userStatus is active, allow access immediately
@@ -62,7 +64,7 @@ const RouteGuard = ({ children, requireProfileComplete = false }) => {
     };
 
     checkAuthAndProfile();
-  }, [navigate, requireProfileComplete]);
+  }, [navigate, requireProfileComplete, location.pathname]);
 
   if (isChecking) {
     return <Loader />;

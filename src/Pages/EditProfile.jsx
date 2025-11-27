@@ -710,24 +710,6 @@ const EditProfile = () => {
               : isMandatoryProfile ? "Complete Profile" : "Save Changes"
             }
           </ButtonGlobal>
-
-          {/* Temporary debug button - remove after testing */}
-          <ButtonGlobal
-            onClick={() => {
-              localStorage.setItem("user_status", "active");
-              const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-              localStorage.setItem("userData", JSON.stringify({
-                ...userData,
-                profile_completed: true,
-                is_first_login: false
-              }));
-              toast.success("Manual status set to active!");
-            }}
-            className="btn btn-warning"
-          >
-            <i className="bi bi-bug me-1"></i>
-            Debug: Set Status Active
-          </ButtonGlobal>
         </div>
       </div>
 

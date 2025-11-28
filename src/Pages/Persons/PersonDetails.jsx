@@ -18,6 +18,29 @@ import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
 import api from "../../config/axiosConfig";
 
+// Date formatting function for DD/MM/YYYY
+const formatDateToDDMMYYYY = (dateString) => {
+  if (!dateString) return '—';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '—';
+  }
+};
+
 const PersonDetails = () => {
   const { name } = useParams();
   const navigate = useNavigate();
@@ -779,7 +802,7 @@ const PersonDetails = () => {
                               Date of Birth
                             </span>
                             <p className="mb-0 fw-medium text-dark">
-                              {formatDateToMMDDYYYY(personData.dob)}
+                              {formatDateToDDMMYYYY(personData.dob)}
                             </p>
                           </div>
                         )}
@@ -931,7 +954,7 @@ const PersonDetails = () => {
                               Account Created
                             </span>
                             <p className="mb-0 text-dark">
-                              {formatDateToMMDDYYYY(personData.created_at)}
+                              {formatDateToDDMMYYYY(personData.created_at)}
                             </p>
                           </div>
                         )}
@@ -941,7 +964,7 @@ const PersonDetails = () => {
                               Last Updated
                             </span>
                             <p className="mb-0 text-dark">
-                              {formatDateToMMDDYYYY(personData.updated_at)}
+                              {formatDateToDDMMYYYY(personData.updated_at)}
                             </p>
                           </div>
                         )}
@@ -949,7 +972,7 @@ const PersonDetails = () => {
                           <div>
                             <span className="small text-muted">Last Login</span>
                             <p className="mb-0 text-dark">
-                              {formatDateToMMDDYYYY(personData.last_login)}
+                              {formatDateToDDMMYYYY(personData.last_login)}
                             </p>
                           </div>
                         )}

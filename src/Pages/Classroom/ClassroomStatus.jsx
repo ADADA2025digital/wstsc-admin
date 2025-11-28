@@ -18,6 +18,29 @@ import Loader from "../../Pages/Loader";
 import { formatDateToMMDDYYYY } from "../../config/utils";
 import api from "../../config/axiosConfig";
 
+// Date formatting function for DD/MM/YYYY
+const formatDateToDDMMYYYY = (dateString) => {
+  if (!dateString) return '—';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '—';
+  }
+};
+
 const ClassroomsStatus = () => {
   const navigate = useNavigate();
   const [activeClassrooms, setActiveClassrooms] = useState([]);
@@ -240,12 +263,12 @@ const ClassroomsStatus = () => {
                   </td>
                   <td>
                     <small className="text-muted">
-                      {formatDateToMMDDYYYY(classroom.created_at)}
+                      {formatDateToDDMMYYYY(classroom.created_at)}
                     </small>
                   </td>
                   <td>
                     <small className="text-muted">
-                      {formatDateToMMDDYYYY(classroom.updated_at)}
+                      {formatDateToDDMMYYYY(classroom.updated_at)}
                     </small>
                   </td>
                   <td className="text-center">

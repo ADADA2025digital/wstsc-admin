@@ -5,6 +5,29 @@ import Loader from "../../Pages/Loader";
 
 const STATUS_OPTIONS = ["Active", "Inactive"];
 
+// Date formatting function for DD/MM/YYYY
+const formatDateToDDMMYYYY = (dateString) => {
+  if (!dateString) return '—';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '—';
+  }
+};
+
 export default function ClassroomsList() {
   const navigate = useNavigate();
   const [classrooms, setClassrooms] = useState([]);
@@ -1081,12 +1104,10 @@ export default function ClassroomsList() {
                       {cls.created_at && (
                         <div
                           className="text-truncate"
-                          title={`Created: ${new Date(
-                            cls.created_at
-                          ).toLocaleDateString()}`}
+                          title={`Created: ${formatDateToDDMMYYYY(cls.created_at)}`}
                         >
                           <i className="bi bi-calendar me-1" /> Created:{" "}
-                          {new Date(cls.created_at).toLocaleDateString()}
+                          {formatDateToDDMMYYYY(cls.created_at)}
                         </div>
                       )}
                     </div>

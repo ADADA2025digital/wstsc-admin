@@ -19,6 +19,29 @@ const EMAILJS_CONFIG = {
 // Initialize Email.js
 emailjs.init(EMAILJS_CONFIG.PUBLIC_KEY);
 
+// Enhanced date formatting function for DD/MM/YYYY
+const formatDateToDDMMYYYY = (dateString) => {
+  if (!dateString) return '—';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '—';
+  }
+};
+
 // Enhanced parent name extraction
 const getParentName = (parentData) => {
   if (!parentData) return 'Parent/Guardian';
@@ -94,7 +117,7 @@ const sendAcceptanceEmail = async (studentData) => {
       to_email: parentEmail,
       student_name: studentName,
       enrolment_id: studentData.student.enrollment_id || 'N/A',
-      enrolment_date: formatDateToMMDDYYYY(studentData.student.enrolment_date) || 'N/A',
+      enrolment_date: formatDateToDDMMYYYY(studentData.student.enrolment_date) || 'N/A',
       class_name: studentData.student.classroom_info?.class_name || studentData.student.enrol_class_in_WSTSC || 'To be assigned',
       approved_date: new Date().toLocaleDateString('en-AU', { 
         weekday: 'long', 
@@ -133,7 +156,7 @@ const sendRejectionEmailWithTemplate = async (studentData, rejectionReason, temp
       to_email: parentEmail,
       student_name: studentName,
       enrolment_id: studentData.student.enrollment_id || 'N/A',
-      enrolment_date: formatDateToMMDDYYYY(studentData.student.enrolment_date) || 'N/A',
+      enrolment_date: formatDateToDDMMYYYY(studentData.student.enrolment_date) || 'N/A',
       rejection_date: new Date().toLocaleDateString('en-AU', { 
         weekday: 'long', 
         year: 'numeric', 
@@ -184,7 +207,7 @@ const sendRejectionEmail = async (studentData, rejectionReason) => {
       to_email: parentEmail,
       student_name: studentName,
       enrolment_id: studentData.student.enrollment_id || 'N/A',
-      enrolment_date: formatDateToMMDDYYYY(studentData.student.enrolment_date) || 'N/A',
+      enrolment_date: formatDateToDDMMYYYY(studentData.student.enrolment_date) || 'N/A',
       rejection_date: new Date().toLocaleDateString('en-AU', { 
         weekday: 'long', 
         year: 'numeric', 
@@ -1025,7 +1048,7 @@ const EnrolmentDetails = () => {
               <i className="bi bi-check2-circle me-2"></i>
               <strong>Enrolment Approved!</strong>
               {student?.approved_by && ` by ${student.approved_by}`}
-              {student?.approved_at && ` on ${formatDateToMMDDYYYY(student.approved_at)}`}
+              {student?.approved_at && ` on ${formatDateToDDMMYYYY(student.approved_at)}`}
             </div>
           )}
 
@@ -1035,7 +1058,7 @@ const EnrolmentDetails = () => {
               <i className="bi bi-x-circle me-2"></i>
               <strong>Enrolment Rejected!</strong>
               {student?.rejected_by && ` by ${student.rejected_by}`}
-              {student?.rejected_at && ` on ${formatDateToMMDDYYYY(student.rejected_at)}`}
+              {student?.rejected_at && ` on ${formatDateToDDMMYYYY(student.rejected_at)}`}
               {student?.rejection_reason && ` - Reason: ${student.rejection_reason}`}
             </div>
           )}
@@ -1132,7 +1155,7 @@ const EnrolmentDetails = () => {
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Date of Birth</span>
-                <span className="fs-6">{formatDateToMMDDYYYY(student?.date_of_birth)}</span>
+                <span className="fs-6">{formatDateToDDMMYYYY(student?.date_of_birth)}</span>
               </div>
             </div>
 
@@ -1175,7 +1198,7 @@ const EnrolmentDetails = () => {
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Enrolment Date</span>
-                <span className="fs-6">{formatDateToMMDDYYYY(student?.enrolment_date)}</span>
+                <span className="fs-6">{formatDateToDDMMYYYY(student?.enrolment_date)}</span>
               </div>
             </div>
           </div>
@@ -1308,8 +1331,8 @@ const EnrolmentDetails = () => {
                     <InfoCard title="Personal Declaration" className="bg-secondary bg-opacity-10" emptyState={!personal_declaration} emptyMessage="No personal declaration information available">
                       {personal_declaration && (
                         <Row className="g-4">
-                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">First Parent/Carer Name</span><p className="mb-0 fw-medium">{personal_declaration.first_parent_carer_name}</p>{personal_declaration.first_parent_carer_name_date && (<small className="text-muted">Date: {formatDateToMMDDYYYY(personal_declaration.first_parent_carer_name_date)}</small>)}</div></Col>
-                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">Second Parent/Carer Name</span><p className="mb-0 fw-medium">{personal_declaration.second_parent_carer_name || "—"}</p>{personal_declaration.second_parent_carer_name_date && (<small className="text-muted">Date: {formatDateToMMDDYYYY(personal_declaration.second_parent_carer_name_date)}</small>)}</div></Col>
+                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">First Parent/Carer Name</span><p className="mb-0 fw-medium">{personal_declaration.first_parent_carer_name}</p>{personal_declaration.first_parent_carer_name_date && (<small className="text-muted">Date: {formatDateToDDMMYYYY(personal_declaration.first_parent_carer_name_date)}</small>)}</div></Col>
+                          <Col md={6}><div className="bg-white rounded p-3"><span className="small">Second Parent/Carer Name</span><p className="mb-0 fw-medium">{personal_declaration.second_parent_carer_name || "—"}</p>{personal_declaration.second_parent_carer_name_date && (<small className="text-muted">Date: {formatDateToDDMMYYYY(personal_declaration.second_parent_carer_name_date)}</small>)}</div></Col>
                           <Col md={6}><div className="bg-white rounded p-3"><span className="small">Photo/Video Consent</span><p className="mb-0"><span className={`badge ${personal_declaration.photo_video_consent ? "bg-success" : "bg-danger"}`}>{personal_declaration.photo_video_consent ? "Granted" : "Not Granted"}</span></p></div></Col>
                           <Col md={6}><div className="bg-white rounded p-3"><span className="small">Medical Treatment Consent</span><p className="mb-0"><span className={`badge ${personal_declaration.medical_treatment_consent ? "bg-success" : "bg-danger"}`}>{personal_declaration.medical_treatment_consent ? "Granted" : "Not Granted"}</span></p></div></Col>
                         </Row>

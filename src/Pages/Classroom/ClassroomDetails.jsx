@@ -18,6 +18,29 @@ import api from "../../config/axiosConfig.jsx";
 
 const EDITABLE_ROLES = ["admin", "principal", "vice_principal", "volunteer"];
 
+// Date formatting function for DD/MM/YYYY
+const formatDateToDDMMYYYY = (dateString) => {
+  if (!dateString) return '—';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '—';
+  }
+};
+
 export default function ClassroomDetails() {
   const params = useParams();
   const navigate = useNavigate();
@@ -1038,13 +1061,9 @@ export default function ClassroomDetails() {
                                   <br />
                                   <small className="text-muted">
                                     Assigned:{" "}
-                                    {new Date(
-                                      teacher.assignmentDate
-                                    ).toLocaleDateString()}
+                                    {formatDateToDDMMYYYY(teacher.assignmentDate)}
                                     {teacher.endDate &&
-                                      ` - ${new Date(
-                                        teacher.endDate
-                                      ).toLocaleDateString()}`}
+                                      ` - ${formatDateToDDMMYYYY(teacher.endDate)}`}
                                   </small>
                                 </div>
                               </div>
@@ -1136,13 +1155,9 @@ export default function ClassroomDetails() {
                               </p>
                               <p className="mb-0 text-muted small">
                                 Assignment:{" "}
-                                {new Date(
-                                  teacher.assignmentDate
-                                ).toLocaleDateString()}
+                                {formatDateToDDMMYYYY(teacher.assignmentDate)}
                                 {teacher.endDate &&
-                                  ` - ${new Date(
-                                    teacher.endDate
-                                  ).toLocaleDateString()}`}
+                                  ` - ${formatDateToDDMMYYYY(teacher.endDate)}`}
                               </p>
                             </div>
                           </div>
@@ -1243,7 +1258,7 @@ export default function ClassroomDetails() {
                               </p>
                               <p className="mb-0 text-muted small">
                                 DOB: {student.dateOfBirth ? 
-                                  new Date(student.dateOfBirth).toLocaleDateString() : 
+                                  formatDateToDDMMYYYY(student.dateOfBirth) : 
                                   'N/A'
                                 }
                                 {student.enrollmentYear && ` • Enrollment: ${student.enrollmentYear}`}

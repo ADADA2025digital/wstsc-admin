@@ -147,6 +147,10 @@ export const EnrolmentFormProvider = ({ children }) => {
       special_learning_needs: "",
       special_learning_needs_details: "",
     },
+    // Add UI state to persist checkbox state
+    ui_state: {
+      showCarer2: false,
+    },
   });
 
   const [loading, setLoading] = useState(false);
@@ -1277,6 +1281,10 @@ export const EnrolmentFormProvider = ({ children }) => {
         allergies: "",
         special_learning_needs: "",
         special_learning_needs_details: "",
+      },
+      // Reset UI state as well
+      ui_state: {
+        showCarer2: false,
       },
     });
     setErrors({});

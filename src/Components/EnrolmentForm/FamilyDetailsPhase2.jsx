@@ -42,231 +42,26 @@ export default function FamilyDetailsPhase2({ onNext }) {
   ];
 
   const nationalities = [
-    "Afghan",
-    "Albanian",
-    "Algerian",
-    "American",
-    "Andorran",
-    "Angolan",
-    "Anguillan",
-    "Argentine",
-    "Armenian",
-    "Australian",
-    "Austrian",
-    "Azerbaijani",
-    "Bahamian",
-    "Bahraini",
-    "Bangladeshi",
-    "Barbadian",
-    "Belarusian",
-    "Belgian",
-    "Belizean",
-    "Beninese",
-    "Bermudian",
-    "Bhutanese",
-    "Bolivian",
-    "Botswanan",
-    "Brazilian",
-    "British",
-    "British Virgin Islander",
-    "Bruneian",
-    "Bulgarian",
-    "Burkinan",
-    "Burmese",
-    "Burundian",
-    "Cambodian",
-    "Cameroonian",
-    "Canadian",
-    "Cape Verdean",
-    "Cayman Islander",
-    "Central African",
-    "Chadian",
-    "Chilean",
-    "Chinese",
-    "Citizen of Antigua and Barbuda",
-    "Citizen of Bosnia and Herzegovina",
-    "Citizen of Guinea-Bissau",
-    "Citizen of Kiribati",
-    "Citizen of Seychelles",
-    "Citizen of the Dominican Republic",
-    "Citizen of Vanuatu ",
-    "Colombian",
-    "Comoran",
-    "Congolese (Congo)",
-    "Congolese (DRC)",
-    "Cook Islander",
-    "Costa Rican",
-    "Croatian",
-    "Cuban",
-    "Cymraes",
-    "Cymro",
-    "Cypriot",
-    "Czech",
-    "Danish",
-    "Djiboutian",
-    "Dominican",
-    "Dutch",
-    "East Timorese",
-    "Ecuadorean",
-    "Egyptian",
-    "Emirati",
-    "English",
-    "Equatorial Guinean",
-    "Eritrean",
-    "Estonian",
-    "Ethiopian",
-    "Faroese",
-    "Fijian",
-    "Filipino",
-    "Finnish",
-    "French",
-    "Gabonese",
-    "Gambian",
-    "Georgian",
-    "German",
-    "Ghanaian",
-    "Gibraltarian",
-    "Greek",
-    "Greenlandic",
-    "Grenadian",
-    "Guamanian",
-    "Guatemalan",
-    "Guinean",
-    "Guyanese",
-    "Haitian",
-    "Honduran",
-    "Hong Konger",
-    "Hungarian",
-    "Icelandic",
-    "Indian",
-    "Indonesian",
-    "Iranian",
-    "Iraqi",
-    "Irish",
-    "Israeli",
-    "Italian",
-    "Ivorian",
-    "Jamaican",
-    "Japanese",
-    "Jordanian",
-    "Kazakh",
-    "Kenyan",
-    "Kittitian",
-    "Kosovan",
-    "Kuwaiti",
-    "Kyrgyz",
-    "Lao",
-    "Latvian",
-    "Lebanese",
-    "Liberian",
-    "Libyan",
-    "Liechtenstein citizen",
-    "Lithuanian",
-    "Luxembourger",
-    "Macanese",
-    "Macedonian",
-    "Malagasy",
-    "Malawian",
-    "Malaysian",
-    "Maldivian",
-    "Malian",
-    "Maltese",
-    "Marshallese",
-    "Martiniquais",
-    "Mauritanian",
-    "Mauritian",
-    "Mexican",
-    "Micronesian",
-    "Moldovan",
-    "Monegasque",
-    "Mongolian",
-    "Montenegrin",
-    "Montserratian",
-    "Moroccan",
-    "Mosotho",
-    "Mozambican",
-    "Namibian",
-    "Nauruan",
-    "Nepalese",
-    "New Zealander",
-    "Nicaraguan",
-    "Nigerian",
-    "Nigerien",
-    "Niuean",
-    "North Korean",
-    "Northern Irish",
-    "Norwegian",
-    "Omani",
-    "Pakistani",
-    "Palauan",
-    "Palestinian",
-    "Panamanian",
-    "Papua New Guinean",
-    "Paraguayan",
-    "Peruvian",
-    "Pitcairn Islander",
-    "Polish",
-    "Portuguese",
-    "Prydeinig",
-    "Puerto Rican",
-    "Qatari",
-    "Romanian",
-    "Russian",
-    "Rwandan",
-    "Salvadorean",
-    "Sammarinese",
-    "Samoan",
-    "Sao Tomean",
-    "Saudi Arabian",
-    "Scottish",
-    "Senegalese",
-    "Serbian",
-    "Sierra Leonean",
-    "Singaporean",
-    "Slovak",
-    "Slovenian",
-    "Solomon Islander",
-    "Somali",
-    "South African",
-    "South Korean",
-    "South Sudanese",
-    "Spanish",
-    "Sri Lankan",
-    "St Helenian",
-    "St Lucian",
-    "Stateless",
-    "Sudanese",
-    "Surinamese",
-    "Swazi",
-    "Swedish",
-    "Swiss",
-    "Syrian",
-    "Taiwanese",
-    "Tajik",
-    "Tanzanian",
-    "Thai",
-    "Togolese",
-    "Tongan",
-    "Trinidadian",
-    "Tristanian",
-    "Tunisian",
-    "Turkish",
-    "Turkmen",
-    "Turks and Caicos Islander",
-    "Tuvaluan",
-    "Ugandan",
-    "Ukrainian",
-    "Uruguayan",
-    "Uzbek",
-    "Vatican citizen",
-    "Venezuelan",
-    "Vietnamese",
-    "Vincentian",
-    "Wallisian",
-    "Welsh",
-    "Yemeni",
-    "Zambian",
-    "Zimbabwean",
+    "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Anguillan", "Argentine", "Armenian", "Australian",
+    "Austrian", "Azerbaijani", "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian", "Belizean", "Beninese",
+    "Bermudian", "Bhutanese", "Bolivian", "Botswanan", "Brazilian", "British", "British Virgin Islander", "Bruneian", "Bulgarian", "Burkinan",
+    "Burmese", "Burundian", "Cambodian", "Cameroonian", "Canadian", "Cape Verdean", "Cayman Islander", "Central African", "Chadian", "Chilean",
+    "Chinese", "Citizen of Antigua and Barbuda", "Citizen of Bosnia and Herzegovina", "Citizen of Guinea-Bissau", "Citizen of Kiribati", "Citizen of Seychelles",
+    "Citizen of the Dominican Republic", "Citizen of Vanuatu", "Colombian", "Comoran", "Congolese (Congo)", "Congolese (DRC)", "Cook Islander", "Costa Rican",
+    "Croatian", "Cuban", "Cymraes", "Cymro", "Cypriot", "Czech", "Danish", "Djiboutian", "Dominican", "Dutch", "East Timorese", "Ecuadorean", "Egyptian",
+    "Emirati", "English", "Equatorial Guinean", "Eritrean", "Estonian", "Ethiopian", "Faroese", "Fijian", "Filipino", "Finnish", "French", "Gabonese",
+    "Gambian", "Georgian", "German", "Ghanaian", "Gibraltarian", "Greek", "Greenlandic", "Grenadian", "Guamanian", "Guatemalan", "Guinean", "Guyanese",
+    "Haitian", "Honduran", "Hong Konger", "Hungarian", "Icelandic", "Indian", "Indonesian", "Iranian", "Iraqi", "Irish", "Israeli", "Italian", "Ivorian",
+    "Jamaican", "Japanese", "Jordanian", "Kazakh", "Kenyan", "Kittitian", "Kosovan", "Kuwaiti", "Kyrgyz", "Lao", "Latvian", "Lebanese", "Liberian", "Libyan",
+    "Liechtenstein citizen", "Lithuanian", "Luxembourger", "Macanese", "Macedonian", "Malagasy", "Malawian", "Malaysian", "Maldivian", "Malian", "Maltese",
+    "Marshallese", "Martiniquais", "Mauritanian", "Mauritian", "Mexican", "Micronesian", "Moldovan", "Monegasque", "Mongolian", "Montenegrin", "Montserratian",
+    "Moroccan", "Mosotho", "Mozambican", "Namibian", "Nauruan", "Nepalese", "New Zealander", "Nicaraguan", "Nigerian", "Nigerien", "Niuean", "North Korean",
+    "Northern Irish", "Norwegian", "Omani", "Pakistani", "Palauan", "Palestinian", "Panamanian", "Papua New Guinean", "Paraguayan", "Peruvian", "Pitcairn Islander",
+    "Polish", "Portuguese", "Prydeinig", "Puerto Rican", "Qatari", "Romanian", "Russian", "Rwandan", "Salvadorean", "Sammarinese", "Samoan", "Sao Tomean",
+    "Saudi Arabian", "Scottish", "Senegalese", "Serbian", "Sierra Leonean", "Singaporean", "Slovak", "Slovenian", "Solomon Islander", "Somali", "South African",
+    "South Korean", "South Sudanese", "Spanish", "Sri Lankan", "St Helenian", "St Lucian", "Stateless", "Sudanese", "Surinamese", "Swazi", "Swedish", "Swiss",
+    "Syrian", "Taiwanese", "Tajik", "Tanzanian", "Thai", "Togolese", "Tongan", "Trinidadian", "Tristanian", "Tunisian", "Turkish", "Turkmen", "Turks and Caicos Islander",
+    "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan", "Uzbek", "Vatican citizen", "Venezuelan", "Vietnamese", "Vincentian", "Wallisian", "Welsh", "Yemeni", "Zambian", "Zimbabwean",
   ];
 
   const nationalityOptions = nationalities.map((n) => ({
@@ -294,8 +89,8 @@ export default function FamilyDetailsPhase2({ onNext }) {
     validateSection,
     errors,
   } = useEnrolmentForm();
+  
   const [sectionError, setSectionError] = useState("");
-  const [showCarer2, setShowCarer2] = useState(false);
   const [touchedFields, setTouchedFields] = useState({
     parent_carer_1: {},
     parent_carer_2: {},
@@ -304,6 +99,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
   const [showProfileUpdateModal, setShowProfileUpdateModal] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  // Use persisted state from formData instead of local state
+  const showCarer2 = formData.ui_state?.showCarer2 || false;
 
   // State for dynamic suburb options
   const [suburbOptions, setSuburbOptions] = useState({
@@ -834,9 +632,11 @@ export default function FamilyDetailsPhase2({ onNext }) {
     }
   };
 
-  // Handle checkbox change for showing carer 2
+  // Handle checkbox change for showing carer 2 - PERSIST THE STATE
   const handleShowCarer2Change = (checked) => {
-    setShowCarer2(checked);
+    // Update the persisted state in formData
+    updateFormData("ui_state", "showCarer2", checked);
+    
     // Clear any existing errors for carer 2 when hiding the section
     if (!checked) {
       setSectionError("");
@@ -1232,21 +1032,6 @@ export default function FamilyDetailsPhase2({ onNext }) {
         <div className="row align-items-end gap-5 mb-4">
           <div className="col-md-3">
             <SelectInput
-              id="suburb1"
-              label="Suburb"
-              placeholder="Select suburb"
-              value={formData.parent_carer_1.suburb || ""}
-              onChange={(value) =>
-                handleInputChange("parent_carer_1", "suburb", value)
-              }
-              onBlur={() => handleBlur("parent_carer_1", "suburb")}
-              error={getError("parent_carer_1", "suburb")}
-              required={shouldShowRequired("parent_carer_1", "suburb")}
-              options={suburbOptions.parent_carer_1}
-            />
-          </div>
-          <div className="col-md-3">
-            <SelectInput
               id="state1"
               label="State"
               placeholder="Select state"
@@ -1258,6 +1043,21 @@ export default function FamilyDetailsPhase2({ onNext }) {
               error={getError("parent_carer_1", "state")}
               required={shouldShowRequired("parent_carer_1", "state")}
               options={stateOptions}
+            />
+          </div>
+                    <div className="col-md-3">
+            <SelectInput
+              id="suburb1"
+              label="Suburb"
+              placeholder="Select suburb"
+              value={formData.parent_carer_1.suburb || ""}
+              onChange={(value) =>
+                handleInputChange("parent_carer_1", "suburb", value)
+              }
+              onBlur={() => handleBlur("parent_carer_1", "suburb")}
+              error={getError("parent_carer_1", "suburb")}
+              required={shouldShowRequired("parent_carer_1", "suburb")}
+              options={suburbOptions.parent_carer_1}
             />
           </div>
           <div className="col-md-3">
@@ -1275,7 +1075,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
           </div>
         </div>
 
-        {/* Show Carer 2 Checkbox */}
+        {/* Show Carer 2 Checkbox - Now using persisted state */}
         <div className="row mt-4">
           <div className="col-12">
             <div className="form-check">
@@ -1585,21 +1385,6 @@ export default function FamilyDetailsPhase2({ onNext }) {
             <div className="row align-items-end gap-5 mb-4">
               <div className="col-md-3">
                 <SelectInput
-                  id="suburb2"
-                  label="Suburb"
-                  placeholder="Select suburb"
-                  value={formData.parent_carer_2.suburb || ""}
-                  onChange={(value) =>
-                    handleInputChange("parent_carer_2", "suburb", value)
-                  }
-                  onBlur={() => handleBlur("parent_carer_2", "suburb")}
-                  error={getError("parent_carer_2", "suburb")}
-                  required={false}
-                  options={suburbOptions.parent_carer_2}
-                />
-              </div>
-              <div className="col-md-3">
-                <SelectInput
                   id="state2"
                   label="State"
                   placeholder="Select state"
@@ -1611,6 +1396,21 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   error={getError("parent_carer_2", "state")}
                   required={false}
                   options={stateOptions}
+                />
+              </div>
+                            <div className="col-md-3">
+                <SelectInput
+                  id="suburb2"
+                  label="Suburb"
+                  placeholder="Select suburb"
+                  value={formData.parent_carer_2.suburb || ""}
+                  onChange={(value) =>
+                    handleInputChange("parent_carer_2", "suburb", value)
+                  }
+                  onBlur={() => handleBlur("parent_carer_2", "suburb")}
+                  error={getError("parent_carer_2", "suburb")}
+                  required={false}
+                  options={suburbOptions.parent_carer_2}
                 />
               </div>
               <div className="col-md-3">

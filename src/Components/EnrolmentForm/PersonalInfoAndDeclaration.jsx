@@ -23,6 +23,26 @@ export default function PersonalInfoAndDeclaration({ onNext }) {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const navigate = useNavigate();
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    return new Date().toISOString().split("T")[0];
+  };
+
+  // Initialize date fields with today's date when component mounts
+  useEffect(() => {
+    const today = getTodayDate();
+    
+    // Only set the date if it's not already set
+    if (!formData.personal_declaration?.first_parent_carer_name_date) {
+      updateFormData("personal_declaration", "first_parent_carer_name_date", today);
+    }
+    
+    // Also initialize second parent date
+    if (!formData.personal_declaration?.second_parent_carer_name_date) {
+      updateFormData("personal_declaration", "second_parent_carer_name_date", today);
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
   // Success handler with Bootstrap modal
   useEffect(() => {
     if (success && submissionResult && !hasSubmitted) {
@@ -622,7 +642,7 @@ export default function PersonalInfoAndDeclaration({ onNext }) {
                       );
                     }}
                     required={true}
-                    max={new Date().toISOString().split("T")[0]}
+                    max={getTodayDate()}
                   />
                   {hasError("first_parent_carer_name_date") && (
                     <div className="invalid-feedback">
@@ -691,7 +711,7 @@ export default function PersonalInfoAndDeclaration({ onNext }) {
                         e.target.value
                       );
                     }}
-                    max={new Date().toISOString().split("T")[0]}
+                    max={getTodayDate()}
                   />
                   {hasError("second_parent_carer_name_date") && (
                     <div className="invalid-feedback">

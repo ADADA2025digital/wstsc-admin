@@ -612,12 +612,23 @@ export default function FamilyDetailsPhase2({ onNext }) {
         "street_name",
         "state",
         "postal_code",
-        // "suburb" REMOVED - now optional
       ];
       return requiredFields.includes(field);
     }
 
-    // For carer 2, never show required since all fields are optional
+    // For carer 2, show required for specific fields only when carer 2 is shown
+    if (section === "parent_carer_2" && showCarer2) {
+      const requiredFieldsCarer2 = [
+        "title",
+        "first_name", 
+        "last_name",
+        "gender",
+        "relationship_to_student",
+        "date_of_birth"
+      ];
+      return requiredFieldsCarer2.includes(field);
+    }
+
     return false;
   };
 
@@ -640,11 +651,20 @@ export default function FamilyDetailsPhase2({ onNext }) {
       "street_name",
       "state",
       "postal_code",
-      // "suburb" REMOVED - now optional
     ];
 
-    const fieldsToCheck =
-      section === "parent_carer_1" ? requiredFieldsCarer1 : [];
+    // Required fields for carer 2 (only when shown)
+    const requiredFieldsCarer2 = showCarer2 ? [
+      "title",
+      "first_name",
+      "last_name", 
+      "gender",
+      "relationship_to_student",
+      "date_of_birth"
+    ] : [];
+
+    const fieldsToCheck = section === "parent_carer_1" ? requiredFieldsCarer1 : 
+                         section === "parent_carer_2" ? requiredFieldsCarer2 : [];
 
     const missingFields = [];
     const isValid = fieldsToCheck.every((field) => {
@@ -688,7 +708,6 @@ export default function FamilyDetailsPhase2({ onNext }) {
       "street_name",
       "state",
       "postal_code",
-      // "suburb" REMOVED - now optional
     ];
 
     requiredFieldsCarer1.forEach((field) => {
@@ -721,27 +740,33 @@ export default function FamilyDetailsPhase2({ onNext }) {
       }
     });
 
-    // Validate parent/carer 2 if shown - all fields are optional
+    // Validate parent/carer 2 if shown - with required fields
     if (showCarer2) {
-      const optionalFieldsCarer2 = [
+      // Required fields for carer 2
+      const requiredFieldsCarer2 = [
         "title",
-        "gender",
-        "relationship_to_student",
         "first_name",
         "last_name",
-        "country_of_birth",
-        "date_of_birth",
-        "nationality",
-        "email",
-        "mobile_phone",
-        "marital_status",
-        "occupation",
-        "street_number",
-        "street_name",
-        "suburb",
-        "state",
-        "postal_code",
-        "country",
+        "gender", 
+        "relationship_to_student",
+        "date_of_birth"
+      ];
+
+      // First validate required fields
+      requiredFieldsCarer2.forEach((field) => {
+        const value = formData.parent_carer_2[field];
+        const isValid = validateField("parent_carer_2", field, value);
+        if (!isValid) {
+          hasParent2Errors = true;
+        }
+      });
+
+      // Then validate optional fields (only if they have values)
+      const optionalFieldsCarer2 = [
+        "middle_name", "country_of_birth", "nationality", "email", 
+        "mobile_phone", "alternative_phone", "marital_status", "occupation",
+        "street_number", "street_name", "suburb", "state", "postal_code", 
+        "country", "address_type"
       ];
 
       optionalFieldsCarer2.forEach((field) => {
@@ -758,24 +783,26 @@ export default function FamilyDetailsPhase2({ onNext }) {
     // Check if sections are complete (have values for required fields)
     const hasParent1Complete = isParentSectionValid("parent_carer_1");
     const hasParent2Complete = showCarer2
-      ? Object.keys(formData.parent_carer_2).some(
-          (key) =>
-            formData.parent_carer_2[key] && formData.parent_carer_2[key] !== ""
-        )
-      : false;
+      ? isParentSectionValid("parent_carer_2")
+      : true;
 
     console.log("=== DETAILED VALIDATION RESULTS ===");
     console.log("Parent 1 Complete:", hasParent1Complete);
     console.log("Parent 1 Errors:", hasParent1Errors);
     console.log("Parent 1 Failed Fields:", parent1FailedFields);
+    console.log("Parent 2 Complete:", hasParent2Complete);
+    console.log("Parent 2 Errors:", hasParent2Errors);
     console.log("Form Data Parent 1:", formData.parent_carer_1);
+    console.log("Form Data Parent 2:", formData.parent_carer_2);
     console.log("All Errors:", errors);
     console.log("===================================");
 
-    // User can proceed if at least one parent section is complete AND has no errors
-    const canProceed =
-      (hasParent1Complete && !hasParent1Errors) ||
-      (showCarer2 && hasParent2Complete && !hasParent2Errors);
+    // User can proceed if:
+    // - Parent 1 is complete AND has no errors
+    // - AND if carer 2 is shown, then carer 2 must also be complete AND have no errors
+    const canProceed = 
+      (hasParent1Complete && !hasParent1Errors) && 
+      (showCarer2 ? (hasParent2Complete && !hasParent2Errors) : true);
 
     if (canProceed) {
       setSectionError("");
@@ -784,12 +811,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
       }
     } else {
       // Provide more specific error message
-      let errorMessage =
-        "Please complete all required fields for Parent/Carer 1";
+      let errorMessage = "Please complete all required fields for Parent/Carer 1";
 
       if (hasParent1Errors) {
-        errorMessage =
-          "Please fix the validation errors in Parent/Carer 1 details";
+        errorMessage = "Please fix the validation errors in Parent/Carer 1 details";
 
         // Add specific field information if available
         if (parent1FailedFields.length > 0) {
@@ -799,6 +824,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
         }
       } else if (!hasParent1Complete) {
         errorMessage = "Please complete all required fields for Parent/Carer 1";
+      } else if (showCarer2 && !hasParent2Complete) {
+        errorMessage = "Please complete all required fields for Parent/Carer 2 (Title, First name, Last name, Gender, Relationship to student, and Date of Birth)";
+      } else if (showCarer2 && hasParent2Errors) {
+        errorMessage = "Please fix the validation errors in Parent/Carer 2 details";
       }
 
       setSectionError(errorMessage);
@@ -1212,7 +1241,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
               }
               onBlur={() => handleBlur("parent_carer_1", "suburb")}
               error={getError("parent_carer_1", "suburb")}
-              required={shouldShowRequired("parent_carer_1", "suburb")} // Now false - optional
+              required={shouldShowRequired("parent_carer_1", "suburb")}
               options={suburbOptions.parent_carer_1}
             />
           </div>
@@ -1284,7 +1313,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   }
                   onBlur={() => handleBlur("parent_carer_2", "title")}
                   error={getError("parent_carer_2", "title")}
-                  required={false}
+                  required={shouldShowRequired("parent_carer_2", "title")}
                   options={[
                     { value: "Mr", label: "Mr" },
                     { value: "Ms", label: "Ms" },
@@ -1307,7 +1336,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   }
                   onBlur={() => handleBlur("parent_carer_2", "first_name")}
                   error={getError("parent_carer_2", "first_name")}
-                  required={false}
+                  required={shouldShowRequired("parent_carer_2", "first_name")}
                 />
               </div>
               <div className="col-md-3">
@@ -1320,7 +1349,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   }
                   onBlur={() => handleBlur("parent_carer_2", "last_name")}
                   error={getError("parent_carer_2", "last_name")}
-                  required={false}
+                  required={shouldShowRequired("parent_carer_2", "last_name")}
                 />
               </div>
               <div className="col-md-3">
@@ -1350,7 +1379,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   }
                   onBlur={() => handleBlur("parent_carer_2", "gender")}
                   error={getError("parent_carer_2", "gender")}
-                  required={false}
+                  required={shouldShowRequired("parent_carer_2", "gender")}
                   options={genderOptions}
                 />
               </div>
@@ -1371,8 +1400,8 @@ export default function FamilyDetailsPhase2({ onNext }) {
                     handleBlur("parent_carer_2", "relationship_to_student")
                   }
                   error={getError("parent_carer_2", "relationship_to_student")}
+                  required={shouldShowRequired("parent_carer_2", "relationship_to_student")}
                   options={relationOptions}
-                  required={false}
                 />
               </div>
               <div className="col-md-3">
@@ -1386,7 +1415,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   }
                   onBlur={() => handleBlur("parent_carer_2", "date_of_birth")}
                   error={getError("parent_carer_2", "date_of_birth")}
-                  required={false}
+                  required={shouldShowRequired("parent_carer_2", "date_of_birth")}
                 />
               </div>
               <div className="col-md-3">

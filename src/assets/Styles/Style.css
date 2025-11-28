@@ -17,7 +17,7 @@
   --text-secondary: #64748b;
   --green: #10b981;
   --yellow: #f59e0b;
-  --red: #ef4444; 
+  --red: #ef4444;
   --blue: #3b82f6;
 }
 
@@ -43,15 +43,13 @@ body.dark-mode {
   color: var(--font-color-dark) !important;
 }
 
+/* Header */
 body.dark-mode .navbar,
 body.dark-mode footer {
   background-color: var(--header-footer-background-dark);
 }
 
-body.dark-mode #dataTable {
-  background-color: var(--header-footer-background-dark);
-}
-
+/* Custom btn */
 body .custom-btn {
   background: var(--theme-color);
   color: var(--font-color-dark);
@@ -67,10 +65,31 @@ body.dark-mode .custom-btn {
   color: var(--font-color-dark);
 }
 
+/* Data Table */
 body.dark-mode .custom-btn:hover {
   background: var(--green-20) !important;
   color: var(--font-color-dark);
 }
+
+body.dark-mode #dataTable {
+  background-color: var(--header-footer-background-dark);
+}
+
+body.dark-mode div.dt-container .dt-paging .dt-paging-button.current {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+body.dark-mode div.dt-container .dt-paging .dt-paging-button.disabled {
+  color: var(--font-color-dark) !important;
+}
+
+body.dark-mode div.dt-container select.dt-input option {
+  color: var(--font-color-light);
+}
+
+
+/* Card */
+.btn-outline-secondary
 
 /* Side  Icon  */
 .icon-container {
@@ -410,74 +429,6 @@ body.dark-mode .user-account {
   align-items: center;
   backdrop-filter: blur(5px);
   z-index: 9999;
-}
-
-.spinner {
-  --size: 30px;
-  --first-block-clr: #f8f9fa;
-  --second-block-clr: #7a70ba;
-  --clr: #111;
-  width: 100px;
-  height: 100px;
-  position: relative;
-}
-
-.spinner::after,
-.spinner::before {
-  box-sizing: border-box;
-  position: absolute;
-  content: "";
-  width: var(--size);
-  height: var(--size);
-  top: 50%;
-  animation: up 2.4s cubic-bezier(0, 0, 0.24, 1.21) infinite;
-  left: 50%;
-  background: var(--first-block-clr);
-}
-
-.spinner::after {
-  background: var(--second-block-clr);
-  top: calc(50% - var(--size));
-  left: calc(50% - var(--size));
-  animation: down 2.4s cubic-bezier(0, 0, 0.24, 1.21) infinite;
-}
-
-@keyframes down {
-  0%,
-  100% {
-    transform: none;
-  }
-
-  25% {
-    transform: translateX(100%);
-  }
-
-  50% {
-    transform: translateX(100%) translateY(100%);
-  }
-
-  75% {
-    transform: translateY(100%);
-  }
-}
-
-@keyframes up {
-  0%,
-  100% {
-    transform: none;
-  }
-
-  25% {
-    transform: translateX(-100%);
-  }
-
-  50% {
-    transform: translateX(-100%) translateY(-100%);
-  }
-
-  75% {
-    transform: translateY(-100%);
-  }
 }
 
 .bi-arrow-clockwise.spin {

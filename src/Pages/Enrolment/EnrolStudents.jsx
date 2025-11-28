@@ -530,6 +530,7 @@ const EnrolStudents = () => {
                 />
               </ButtonGlobal>
             )}
+            {/* Hide New Enrollment button for admin */}
             {userRole === "parent" && students.length > 0 && (
               <button
                 onClick={handleEnrolStudent}
@@ -568,12 +569,15 @@ const EnrolStudents = () => {
                   : "No student enrollments found in the system."}
               </p>
               <div className="d-flex justify-content-center gap-3">
-                <Button
-                  onClick={handleEnrolStudent}
-                  className="btn-primary px-4 py-2"
-                >
-                  <i className="bi bi-plus-circle me-1"></i> Enrol Student
-                </Button>
+                {/* Hide Enrol Student button for admin in empty state */}
+                {userRole !== "admin" && (
+                  <Button
+                    onClick={handleEnrolStudent}
+                    className="btn-primary px-4 py-2"
+                  >
+                    <i className="bi bi-plus-circle me-1"></i> Enrol Student
+                  </Button>
+                )}
                 <Button
                   onClick={handleRefresh}
                   variant="outline-secondary"

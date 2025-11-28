@@ -502,11 +502,6 @@ export default function FamilyDetailsPhase2({ onNext }) {
       }
       updateFormData("parent_carer_1", "relationship_to_student", relationship);
     }
-
-    // Set country of birth to Australia by default if not set
-    if (!formData.parent_carer_1.country_of_birth) {
-      updateFormData("parent_carer_1", "country_of_birth", "AU");
-    }
   };
 
   // Helper function to extract street number from address_line1

@@ -297,7 +297,8 @@ const EnrolmentDetails = () => {
   const [classrooms, setClassrooms] = useState([]);
   const [classroomLoading, setClassroomLoading] = useState(false);
 
-  // Rejection modal states
+  // Confirmation modal states
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
@@ -731,7 +732,30 @@ const EnrolmentDetails = () => {
     }
   };
 
-  const handleAcceptEnrolment = async () => {
+  // Accept Confirmation Modal Handlers
+  const handleOpenAcceptModal = () => {
+    setShowAcceptModal(true);
+  };
+
+  const handleCloseAcceptModal = () => {
+    setShowAcceptModal(false);
+  };
+
+  // Reject Confirmation Modal Handlers
+  const handleOpenRejectModal = () => {
+    setRejectionReason("");
+    setRejectionError("");
+    setShowRejectModal(true);
+  };
+
+  const handleCloseRejectModal = () => {
+    setShowRejectModal(false);
+    setRejectionReason("");
+    setRejectionError("");
+  };
+
+  // Actual Accept Enrolment Function
+  const confirmAcceptEnrolment = async () => {
     if (!id) {
       console.error("❌ No enrolment ID found for acceptance");
       return;
@@ -793,6 +817,7 @@ const EnrolmentDetails = () => {
         await sendAcceptanceEmailToParent();
 
         setError(null);
+        handleCloseAcceptModal();
 
         setTimeout(() => {
           console.log("✅ Enrolment approval completed");
@@ -809,38 +834,19 @@ const EnrolmentDetails = () => {
         "Failed to accept enrolment. Please try again.";
 
       setError(errorMessage);
+      handleCloseAcceptModal();
 
       if (err.response) {
         console.error("Error response data:", err.response.data);
         console.error("Error response status:", err.response.status);
-      }
-
-      // Handle specific HTTP status codes
-      if (err.response?.status === 401) {
-        console.error("Authentication error - token may be invalid");
-      } else if (err.response?.status === 403) {
-        console.error("Permission denied - user may not have admin privileges");
-      } else if (err.response?.status === 404) {
-        console.error("Enrolment not found - ID may be invalid");
       }
     } finally {
       setAcceptLoading(false);
     }
   };
 
-  const handleOpenRejectModal = () => {
-    setRejectionReason("");
-    setRejectionError("");
-    setShowRejectModal(true);
-  };
-
-  const handleCloseRejectModal = () => {
-    setShowRejectModal(false);
-    setRejectionReason("");
-    setRejectionError("");
-  };
-
-  const handleRejectEnrolment = async () => {
+  // Actual Reject Enrolment Function
+  const confirmRejectEnrolment = async () => {
     if (!rejectionReason.trim()) {
       setRejectionError("Please provide a reason for rejection");
       return;
@@ -911,12 +917,6 @@ const EnrolmentDetails = () => {
             "⚠️ Enrolment rejected but email failed:",
             emailResult.error
           );
-          // Show specific error message for template configuration issues
-          if (emailResult.error?.includes("template")) {
-            console.error(
-              "🔧 Please check EmailJS template configuration for rejection emails"
-            );
-          }
         }
 
         handleCloseRejectModal();
@@ -931,11 +931,6 @@ const EnrolmentDetails = () => {
     } catch (err) {
       console.error("❌ Error rejecting enrolment:", err);
 
-      if (err.response?.status === 422) {
-        console.error("🔍 Validation Error Details:");
-        console.error("🔍 Error data:", err.response.data);
-      }
-
       const errorMessage =
         err.response?.data?.message ||
         (err.response?.data?.errors &&
@@ -944,18 +939,6 @@ const EnrolmentDetails = () => {
         "Failed to reject enrolment. Please try again.";
 
       setRejectionError(errorMessage);
-
-      if (err.response?.status === 401) {
-        console.error("Authentication error - token may be invalid");
-      } else if (err.response?.status === 403) {
-        console.error("Permission denied - user may not have admin privileges");
-      } else if (err.response?.status === 404) {
-        console.error("Enrolment not found - ID may be invalid");
-      } else if (err.response?.status === 422) {
-        console.error(
-          "Validation error - check rejection reason format and length"
-        );
-      }
     } finally {
       setRejectLoading(false);
     }
@@ -1210,26 +1193,12 @@ const EnrolmentDetails = () => {
           {canApproveReject && isPending && (
             <>
               <ButtonGlobal
-                onClick={handleAcceptEnrolment}
+                onClick={handleOpenAcceptModal}
                 className="btn btn-primary"
                 disabled={acceptLoading}
               >
-                {acceptLoading ? (
-                  <>
-                    <div
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                    >
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-check2-all me-2"></i>
-                    Accept Enrolment
-                  </>
-                )}
+                <i className="bi bi-check2-all me-2"></i>
+                Accept Enrolment
               </ButtonGlobal>
 
               <ButtonGlobal
@@ -1811,7 +1780,78 @@ const EnrolmentDetails = () => {
         </div>
       </div>
 
-      {/* Rejection Confirmation Modal - Only show for admin users */}
+      {/* Accept Confirmation Modal */}
+      {canApproveReject && (
+        <Modal
+          show={showAcceptModal}
+          onHide={handleCloseAcceptModal}
+          size="md"
+          centered
+          backdrop="static"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="bi bi-check2-circle text-success me-2"></i>
+              Confirm Enrolment Acceptance
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="text-center mb-3">
+              <div className="mb-3">
+                <i className="bi bi-person-check text-success fs-1"></i>
+              </div>
+              <h5 className="mb-3">
+                Are you sure you want to accept this enrolment?
+              </h5>
+              <p className="text-muted">
+                You are about to accept the enrolment for{" "}
+                <strong>
+                  {student?.first_given_name} {student?.family_name}
+                </strong>
+                . This action will:
+              </p>
+              <ul className="text-start text-muted small">
+                <li>Change the enrolment status to "Approved"</li>
+                <li>Send a confirmation email to the parent/guardian</li>
+                <li>Assign the student to their selected class</li>
+                <li>This action cannot be undone</li>
+              </ul>
+            </div>
+          </Modal.Body>
+          <Modal.Footer className="d-flex justify-content-between">
+            <Button
+              variant="secondary"
+              onClick={handleCloseAcceptModal}
+              disabled={acceptLoading}
+            >
+              <i className="bi bi-x-circle me-2"></i>
+              Cancel
+            </Button>
+            <ButtonGlobal
+              onClick={confirmAcceptEnrolment}
+              className="btn btn-success"
+              disabled={acceptLoading}
+            >
+              {acceptLoading ? (
+                <>
+                  <div
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  ></div>
+                  Accepting...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check2-all me-2" />
+                  Yes, Accept Enrolment
+                </>
+              )}
+            </ButtonGlobal>
+          </Modal.Footer>
+        </Modal>
+      )}
+
+      {/* Rejection Confirmation Modal */}
       {canApproveReject && (
         <Modal
           show={showRejectModal}
@@ -1822,8 +1862,8 @@ const EnrolmentDetails = () => {
         >
           <Modal.Header closeButton>
             <Modal.Title>
-              <i className="bi bi-x-circle me-2 text-danger"></i>Reject
-              Enrolment
+              <i className="bi bi-x-circle text-danger me-2"></i>
+              Confirm Enrolment Rejection
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
@@ -1872,10 +1912,11 @@ const EnrolmentDetails = () => {
               onClick={handleCloseRejectModal}
               disabled={rejectLoading}
             >
+              <i className="bi bi-x-circle me-2"></i>
               Cancel
             </Button>
             <ButtonGlobal
-              onClick={handleRejectEnrolment}
+              onClick={confirmRejectEnrolment}
               className="btn btn-danger"
               disabled={
                 rejectLoading ||
@@ -1894,7 +1935,7 @@ const EnrolmentDetails = () => {
               ) : (
                 <>
                   <i className="bi bi-x-circle me-2" />
-                  Reject Enrolment
+                  Yes, Reject Enrolment
                 </>
               )}
             </ButtonGlobal>

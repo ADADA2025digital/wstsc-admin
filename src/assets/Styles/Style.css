@@ -427,8 +427,8 @@ body.dark-mode .user-account {
   display: flex;
   justify-content: center;
   align-items: center;
-  backdrop-filter: blur(5px);
-  z-index: 9999;
+  /* backdrop-filter: blur(5px); */
+  /* z-index: 9999; */
 }
 
 .bi-arrow-clockwise.spin {

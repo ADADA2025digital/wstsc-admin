@@ -825,7 +825,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
           role="dialog"
         >
           <div
-            className="modal-dialog modal-dialog-centered"
+            className="modal-dialog modal-dialog-centered modal-md"
           >
             <div className="modal-content">
               <div className="modal-header">

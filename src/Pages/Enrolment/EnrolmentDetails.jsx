@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Row, Col, Tab, Tabs, Modal, Button } from "react-bootstrap";
+import { Row, Col, Tab, Tabs, Modal, Button, Form } from "react-bootstrap";
 import ButtonGlobal from "../../Components/Button";
 import InfoCard from "../../Components/InfoCard";
 import { formatDateToMMDDYYYY } from "../../config/utils";
@@ -302,6 +302,12 @@ const EnrolmentDetails = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+
+  // Classroom edit modal states
+  const [showClassroomModal, setShowClassroomModal] = useState(false);
+  const [selectedClassroom, setSelectedClassroom] = useState("");
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateError, setUpdateError] = useState("");
 
   // Debug EmailJS configuration on component mount
   useEffect(() => {
@@ -609,6 +615,94 @@ const EnrolmentDetails = () => {
   }, [classrooms]);
 
   const handleBack = () => navigate("/enrolments");
+
+  // Classroom Edit Modal Functions
+  const handleOpenClassroomModal = () => {
+    if (!canApproveReject) return;
+    
+    // Set the current classroom as selected
+    const currentClassroomId = studentData?.student?.classroom_info?.class_id || 
+                              studentData?.student?.enrol_class_in_WSTSC || 
+                              studentData?.student?.com_school_enr_grade;
+    setSelectedClassroom(currentClassroomId || "");
+    setUpdateError("");
+    setShowClassroomModal(true);
+  };
+
+  const handleCloseClassroomModal = () => {
+    setShowClassroomModal(false);
+    setSelectedClassroom("");
+    setUpdateError("");
+  };
+
+  const handleUpdateClassroom = async () => {
+    if (!selectedClassroom) {
+      setUpdateError("Please select a classroom");
+      return;
+    }
+
+    try {
+      setUpdateLoading(true);
+      setUpdateError("");
+
+      console.log("🔄 Updating classroom for enrolment:", id);
+      console.log("Selected classroom:", selectedClassroom);
+
+      const endpoint = `/admin/enrollments/${id}/update-classroom`;
+      const response = await api.put(
+        endpoint,
+        {
+          classroom_id: selectedClassroom,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      console.log("✅ Classroom update response:", response);
+
+      if (response.data.success) {
+        // Update local state with new classroom info
+        const selectedClass = classrooms.find(
+          (classroom) => classroom.class_id === selectedClassroom
+        );
+
+        setStudentData((prevData) => ({
+          ...prevData,
+          student: {
+            ...prevData.student,
+            enrol_class_in_WSTSC: selectedClassroom,
+            com_school_enr_grade: selectedClassroom,
+            classroom_info: {
+              class_id: selectedClassroom,
+              class_name: selectedClass?.class_name || `Class ${selectedClassroom}`,
+              class_code: selectedClass?.class_code,
+            },
+          },
+        }));
+
+        handleCloseClassroomModal();
+        
+        // Show success message
+        setEmailStatus("classroom_updated");
+        setTimeout(() => setEmailStatus(null), 3000);
+      } else {
+        throw new Error(response.data.message || "Failed to update classroom");
+      }
+    } catch (err) {
+      console.error("❌ Error updating classroom:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to update classroom. Please try again.";
+      setUpdateError(errorMessage);
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
 
   // Function to handle acceptance email sending
   const sendAcceptanceEmailToParent = async () => {
@@ -1093,6 +1187,20 @@ const EnrolmentDetails = () => {
               </div>
             </div>
           )}
+          {emailStatus === "classroom_updated" && (
+            <div
+              className="alert alert-success mt-2 py-2 d-flex align-items-center"
+              role="alert"
+            >
+              <i className="bi bi-check2-all me-2 fs-5"></i>
+              <div>
+                <strong>Classroom updated successfully!</strong>
+                <div className="small">
+                  The student's classroom has been updated.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Rejection Email Status Indicators */}
           {rejectionEmailStatus === "sending" && (
@@ -1307,25 +1415,37 @@ const EnrolmentDetails = () => {
             </div>
 
             <div className="col-md-3">
-              <div className="d-flex flex-column">
+              <div className="d-flex flex-column align-items-start">
                 <span className="small fw-semibold">
                   Commity School Enrollment Class
                 </span>
-                <span className="fs-6">
-                  {student?.classroom_info?.class_name ||
-                    `Class ${
-                      student?.enrol_class_in_WSTSC ||
-                      student?.com_school_enr_grade
-                    }` ||
-                    "—"}
-                  {!student?.classroom_info?.class_name &&
-                    !student?.enrol_class_in_WSTSC &&
-                    !student?.com_school_enr_grade && (
-                      <small className="text-danger d-block">
-                        No class data found
-                      </small>
-                    )}
-                </span>
+                <div className="d-flex align-items-center gap-2">
+                  <span className="fs-6">
+                    {student?.classroom_info?.class_name ||
+                      `Class ${
+                        student?.enrol_class_in_WSTSC ||
+                        student?.com_school_enr_grade
+                      }` ||
+                      "—"}
+                    {!student?.classroom_info?.class_name &&
+                      !student?.enrol_class_in_WSTSC &&
+                      !student?.com_school_enr_grade && (
+                        <small className="text-danger d-block">
+                          No class data found
+                        </small>
+                      )}
+                  </span>
+                  {canApproveReject && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary p-1"
+                      onClick={handleOpenClassroomModal}
+                      title="Edit classroom"
+                    >
+                      <i className="bi bi-pencil"></i>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <div className="col-md-3">
@@ -1779,6 +1899,92 @@ const EnrolmentDetails = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Classroom Edit Modal */}
+      {canApproveReject && (
+        <Modal
+          show={showClassroomModal}
+          onHide={handleCloseClassroomModal}
+          size="md"
+          centered
+          backdrop="static"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="bi bi-pencil-square text-primary me-2"></i>
+              Edit Classroom
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="mb-3">
+              <Form.Label htmlFor="classroomSelect" className="fw-semibold">
+                Select Classroom <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Select
+                id="classroomSelect"
+                value={selectedClassroom}
+                onChange={(e) => setSelectedClassroom(e.target.value)}
+                className={updateError ? "is-invalid" : ""}
+              >
+                <option value="">Choose a classroom...</option>
+                {classrooms.map((classroom) => (
+                  <option key={classroom.class_id} value={classroom.class_id}>
+                    {classroom.class_name} ({classroom.class_id})
+                  </option>
+                ))}
+              </Form.Select>
+              {updateError && (
+                <div className="invalid-feedback">{updateError}</div>
+              )}
+              <Form.Text className="text-muted">
+                Select the classroom for {student?.first_given_name}{" "}
+                {student?.family_name}
+              </Form.Text>
+            </div>
+            {selectedClassroom && (
+              <div className="alert alert-info">
+                <i className="bi bi-info-circle me-2"></i>
+                Selected:{" "}
+                {
+                  classrooms.find(
+                    (classroom) => classroom.class_id === selectedClassroom
+                  )?.class_name
+                }
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer className="d-flex justify-content-between">
+            <Button
+              variant="secondary"
+              onClick={handleCloseClassroomModal}
+              disabled={updateLoading}
+            >
+              <i className="bi bi-x-circle me-2"></i>
+              Cancel
+            </Button>
+            <ButtonGlobal
+              onClick={handleUpdateClassroom}
+              className="btn btn-primary"
+              disabled={updateLoading || !selectedClassroom}
+            >
+              {updateLoading ? (
+                <>
+                  <div
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  ></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check2 me-2" />
+                  Update Classroom
+                </>
+              )}
+            </ButtonGlobal>
+          </Modal.Footer>
+        </Modal>
+      )}
 
       {/* Accept Confirmation Modal */}
       {canApproveReject && (

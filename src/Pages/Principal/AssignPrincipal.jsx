@@ -547,7 +547,7 @@ const AssignPrincipal = () => {
                           <th>Position</th>
                           <th>Role</th>
                           <th>Status</th>
-                          <th>ID</th>
+                          {/* <th>ID</th> */}
                         </tr>
                       </thead>
                       <tbody>
@@ -601,11 +601,11 @@ const AssignPrincipal = () => {
                                   <h6 className="mb-1 fw-bold">
                                     {teacher.full_name}
                                   </h6>
-                                  <div className="d-flex flex-wrap gap-1">
+                                  {/* <div className="d-flex flex-wrap gap-1">
                                     <Badge bg="secondary" className="fs-7">
                                       {teacher.peid}
                                     </Badge>
-                                  </div>
+                                  </div> */}
                                 </div>
                               </div>
                             </td>
@@ -654,7 +654,7 @@ const AssignPrincipal = () => {
                                 {teacher.person_status || "Unknown"}
                               </Badge>
                             </td>
-                            <td>
+                            {/* <td>
                               <div className="text-center">
                                 <small className="d-block text-muted">
                                   TID: {teacher.tid}
@@ -663,7 +663,7 @@ const AssignPrincipal = () => {
                                   UID: {teacher.uid}
                                 </small>
                               </div>
-                            </td>
+                            </td> */}
                           </tr>
                         ))}
                       </tbody>
@@ -705,8 +705,7 @@ const AssignPrincipal = () => {
                         {!isLoadingPersonsList &&
                           persons.map((person) => (
                             <option key={person.peid} value={person.peid}>
-                              {person.full_name} -{" "}
-                              {getPersonRoleDisplayName(person)}
+                              {person.full_name}
                             </option>
                           ))}
                       </Form.Select>
@@ -760,8 +759,7 @@ const AssignPrincipal = () => {
                         {!isLoadingPersonsList &&
                           persons.map((person) => (
                             <option key={person.peid} value={person.peid}>
-                              {person.full_name} -{" "}
-                              {getPersonRoleDisplayName(person)}
+                              {person.full_name}
                             </option>
                           ))}
                       </Form.Select>
@@ -851,12 +849,12 @@ const AssignPrincipal = () => {
                     </div>
                     <table className="table table-sm">
                       <tbody>
-                        <tr>
+                        {/* <tr>
                           <td className="fw-bold text-muted" width="40%">
                             PEID:
                           </td>
                           <td>{selectedTeacher.peid}</td>
-                        </tr>
+                        </tr> */}
                         <tr>
                           <td className="fw-bold text-muted">Email:</td>
                           <td>{selectedTeacher.person_email || "No email"}</td>
@@ -890,14 +888,14 @@ const AssignPrincipal = () => {
                             </Badge>
                           </td>
                         </tr>
-                        <tr>
+                        {/* <tr>
                           <td className="fw-bold text-muted">Teacher ID:</td>
                           <td>{selectedTeacher.tid}</td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">User ID:</td>
                           <td>{selectedTeacher.uid}</td>
-                        </tr>
+                        </tr> */}
                       </tbody>
                     </table>
                   </div>

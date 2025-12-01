@@ -768,72 +768,87 @@ const PersonDetails = () => {
                   <Col md={6}>
                     <InfoCard title="Personal Details" className="bg-light">
                       <div className="d-flex flex-column gap-3">
-                        <div>
-                          <span className="small">First Name</span>
-                          <p className="mb-0 fw-medium">
-                            {personData.first_name}
-                          </p>
+                        {/* First Name & Last Name in one row */}
+                        <div className="row">
+                          <div className="col-md-6">
+                            <div>
+                              <span className="small">First Name</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.first_name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-md-6">
+                            <div>
+                              <span className="small">Last Name</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.last_name}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="small">Last Name</span>
-                          <p className="mb-0 fw-medium">
-                            {personData.last_name}
-                          </p>
-                        </div>
+
+                        {/* Middle Name (if exists) */}
                         {personData.middle_name && (
-                          <div>
-                            <span className="small">
-                              Middle Name
-                            </span>
-                            <p className="mb-0 fw-medium">
-                              {personData.middle_name}
-                            </p>
+                          <div className="row">
+                            <div className="col-12">
+                              <div>
+                                <span className="small">Middle Name</span>
+                                <p className="mb-0 fw-medium">
+                                  {personData.middle_name}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         )}
-                        <div>
-                          <span className="small">Gender</span>
-                          <p className="mb-0 fw-medium">
-                            {personData.gender || "Not specified"}
-                          </p>
+
+                        {/* Gender, Date of Birth, Nationality in one row */}
+                        <div className="row">
+                          <div className="col-md-4">
+                            <div>
+                              <span className="small">Gender</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.gender || "Not specified"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div>
+                              <span className="small">Date of Birth</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.dob ? formatDateToDDMMYYYY(personData.dob) : "—"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div>
+                              <span className="small">Nationality</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.nationality || "—"}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        {personData.dob && (
-                          <div>
-                            <span className="small">
-                              Date of Birth
-                            </span>
-                            <p className="mb-0 fw-medium">
-                              {formatDateToDDMMYYYY(personData.dob)}
-                            </p>
+
+                        {/* Marital Status & Occupation in one row */}
+                        <div className="row">
+                          <div className="col-md-6">
+                            <div>
+                              <span className="small">Marital Status</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.marital_status || "—"}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                        {personData.nationality && (
-                          <div>
-                            <span className="small">
-                              Nationality
-                            </span>
-                            <p className="mb-0 fw-medium">
-                              {personData.nationality}
-                            </p>
+                          <div className="col-md-6">
+                            <div>
+                              <span className="small">Occupation</span>
+                              <p className="mb-0 fw-medium">
+                                {personData.occupation || "—"}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                        {personData.marital_status && (
-                          <div>
-                            <span className="small">
-                              Marital Status
-                            </span>
-                            <p className="mb-0 fw-medium">
-                              {personData.marital_status}
-                            </p>
-                          </div>
-                        )}
-                        {personData.occupation && (
-                          <div>
-                            <span className="small">Occupation</span>
-                            <p className="mb-0 fw-medium">
-                              {personData.occupation}
-                            </p>
-                          </div>
-                        )}
+                        </div>
                       </div>
                     </InfoCard>
                   </Col>

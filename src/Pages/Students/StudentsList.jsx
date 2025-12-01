@@ -652,11 +652,13 @@ const StudentsList = () => {
                             <Row className="g-2 mb-3">
                               <Col sm={6}>
                                 <div className="content-header d-flex align-items-center mb-2">
-                                  <i className="bi bi-mortarboard-fill text-primary me-2 fs-14px"></i>
-                                  <small className="text-muted">Class</small>
+                                  <i className="bi bi-calendar-event text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">
+                                    Date of Birth
+                                  </small>
                                 </div>
                                 <span className="fw-semibold d-block">
-                                  {student.classroom}
+                                  {student.date_of_birth}
                                 </span>
                               </Col>
                               <Col sm={6}>
@@ -675,17 +677,7 @@ const StudentsList = () => {
                             </Row>
 
                             <Row className="g-2 mb-3">
-                              <Col sm={6}>
-                                <div className="content-header d-flex align-items-center mb-2">
-                                  <i className="bi bi-calendar-event text-primary me-2 fs-14px"></i>
-                                  <small className="text-muted">
-                                    Date of Birth
-                                  </small>
-                                </div>
-                                <span className="fw-semibold d-block">
-                                  {student.date_of_birth}
-                                </span>
-                              </Col>
+
                               <Col sm={6}>
                                 <div className="content-header d-flex align-items-center mb-2">
                                   <i className="bi bi-calendar-check text-primary me-2 fs-14px"></i>

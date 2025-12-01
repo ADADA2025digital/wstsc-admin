@@ -1124,7 +1124,6 @@ const EnrolmentDetails = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Enrolment Details</h4>
-          <p className="text-muted mb-0">Enrolment ID: {id}</p>
 
           {/* Enhanced Email Status Indicators */}
           {emailStatus === "sending" && (

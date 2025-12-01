@@ -218,7 +218,7 @@ const ClassroomsStatus = () => {
       <Card.Body className="p-0">
         {classrooms.length > 0 ? (
           <Table responsive hover className="mb-0">
-            <thead className="bg-light">
+            <thead >
               <tr>
                 <th className="ps-4">Class Name</th>
                 <th>Status</th>

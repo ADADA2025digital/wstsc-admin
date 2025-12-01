@@ -1178,10 +1178,6 @@ export default function ClassroomsList() {
 
                     <div className="text-muted small mb-3">
                       <div>
-                        <i className="bi bi-hash me-1" /> Code:{" "}
-                        <strong>{cls.code}</strong>
-                      </div>
-                      <div>
                         <i className="bi bi-people me-1" /> Students:{" "}
                         <strong>{cls.students}</strong>
                       </div>

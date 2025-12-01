@@ -21,6 +21,8 @@ import { useUserData } from "../../hooks/useUserData";
 const StudentsList = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(new Date());
   const [students, setStudents] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
+  const [classroomMap, setClassroomMap] = useState({}); // NEW: Map for quick lookup
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -110,11 +112,73 @@ const StudentsList = () => {
     return "N/A";
   };
 
+  // Fetch classrooms data
+  const fetchClassrooms = async () => {
+    try {
+      console.log("📚 Fetching classrooms...");
+      const response = await api.get("/classrooms");
+      
+      if (response.data.success && response.data.data.classrooms) {
+        const classroomsData = response.data.data.classrooms;
+        setClassrooms(classroomsData);
+        
+        // Create a map for quick lookup: class_id -> class_name
+        const map = {};
+        classroomsData.forEach(classroom => {
+          map[classroom.class_id] = classroom.class_name;
+        });
+        
+        setClassroomMap(map);
+        console.log("📚 Classroom map created:", map);
+        console.log(`📚 Loaded ${classroomsData.length} classrooms`);
+        
+        return classroomsData;
+      }
+      return [];
+    } catch (err) {
+      console.error("❌ Error fetching classrooms:", err);
+      return [];
+    }
+  };
+
+  // Simple function to get classroom name from ID using the map
+  const getClassName = (classId) => {
+    if (!classId || classId === "N/A") return "Not assigned";
+    
+    const cleanClassId = classId.toString().trim();
+    
+    // Check if it's already a name
+    if (cleanClassId.includes("Kinder") || cleanClassId.includes("Preschool") || 
+        cleanClassId.includes("Year") || /^[A-Za-z\s]+$/.test(cleanClassId)) {
+      return cleanClassId;
+    }
+    
+    // Look up in the map
+    if (classroomMap[cleanClassId]) {
+      console.log(`✅ Mapping "${cleanClassId}" to "${classroomMap[cleanClassId]}"`);
+      return classroomMap[cleanClassId];
+    }
+    
+    // Try case-insensitive lookup
+    const lowerClassId = cleanClassId.toLowerCase();
+    const matchingKey = Object.keys(classroomMap).find(key => key.toLowerCase() === lowerClassId);
+    if (matchingKey) {
+      console.log(`✅ Case-insensitive mapping "${cleanClassId}" to "${classroomMap[matchingKey]}"`);
+      return classroomMap[matchingKey];
+    }
+    
+    console.log(`❌ No mapping found for "${cleanClassId}", returning original`);
+    return cleanClassId;
+  };
+
   // Fetch students based on user role
   const fetchStudents = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Fetch classrooms first
+      await fetchClassrooms();
 
       console.log(`🔄 Fetching students for role: ${currentRole}`);
       let response;
@@ -123,11 +187,19 @@ const StudentsList = () => {
       if (currentRole === "admin") {
         // Admin: Get all students
         response = await api.get("/students");
-        console.log("📊 Admin API response:", response.data);
+        console.log("📊 Admin API response received");
         
         if (response.data.success && response.data.data.students) {
-          studentData = response.data.data.students.map((student, index) => {
+          studentData = response.data.data.students.map((student) => {
             const parentName = extractParentName(student);
+            
+            // Get the classroom ID from student data
+            const classId = student.class_grade || student.classroom || student.class_id;
+            console.log(`🔄 Student: ${student.student_name}, Class ID: "${classId}"`);
+            
+            // Map to classroom name
+            const className = getClassName(classId);
+            console.log(`   ↳ Mapped to: "${className}"`);
             
             return {
               id: student.studid,
@@ -138,7 +210,7 @@ const StudentsList = () => {
               date_of_birth: formatDate(student.date_of_birth),
               enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
               status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
-              classroom: student.class_grade || "Not assigned",
+              classroom: className,
               parent_name: parentName,
               raw_data: student
             };
@@ -161,6 +233,9 @@ const StudentsList = () => {
             teacherData.classrooms.forEach((classroom) => {
               if (classroom.students && Array.isArray(classroom.students)) {
                 classroom.students.forEach((student) => {
+                  const classId = student.class_grade || student.classroom || student.class_id;
+                  const className = getClassName(classId);
+                  
                   const studentObj = {
                     id: student.student_id || student.id,
                     student_id: student.student_id || student.id,
@@ -170,7 +245,7 @@ const StudentsList = () => {
                     date_of_birth: formatDate(student.date_of_birth),
                     enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
                     status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
-                    classroom: classroom.classroom_name || classroom.name || "Not assigned",
+                    classroom: classroom.classroom_name || classroom.name || className,
                     parent_name: extractParentName(student),
                     raw_data: student
                   };
@@ -187,11 +262,13 @@ const StudentsList = () => {
         console.log("📊 Parent API response:", response.data);
         
         if (response.data.success && response.data.data.enrollments) {
-          studentData = response.data.data.enrollments.map((enrollment, index) => {
+          studentData = response.data.data.enrollments.map((enrollment) => {
             const student = enrollment.student;
             const parent = enrollment.parent_carer_1;
             
             const parentName = parent ? `${parent.first_name} ${parent.last_name}` : "N/A";
+            const classId = student.enrol_class_in_WSTSC || student.class_grade || student.classroom || student.class_id;
+            const className = getClassName(classId);
             
             return {
               id: student.student_id,
@@ -202,7 +279,7 @@ const StudentsList = () => {
               date_of_birth: formatDate(student.date_of_birth),
               enrollment_year: getEnrollmentYear(student.mainstream_enrollment_year),
               status: student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Unknown",
-              classroom: student.enrol_class_in_WSTSC || "Not assigned",
+              classroom: className,
               parent_name: parentName,
               raw_data: {
                 ...student,
@@ -217,6 +294,8 @@ const StudentsList = () => {
       }
       
       console.log(`✅ Loaded ${studentData.length} students for ${currentRole}`);
+      console.log("📊 Sample student data:", studentData[0]);
+      
       setStudents(studentData);
       setLastRefreshTime(new Date());
       
@@ -231,6 +310,9 @@ const StudentsList = () => {
       setLoading(false);
     }
   };
+
+  // Rest of the component remains the same...
+  // [Keep all the existing useEffect hooks, DataTable initialization, handleRefresh, helper functions, and JSX]
 
   // Initial data fetch
   useEffect(() => {

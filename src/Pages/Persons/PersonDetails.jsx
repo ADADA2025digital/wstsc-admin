@@ -20,24 +20,24 @@ import api from "../../config/axiosConfig";
 
 // Date formatting function for DD/MM/YYYY
 const formatDateToDDMMYYYY = (dateString) => {
-  if (!dateString) return '—';
-  
+  if (!dateString) return "—";
+
   try {
     const date = new Date(dateString);
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) {
-      return '—';
+      return "—";
     }
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
   } catch (error) {
-    console.error('Error formatting date:', error);
-    return '—';
+    console.error("Error formatting date:", error);
+    return "—";
   }
 };
 
@@ -709,17 +709,13 @@ const PersonDetails = () => {
             <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Full Name</span>
-                <span className="fs-6 fw-medium">
-                  {personData.full_name}
-                </span>
+                <span className="fs-6 fw-medium">{personData.full_name}</span>
               </div>
             </Col>
             <Col md={4}>
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">Email</span>
-                <span className="fs-6">
-                  {personData.email || "—"}
-                </span>
+                <span className="fs-6">{personData.email || "—"}</span>
               </div>
             </Col>
             <Col md={4}>
@@ -770,7 +766,7 @@ const PersonDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         {/* First Name & Last Name in one row */}
                         <div className="row">
-                          <div className="col-md-6">
+                          <div className="col-md-4">
                             <div>
                               <span className="small">First Name</span>
                               <p className="mb-0 fw-medium">
@@ -778,7 +774,7 @@ const PersonDetails = () => {
                               </p>
                             </div>
                           </div>
-                          <div className="col-md-6">
+                          <div className="col-md-4">
                             <div>
                               <span className="small">Last Name</span>
                               <p className="mb-0 fw-medium">
@@ -786,12 +782,9 @@ const PersonDetails = () => {
                               </p>
                             </div>
                           </div>
-                        </div>
-
-                        {/* Middle Name (if exists) */}
-                        {personData.middle_name && (
-                          <div className="row">
-                            <div className="col-12">
+                          {/* Middle Name (if exists) */}
+                          {personData.middle_name && (
+                            <div className="col-md-4">
                               <div>
                                 <span className="small">Middle Name</span>
                                 <p className="mb-0 fw-medium">
@@ -799,8 +792,8 @@ const PersonDetails = () => {
                                 </p>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
 
                         {/* Gender, Date of Birth, Nationality in one row */}
                         <div className="row">
@@ -816,7 +809,9 @@ const PersonDetails = () => {
                             <div>
                               <span className="small">Date of Birth</span>
                               <p className="mb-0 fw-medium">
-                                {personData.dob ? formatDateToDDMMYYYY(personData.dob) : "—"}
+                                {personData.dob
+                                  ? formatDateToDDMMYYYY(personData.dob)
+                                  : "—"}
                               </p>
                             </div>
                           </div>
@@ -832,7 +827,7 @@ const PersonDetails = () => {
 
                         {/* Marital Status & Occupation in one row */}
                         <div className="row">
-                          <div className="col-md-6">
+                          <div className="col-md-4">
                             <div>
                               <span className="small">Marital Status</span>
                               <p className="mb-0 fw-medium">
@@ -840,7 +835,7 @@ const PersonDetails = () => {
                               </p>
                             </div>
                           </div>
-                          <div className="col-md-6">
+                          <div className="col-md-4">
                             <div>
                               <span className="small">Occupation</span>
                               <p className="mb-0 fw-medium">
@@ -933,9 +928,7 @@ const PersonDetails = () => {
                     <InfoCard title="Contact Details" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
-                          <span className="small">
-                            Email Address
-                          </span>
+                          <span className="small">Email Address</span>
                           <p className="mb-0 fw-medium text-truncate">
                             {personData.email || "—"}
                           </p>
@@ -948,12 +941,8 @@ const PersonDetails = () => {
                         </div>
                         {personData.alternate_phone && (
                           <div>
-                            <span className="small">
-                              Alternate Phone
-                            </span>
-                            <p className="mb-0">
-                              {personData.alternate_phone}
-                            </p>
+                            <span className="small">Alternate Phone</span>
+                            <p className="mb-0">{personData.alternate_phone}</p>
                           </div>
                         )}
                       </div>
@@ -965,9 +954,7 @@ const PersonDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         {personData.created_at && (
                           <div>
-                            <span className="small">
-                              Account Created
-                            </span>
+                            <span className="small">Account Created</span>
                             <p className="mb-0">
                               {formatDateToDDMMYYYY(personData.created_at)}
                             </p>
@@ -975,9 +962,7 @@ const PersonDetails = () => {
                         )}
                         {personData.updated_at && (
                           <div>
-                            <span className="small">
-                              Last Updated
-                            </span>
+                            <span className="small">Last Updated</span>
                             <p className="mb-0">
                               {formatDateToDDMMYYYY(personData.updated_at)}
                             </p>

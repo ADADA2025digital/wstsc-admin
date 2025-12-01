@@ -605,19 +605,6 @@ const StudentDetails = () => {
                         <td className="fw-bold">Mainstream School:</td>
                         <td>{student.mainstream_school_name || "N/A"}</td>
                       </tr>
-                      <tr>
-                        <td className="fw-bold">WSTSC Class:</td>
-                        <td>
-                          {loadingClassrooms ? (
-                            <>
-                              <Spinner animation="border" size="sm" className="me-2" />
-                              Loading...
-                            </>
-                          ) : (
-                            getClassName(student.enrol_class_in_WSTSC)
-                          )}
-                        </td>
-                      </tr>
                     </tbody>
                   </table>
                 </Col>

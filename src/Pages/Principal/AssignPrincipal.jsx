@@ -431,7 +431,7 @@ const AssignPrincipal = () => {
 
     switch (roleName.toLowerCase()) {
       case "admin":
-        return "danger";
+        return "success";
       case "teacher":
         return "success";
       case "parent":
@@ -566,7 +566,7 @@ const AssignPrincipal = () => {
               <div>
                 <h5 className="mb-0">
                   <i className="bi bi-person-badge me-2"></i>
-                  Available Teachers ({teachers.length})
+                  Available Teachers
                 </h5>
               </div>
               <small className="text-muted">
@@ -974,7 +974,7 @@ const AssignPrincipal = () => {
                             </Badge>
                           </td>
                         </tr>
-                        <tr>
+                        {/* <tr>
                           <td className="fw-bold text-muted">Status:</td>
                           <td>
                             <Badge
@@ -985,7 +985,7 @@ const AssignPrincipal = () => {
                               {selectedTeacher.person_status || "Unknown"}
                             </Badge>
                           </td>
-                        </tr>
+                        </tr> */}
                       </tbody>
                     </table>
                   </div>

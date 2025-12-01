@@ -1006,6 +1006,7 @@ const PersonDetails = () => {
         show={showRoleModal}
         onHide={() => setShowRoleModal(false)}
         size="lg"
+        centered
       >
         <Modal.Header closeButton>
           <Modal.Title>

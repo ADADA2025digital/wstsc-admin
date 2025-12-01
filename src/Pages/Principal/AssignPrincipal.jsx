@@ -723,7 +723,6 @@ const AssignPrincipal = () => {
                           </th>
                           <th>Teacher Details</th>
                           <th>Contact</th>
-                          <th>Position</th>
                           <th>Role</th>
                           <th>Status</th>
                         </tr>
@@ -797,19 +796,6 @@ const AssignPrincipal = () => {
                                   </div>
                                 )}
                               </div>
-                            </td>
-                            <td>
-                              <Badge
-                                bg={
-                                  teacher.position === "principal"
-                                    ? "primary"
-                                    : "info"
-                                }
-                              >
-                                {teacher.position_display_name ||
-                                  teacher.position ||
-                                  "Teacher"}
-                              </Badge>
                             </td>
                             <td>
                               <Badge

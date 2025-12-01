@@ -754,7 +754,7 @@ export default function ClassroomsList() {
   // Teacher view
   if (isTeacher) {
     return (
-      <div className="container-fluid px-4 py-3">
+      <div className="container-fluid px-md-4 px-0 py-3">
         {/* Success Message */}
         {successMessage && (
           <div

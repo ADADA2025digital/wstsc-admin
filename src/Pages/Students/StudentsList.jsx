@@ -453,7 +453,7 @@ const StudentsList = () => {
 
   // Card View for all roles (used for teacher and parent, optional for admin)
   const CardView = () => (
-    <div className="container-fluid px-4 py-3">
+    <div className="container-fluid px-md-4 px-0 py-3">
       {/* Header Section */}
       <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -678,9 +678,9 @@ const StudentsList = () => {
 
   // Admin view with DataTable
   return (
-    <div className="container-fluid px-4 py-3">
-      <div className="content-header d-flex justify-content-between align-items-center mb-4">
-        <div>
+    <div className="container-fluid px-md-4 px-0 py-3">
+      <div className="content-header d-flex flex-md-row flex-column justify-content-between align-items-center mb-4">
+        <div className="text-center text-md-start">
           <h4 className="H4-heading fw-bold">{roleContent.title}</h4>
           {userData && (
             <p className="text-muted mb-0">

@@ -1154,7 +1154,7 @@ export default function ClassroomDetails() {
                                 {teacher.email}
                               </p>
                               <p className="mb-0 text-muted small">
-                                Assignment:{" "}
+                                Assigned Date:{" "}
                                 {formatDateToDDMMYYYY(teacher.assignmentDate)}
                                 {teacher.endDate &&
                                   ` - ${formatDateToDDMMYYYY(teacher.endDate)}`}

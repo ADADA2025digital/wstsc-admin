@@ -1011,7 +1011,7 @@ export default function ClassroomsList() {
                 </span>
                 <input
                   className="form-control"
-                  placeholder="Search by name, code, status"
+                  placeholder="Search by name, status"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />

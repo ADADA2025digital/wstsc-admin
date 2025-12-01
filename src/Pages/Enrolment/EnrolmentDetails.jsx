@@ -1276,7 +1276,7 @@ const EnrolmentDetails = () => {
             <div className="alert alert-success mt-2 py-2" role="alert">
               <i className="bi bi-check2-circle me-2"></i>
               <strong>Enrolment Approved!</strong>
-              {student?.approved_by && ` by ${student.approved_by}`}
+              {student?.approved_by && ` `}
               {student?.approved_at &&
                 ` on ${formatDateToDDMMYYYY(student.approved_at)}`}
             </div>
@@ -1287,7 +1287,7 @@ const EnrolmentDetails = () => {
             <div className="alert alert-danger mt-2 py-2" role="alert">
               <i className="bi bi-x-circle me-2"></i>
               <strong>Enrolment Rejected!</strong>
-              {student?.rejected_by && ` by ${student.rejected_by}`}
+              {student?.rejected_by && ` `}
               {student?.rejected_at &&
                 ` on ${formatDateToDDMMYYYY(student.rejected_at)}`}
               {student?.rejection_reason &&

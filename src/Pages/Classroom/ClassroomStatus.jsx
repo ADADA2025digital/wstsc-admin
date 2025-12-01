@@ -237,9 +237,6 @@ const ClassroomsStatus = () => {
                         <h6 className="mb-0 fw-semibold">
                           {classroom.class_name}
                         </h6>
-                        <small className="text-muted">
-                          ID: {classroom.class_id} | C_ID: {classroom.c_id}
-                        </small>
                       </div>
                     </div>
                   </td>
@@ -393,7 +390,7 @@ const ClassroomsStatus = () => {
                   <small className="text-muted">Currently deactivated</small>
                 </div>
                 <div className="flex-shrink-0">
-                  <i className="bi bi-pause-circle-fill text-secondary fs-1"></i>
+                  <i className="bi bi-exclamation-circle text-secondary fs-1"></i>
                 </div>
               </div>
             </Card.Body>
@@ -431,7 +428,7 @@ const ClassroomsStatus = () => {
               eventKey="inactive"
               title={
                 <span>
-                  <i className="bi bi-pause-circle me-2"></i>
+                  <i className="bi bi-exclamation-circle me-2"></i>
                   Inactive Classrooms
                   <Badge bg="secondary" className="ms-2 fs-7">
                     {inactiveClassrooms.length}

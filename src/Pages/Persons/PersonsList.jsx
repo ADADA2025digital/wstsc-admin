@@ -189,9 +189,7 @@ export default function PersonsList() {
               ${data}
             </label>
           </div>
-          <div id="spinner-${
-            row.id
-          }" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
+          <div id="spinner-${row.id}" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status">
             <span class="visually-hidden">Loading...</span>
           </div>
         </div>
@@ -305,8 +303,9 @@ export default function PersonsList() {
             },
           },
         ],
-        responsive: true,
-        scrollX: false,
+        responsive: true,  // Enable responsive features
+        scrollX: true,    // Enable horizontal scrolling
+        scrollY: '400px', // Enable vertical scrolling with a fixed height
         pageLength: 10,
         order: [[0, "asc"]],
         language: {
@@ -323,6 +322,14 @@ export default function PersonsList() {
             $(row).addClass("table-secondary");
           }
         },
+        columnDefs: [
+          // Hide columns on mobile
+          {
+            targets: [2, 3, 4, 5], // Email, Phone, Role, Status (index of the columns to hide)
+            visible: true, // Default visibility is true
+            className: 'd-none d-md-table-cell', // Hide on mobile, show on larger screens
+          },
+        ],
       });
 
       // UPDATED: Fixed status toggle event handler

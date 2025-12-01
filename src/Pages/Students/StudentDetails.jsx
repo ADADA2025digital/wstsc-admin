@@ -505,7 +505,7 @@ const StudentDetails = () => {
   });
 
   return (
-    <Container fluid className="px-4 py-3">
+    <Container fluid className="px-md-4 px-0 py-3">
       {/* Header */}
       <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -540,10 +540,10 @@ const StudentDetails = () => {
         <Col lg={8}>
           {/* Student Information Card */}
           <Card className="mb-4">
-            <Card.Header className="d-flex justify-content-between align-items-center">
+            <Card.Header className="d-flex flex-md-row flex-column justify-content-between align-items-center">
               <h5 className="mb-0">Student Information</h5>
               {student.status && (
-                <div className="content-header d-flex align-items-center gap-3">
+                <div className="content-header d-flex align-items-center gap-3 mt-3 mt-md-0">
                   <span className="text-muted">Status:</span>
                   {userRole && userRole !== 'parent' ? (
                     <Form.Check
@@ -878,7 +878,7 @@ const StudentDetails = () => {
 
         <Col lg={4}>
           {/* Quick Actions & Status - Only for admin users */}
-          {userRole && userRole !== 'parent' && (
+          {/* {userRole && userRole !== 'parent' && (
             <Card className="mb-4">
               <Card.Header>
                 <h5 className="mb-0">Quick Actions</h5>
@@ -910,7 +910,7 @@ const StudentDetails = () => {
                 </div>
               </Card.Body>
             </Card>
-          )}
+          )} */}
 
           {/* Student Summary */}
           <Card className="mb-4">

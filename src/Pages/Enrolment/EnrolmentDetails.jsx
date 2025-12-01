@@ -65,6 +65,52 @@ const getParentName = (parentData) => {
   return "Parent/Guardian";
 };
 
+// Function to clean up and format the approved_by value
+const formatApproverName = (approvedByValue) => {
+  if (!approvedByValue) return "Admin";
+
+  const stringValue = String(approvedByValue).trim();
+
+  // If it looks like encoded data or ID (e 1, user_id, etc.)
+  if (
+    stringValue.length <= 3 ||
+    /^[a-z]\s*\d+$/i.test(stringValue) ||
+    /^user_/i.test(stringValue) ||
+    /^\d+$/.test(stringValue)
+  ) {
+    return "Admin";
+  }
+
+  // Remove any weird encoding or unexpected characters
+  const cleaned = stringValue.replace(/[^\x20-\x7E]/g, "").trim();
+
+  return cleaned || "Admin";
+};
+
+// Get current user's name from localStorage
+const getCurrentUserName = () => {
+  try {
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      const parsedUserData = JSON.parse(userData);
+
+      // Try multiple possible locations for name
+      return (
+        parsedUserData.name ||
+        parsedUserData.full_name ||
+        parsedUserData.user?.name ||
+        `${parsedUserData.first_name || ""} ${
+          parsedUserData.last_name || ""
+        }`.trim() ||
+        "Admin"
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error getting current user name:", error);
+  }
+  return "Admin";
+};
+
 // Debug EmailJS setup
 const debugEmailJSSetup = async () => {
   console.log("🔧 EmailJS Configuration Debug:", {
@@ -367,6 +413,21 @@ const EnrolmentDetails = () => {
     getUserRole();
   }, []);
 
+  // Debug student data when it changes
+  useEffect(() => {
+    if (studentData) {
+      console.log("🔍 CURRENT STUDENT DATA DEBUG:", {
+        approved_by_raw: studentData.student?.approved_by,
+        approved_by_type: typeof studentData.student?.approved_by,
+        approved_by_length: studentData.student?.approved_by?.length,
+        approved_by_formatted: formatApproverName(
+          studentData.student?.approved_by
+        ),
+        allStudentFields: Object.keys(studentData.student || {}),
+      });
+    }
+  }, [studentData]);
+
   // Fetch classrooms list
   const fetchClassrooms = async () => {
     try {
@@ -482,6 +543,21 @@ const EnrolmentDetails = () => {
       };
     }
 
+    // Format approver names
+    const approvedByName = formatApproverName(
+      rawData.approved_by ||
+        rawData.approver?.name ||
+        rawData.approved_by_user?.name ||
+        rawData.approver_name
+    );
+
+    const rejectedByName = formatApproverName(
+      rawData.rejected_by ||
+        rawData.rejecter?.name ||
+        rawData.rejected_by_user?.name ||
+        rawData.rejecter_name
+    );
+
     const normalizedData = {
       student: {
         enrollment_id: rawData.enrollment_id || rawData.enrid,
@@ -505,9 +581,9 @@ const EnrolmentDetails = () => {
         status: rawData.status || rawData.student_status,
         submitted_by: rawData.submitter?.name || "System",
         submitted_at: rawData.submitted_at,
-        approved_by: rawData.approved_by || rawData.approver?.name || "Admin",
+        approved_by: approvedByName,
         approved_at: rawData.approved_at,
-        rejected_by: rawData.rejected_by || rawData.rejecter?.name,
+        rejected_by: rejectedByName,
         rejected_at: rawData.rejected_at,
         rejection_reason: rawData.rejection_reason,
       },
@@ -519,11 +595,12 @@ const EnrolmentDetails = () => {
       personal_declaration: rawData.personal_declaration || null,
     };
 
-    console.log(
-      "📊 FINAL NORMALIZED DATA - Classroom info:",
-      normalizedData.student.classroom_info
-    );
-    console.log("👨‍👩‍👧‍👦 Parent data:", normalizedData.parent_carer_1);
+    console.log("📊 FINAL NORMALIZED DATA:", {
+      classroom_info: normalizedData.student.classroom_info,
+      approved_by: normalizedData.student.approved_by,
+      rejected_by: normalizedData.student.rejected_by,
+    });
+
     return normalizedData;
   };
 
@@ -619,11 +696,12 @@ const EnrolmentDetails = () => {
   // Classroom Edit Modal Functions
   const handleOpenClassroomModal = () => {
     if (!canApproveReject) return;
-    
+
     // Set the current classroom as selected
-    const currentClassroomId = studentData?.student?.classroom_info?.class_id || 
-                              studentData?.student?.enrol_class_in_WSTSC || 
-                              studentData?.student?.com_school_enr_grade;
+    const currentClassroomId =
+      studentData?.student?.classroom_info?.class_id ||
+      studentData?.student?.enrol_class_in_WSTSC ||
+      studentData?.student?.com_school_enr_grade;
     setSelectedClassroom(currentClassroomId || "");
     setUpdateError("");
     setShowClassroomModal(true);
@@ -678,14 +756,15 @@ const EnrolmentDetails = () => {
             com_school_enr_grade: selectedClassroom,
             classroom_info: {
               class_id: selectedClassroom,
-              class_name: selectedClass?.class_name || `Class ${selectedClassroom}`,
+              class_name:
+                selectedClass?.class_name || `Class ${selectedClassroom}`,
               class_code: selectedClass?.class_code,
             },
           },
         }));
 
         handleCloseClassroomModal();
-        
+
         // Show success message
         setEmailStatus("classroom_updated");
         setTimeout(() => setEmailStatus(null), 3000);
@@ -866,9 +945,15 @@ const EnrolmentDetails = () => {
       const endpoint = `/admin/enrollments/${id}/approve`;
       console.log("🎯 Using approval endpoint:", endpoint);
 
+      // Get current user's name
+      const currentUserName = getCurrentUserName();
+      console.log("👤 Current user name for approval:", currentUserName);
+
       const response = await api.post(
         endpoint,
-        {},
+        {
+          approved_by: currentUserName, // Send current user's name to backend
+        },
         {
           headers: {
             "Content-Type": "application/json",
@@ -877,13 +962,21 @@ const EnrolmentDetails = () => {
         }
       );
 
-      console.log("✅ Accept enrolment API response:", response);
+      console.log("✅ FULL Accept enrolment API response:", response);
+      console.log("🔍 Response data structure:", response.data);
 
       if (response.data.success) {
         console.log("🎉 Enrolment accepted successfully!");
 
         const responseData =
           response.data.data.enrollment || response.data.data;
+
+        // Debug the response data
+        console.log("🔍 Response data for normalization:", {
+          approved_by: responseData.approved_by,
+          approver: responseData.approver,
+          allKeys: Object.keys(responseData),
+        });
 
         // Update local state first
         setStudentData((prevData) => {
@@ -892,7 +985,13 @@ const EnrolmentDetails = () => {
             student: {
               ...prevData.student,
               status: "approved",
-              approved_by: responseData.approved_by || "Admin", // Save the approver's name
+              // Use formatted approver name
+              approved_by: formatApproverName(
+                responseData.approved_by ||
+                  responseData.approver?.name ||
+                  responseData.approver_name ||
+                  currentUserName
+              ),
               approved_at: responseData.approved_at || new Date().toISOString(),
               ...(responseData.enrid && { enrollment_id: responseData.enrid }),
               ...(responseData.student_name && {
@@ -904,6 +1003,11 @@ const EnrolmentDetails = () => {
               }),
             },
           };
+
+          console.log(
+            "📝 Updated student data with approved_by:",
+            updatedData.student.approved_by
+          );
           return updatedData;
         });
 
@@ -962,8 +1066,13 @@ const EnrolmentDetails = () => {
       const endpoint = `/admin/enrollments/${id}/reject`;
       console.log("🎯 Using rejection endpoint:", endpoint);
 
+      // Get current user's name
+      const currentUserName = getCurrentUserName();
+      console.log("👤 Current user name for rejection:", currentUserName);
+
       let requestBody = {
         rejection_reason: rejectionReason.trim(),
+        rejected_by: currentUserName, // Send current user's name to backend
       };
 
       const response = await api.post(endpoint, requestBody, {
@@ -987,7 +1096,13 @@ const EnrolmentDetails = () => {
             student: {
               ...prevData.student,
               status: "rejected",
-              rejected_by: responseData.rejected_by || "Admin", // Save the rejecter's name
+              // Use formatted rejecter name
+              rejected_by: formatApproverName(
+                responseData.rejected_by ||
+                  responseData.rejecter?.name ||
+                  responseData.rejecter_name ||
+                  currentUserName
+              ),
               rejected_at: responseData.rejected_at || new Date().toISOString(),
               rejection_reason:
                 responseData.rejection_reason || rejectionReason.trim(),
@@ -1275,7 +1390,8 @@ const EnrolmentDetails = () => {
             <div className="alert alert-success mt-2 py-2" role="alert">
               <i className="bi bi-check2-circle me-2"></i>
               <strong>Enrolment Approved!</strong>
-              {student?.approved_by && ` by ${student.approved_by}`}
+              {student?.approved_by &&
+                ` by ${formatApproverName(student.approved_by)}`}
               {student?.approved_at &&
                 ` on ${formatDateToDDMMYYYY(student.approved_at)}`}
             </div>
@@ -1286,7 +1402,8 @@ const EnrolmentDetails = () => {
             <div className="alert alert-danger mt-2 py-2" role="alert">
               <i className="bi bi-x-circle me-2"></i>
               <strong>Enrolment Rejected!</strong>
-              {student?.rejected_by && ` by ${student.rejected_by}`}
+              {student?.rejected_by &&
+                ` by ${formatApproverName(student.rejected_by)}`}
               {student?.rejected_at &&
                 ` on ${formatDateToDDMMYYYY(student.rejected_at)}`}
               {student?.rejection_reason &&
@@ -1470,13 +1587,13 @@ const EnrolmentDetails = () => {
             </div>
 
             {/* Approval/Rejection Information Section */}
-            {isApproved && student?.approved_by && (
+            {isApproved && (
               <div className="col-md-4">
                 <div className="d-flex flex-column">
                   <span className="small fw-semibold">Approved By</span>
                   <span className="fs-6 text-success">
                     <i className="bi bi-person-check me-2"></i>
-                    {student.approved_by}
+                    {formatApproverName(student?.approved_by)}
                   </span>
                   {student?.approved_at && (
                     <small className="text-muted">
@@ -1487,35 +1604,17 @@ const EnrolmentDetails = () => {
               </div>
             )}
 
-            {isRejected && student?.rejected_by && (
+            {isRejected && (
               <div className="col-md-4">
                 <div className="d-flex flex-column">
-                  <span className="small fw-semibold">Rejected By</span>
-                  <span className="fs-6 text-danger">
-                    <i className="bi bi-person-x me-2"></i>
-                    {student.rejected_by}
+                  <span className="small fw-semibold">
+                    <i className="bi bi-person-x me-2"></i> Rejected By{" "}
+                    {formatApproverName(student?.rejected_by)}
                   </span>
+
                   {student?.rejected_at && (
                     <small className="text-muted">
                       on {formatDateToDDMMYYYY(student.rejected_at)}
-                    </small>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Submitted Information */}
-            {student?.submitted_by && (
-              <div className="col-md-4">
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold">Submitted By</span>
-                  <span className="fs-6">
-                    <i className="bi bi-person me-2"></i>
-                    {student.submitted_by}
-                  </span>
-                  {student?.submitted_at && (
-                    <small className="text-muted">
-                      on {formatDateToDDMMYYYY(student.submitted_at)}
                     </small>
                   )}
                 </div>

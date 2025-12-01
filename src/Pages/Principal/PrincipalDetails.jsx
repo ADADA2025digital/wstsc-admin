@@ -554,7 +554,7 @@ const PrincipalDetails = () => {
           )}
 
           {/* Contact Information (current principal) */}
-          {principal && (
+          {/* {principal && (
             <Card>
               <Card.Header>
                 <h5 className="mb-0">Contact Information</h5>
@@ -592,7 +592,7 @@ const PrincipalDetails = () => {
                 </table>
               </Card.Body>
             </Card>
-          )}
+          )} */}
         </Col>
       </Row>
     </Container>

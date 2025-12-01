@@ -277,7 +277,7 @@ const PrincipalDetails = () => {
                           </td>
                           <td>{principal.name}</td>
                         </tr>
-                        <tr>
+                        {/* <tr>
                           <td className="fw-bold">Email:</td>
                           <td>
                             <a
@@ -298,7 +298,7 @@ const PrincipalDetails = () => {
                               {principal.phone}
                             </a>
                           </td>
-                        </tr>
+                        </tr> */}
                         <tr>
                           <td className="fw-bold">Position:</td>
                           <td>{principal.position}</td>
@@ -309,7 +309,7 @@ const PrincipalDetails = () => {
                   <Col md={6}>
                     <table borderless="true">
                       <tbody>
-                        {principal.status && (
+                        {/* {principal.status && (
                           <tr>
                             <td className="fw-bold">Status:</td>
                             <td>
@@ -318,7 +318,7 @@ const PrincipalDetails = () => {
                               </Badge>
                             </td>
                           </tr>
-                        )}
+                        )} */}
                         <tr>
                           <td className="fw-bold">Academic Year:</td>
                           <td>{principal.year}</td>

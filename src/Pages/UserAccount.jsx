@@ -490,7 +490,7 @@ const UserAccount = () => {
                     Personal Information
                   </button>
                 </li>
-                <li className="nav-item" role="presentation">
+                {/* <li className="nav-item" role="presentation">
                   <button
                     className={`nav-link ${
                       activeTab === "account" ? "active" : ""
@@ -502,7 +502,7 @@ const UserAccount = () => {
                     <i className="bi bi-info-circle me-2"></i>
                     Account Information
                   </button>
-                </li>
+                </li> */}
                 <li className="nav-item" role="presentation">
                   <button
                     className={`nav-link ${
@@ -614,7 +614,7 @@ const UserAccount = () => {
             </TabContent>
 
             {/* Account Information Tab */}
-            <TabContent active={activeTab === "account"}>
+            {/* <TabContent active={activeTab === "account"}>
               <div className="card shadow-sm">
                 <div className="card-header bg-transparent">
                   <h5 className="card-title mb-0">
@@ -642,7 +642,7 @@ const UserAccount = () => {
                   </div>
                 </div>
               </div>
-            </TabContent>
+            </TabContent> */}
 
             {/* Address Information Tab */}
             <TabContent active={activeTab === "address"}>

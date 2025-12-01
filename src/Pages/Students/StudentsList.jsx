@@ -711,25 +711,6 @@ const StudentsList = () => {
                                 </span>
                               </div>
                             )}
-
-                            {/* Action Button */}
-                            <div className="d-flex justify-content-end">
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                className="fw-semibold p-2"
-                                onClick={() =>
-                                  navigate(`/students/${student.id}`, {
-                                    state: {
-                                      studentData: student.raw_data,
-                                    },
-                                  })
-                                }
-                              >
-                                <i className="bi bi-eye me-1"></i>
-                                View Full Details
-                              </Button>
-                            </div>
                           </Card.Body>
                         </Card>
                       </Col>

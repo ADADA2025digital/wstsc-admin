@@ -454,202 +454,206 @@ const StudentsList = () => {
   // Card View for all roles (used for teacher and parent, optional for admin)
   const CardView = () => (
     <div className="container-fluid px-md-4 px-0 py-3">
-      {/* Header Section */}
-      <div className="content-header d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h4 className="H4-heading fw-bold">{roleContent.title}</h4>
-          <p className="text-muted mb-0">
-            {roleContent.description}
-          </p>
-        </div>
-        <div className="content-header d-flex align-items-center gap-2">
-          {lastRefreshTime && (
-            <small className="text-muted">
-              Last updated: {lastRefreshTime.toLocaleTimeString()}
-            </small>
-          )}
-          <button
-            onClick={handleRefresh}
-            className={`btn btn-outline-secondary btn-sm d-flex align-items-center ${
-              refreshing ? "opacity-75" : ""
-            }`}
-            disabled={refreshing}
-          >
-            <i
-              className={`bi bi-arrow-clockwise me-1 ${
-                refreshing ? "spin" : ""
+      {/* Only show header when there are students */}
+      {students.length > 0 && (
+        <div className="content-header d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 className="H4-heading fw-bold">{roleContent.title}</h4>
+            <p className="text-muted mb-0">
+              {roleContent.description}
+            </p>
+          </div>
+          <div className="content-header d-flex align-items-center gap-2">
+            {lastRefreshTime && (
+              <small className="text-muted">
+                Last updated: {lastRefreshTime.toLocaleTimeString()}
+              </small>
+            )}
+            <button
+              onClick={handleRefresh}
+              className={`btn btn-outline-secondary btn-sm d-flex align-items-center ${
+                refreshing ? "opacity-75" : ""
               }`}
-            ></i>
-            Refresh
-          </button>
+              disabled={refreshing}
+            >
+              <i
+                className={`bi bi-arrow-clockwise me-1 ${
+                  refreshing ? "spin" : ""
+                }`}
+              ></i>
+              Refresh
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <Card className="border shadow-sm">
         <Card.Body className="p-4">
-          {/* Welcome Section */}
-          <div className="content-header text-center mb-5">
-            <div className="mb-3">
-              <i className={`bi ${roleContent.icon} display-4 text-primary opacity-75`}></i>
-            </div>
-            <h5 className="fw-semibold mb-2">
-              {roleContent.title} ({students.length})
-            </h5>
-            <p className="text-muted mb-0">
-              {currentRole === "parent" 
-                ? "You can view your children's information here. Contact the school administration for any updates."
-                : currentRole === "teacher"
-                ? "View and manage students enrolled in your classrooms."
-                : "Manage all student information in the system."
-              }
-            </p>
-          </div>
-
-          {/* Students Cards Section */}
           {students.length > 0 ? (
-            <div>
-              <Row className="g-4">
-                {students.map((student, index) => {
-                  const parentCarer = student.raw_data?.parent_carer_1 || {};
-                  const parentName = student.parent_name || `${parentCarer.first_name || ""} ${
-                    parentCarer.last_name || ""
-                  }`.trim() || "N/A";
+            <>
+              {/* Welcome Section */}
+              <div className="content-header text-center mb-5">
+                <div className="mb-3">
+                  <i className={`bi ${roleContent.icon} display-4 text-primary opacity-75`}></i>
+                </div>
+                <h5 className="fw-semibold mb-2">
+                  {roleContent.title} ({students.length})
+                </h5>
+                <p className="text-muted mb-0">
+                  {currentRole === "parent" 
+                    ? "You can view your children's information here. Contact the school administration for any updates."
+                    : currentRole === "teacher"
+                    ? "View and manage students enrolled in your classrooms."
+                    : "Manage all student information in the system."
+                  }
+                </p>
+              </div>
 
-                  return (
-                    <Col key={student.id} xl={4} lg={6} md={6} sm={12}>
-                      <Card className="h-100 border shadow-sm hover-shadow transition-all">
-                        <Card.Body className="p-4">
-                          {/* Student Header */}
-                          <div className="content-header d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                              <h5 className="fw-bold mb-1">
-                                {student.full_name}
-                              </h5>
-                              {student.preferred_name && (
-                                <small className="text-muted">
-                                  Preferred: {student.preferred_name}
-                                </small>
-                              )}
+              {/* Students Cards Section */}
+              <div>
+                <Row className="g-4">
+                  {students.map((student, index) => {
+                    const parentCarer = student.raw_data?.parent_carer_1 || {};
+                    const parentName = student.parent_name || `${parentCarer.first_name || ""} ${
+                      parentCarer.last_name || ""
+                    }`.trim() || "N/A";
+
+                    return (
+                      <Col key={student.id} xl={4} lg={6} md={6} sm={12}>
+                        <Card className="h-100 border shadow-sm hover-shadow transition-all">
+                          <Card.Body className="p-4">
+                            {/* Student Header */}
+                            <div className="content-header d-flex justify-content-between align-items-start mb-3">
+                              <div>
+                                <h5 className="fw-bold mb-1">
+                                  {student.full_name}
+                                </h5>
+                                {student.preferred_name && (
+                                  <small className="text-muted">
+                                    Preferred: {student.preferred_name}
+                                  </small>
+                                )}
+                              </div>
+                              <Badge
+                                bg={getStatusVariant(student.status)}
+                                className="fs-12px"
+                              >
+                                {student.status}
+                              </Badge>
                             </div>
-                            <Badge
-                              bg={getStatusVariant(student.status)}
-                              className="fs-12px"
-                            >
-                              {student.status}
-                            </Badge>
-                          </div>
 
-                          {/* Student ID */}
-                          <div className="content-header mb-3">
-                            <small className="text-muted d-block">
-                              Student ID
-                            </small>
-                            <span className="fw-semibold">
-                              {student.student_id}
-                            </span>
-                          </div>
-
-                          {/* Student Details Grid */}
-                          <Row className="g-2 mb-3">
-                            <Col sm={6}>
-                              <div className="content-header d-flex align-items-center mb-2">
-                                <i className="bi bi-mortarboard-fill text-primary me-2 fs-14px"></i>
-                                <small className="text-muted">Class</small>
-                              </div>
-                              <span className="fw-semibold d-block">
-                                {student.classroom}
-                              </span>
-                            </Col>
-                            <Col sm={6}>
-                              <div className="content-header d-flex align-items-center mb-2">
-                                <i
-                                  className={`bi ${getGenderIcon(
-                                    student.gender
-                                  )} text-primary me-2 fs-14px`}
-                                ></i>
-                                <small className="text-muted">Gender</small>
-                              </div>
-                              <span className="fw-semibold d-block text-capitalize">
-                                {student.gender || "Not specified"}
-                              </span>
-                            </Col>
-                          </Row>
-
-                          <Row className="g-2 mb-3">
-                            <Col sm={6}>
-                              <div className="content-header d-flex align-items-center mb-2">
-                                <i className="bi bi-calendar-event text-primary me-2 fs-14px"></i>
-                                <small className="text-muted">
-                                  Date of Birth
-                                </small>
-                              </div>
-                              <span className="fw-semibold d-block">
-                                {student.date_of_birth}
-                              </span>
-                            </Col>
-                            <Col sm={6}>
-                              <div className="content-header d-flex align-items-center mb-2">
-                                <i className="bi bi-calendar-check text-primary me-2 fs-14px"></i>
-                                <small className="text-muted">
-                                  Enrollment Year
-                                </small>
-                              </div>
-                              <span className="fw-semibold d-block">
-                                {student.enrollment_year}
-                              </span>
-                            </Col>
-                          </Row>
-
-                          {/* Parent Information (show for admin and teacher) */}
-                          {(currentRole === "admin" || currentRole === "teacher") && (
-                            <div className="mb-4">
-                              <div className="content-header d-flex align-items-center mb-2">
-                                <i className="bi bi-person-badge text-primary me-2 fs-14px"></i>
-                                <small className="text-muted">Parent</small>
-                              </div>
-                              <span className="fw-semibold d-block">
-                                {parentName}
+                            {/* Student ID */}
+                            <div className="content-header mb-3">
+                              <small className="text-muted d-block">
+                                Student ID
+                              </small>
+                              <span className="fw-semibold">
+                                {student.student_id}
                               </span>
                             </div>
-                          )}
 
-                          {/* Action Button */}
-                          <div className="d-flex justify-content-end">
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              className="fw-semibold p-2"
-                              onClick={() =>
-                                navigate(`/students/${student.id}`, {
-                                  state: {
-                                    studentData: student.raw_data,
-                                  },
-                                })
-                              }
-                            >
-                              <i className="bi bi-eye me-1"></i>
-                              View Full Details
-                            </Button>
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            </div>
+                            {/* Student Details Grid */}
+                            <Row className="g-2 mb-3">
+                              <Col sm={6}>
+                                <div className="content-header d-flex align-items-center mb-2">
+                                  <i className="bi bi-mortarboard-fill text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">Class</small>
+                                </div>
+                                <span className="fw-semibold d-block">
+                                  {student.classroom}
+                                </span>
+                              </Col>
+                              <Col sm={6}>
+                                <div className="content-header d-flex align-items-center mb-2">
+                                  <i
+                                    className={`bi ${getGenderIcon(
+                                      student.gender
+                                    )} text-primary me-2 fs-14px`}
+                                  ></i>
+                                  <small className="text-muted">Gender</small>
+                                </div>
+                                <span className="fw-semibold d-block text-capitalize">
+                                  {student.gender || "Not specified"}
+                                </span>
+                              </Col>
+                            </Row>
+
+                            <Row className="g-2 mb-3">
+                              <Col sm={6}>
+                                <div className="content-header d-flex align-items-center mb-2">
+                                  <i className="bi bi-calendar-event text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">
+                                    Date of Birth
+                                  </small>
+                                </div>
+                                <span className="fw-semibold d-block">
+                                  {student.date_of_birth}
+                                </span>
+                              </Col>
+                              <Col sm={6}>
+                                <div className="content-header d-flex align-items-center mb-2">
+                                  <i className="bi bi-calendar-check text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">
+                                    Enrollment Year
+                                  </small>
+                                </div>
+                                <span className="fw-semibold d-block">
+                                  {student.enrollment_year}
+                                </span>
+                              </Col>
+                            </Row>
+
+                            {/* Parent Information (show for admin and teacher) */}
+                            {(currentRole === "admin" || currentRole === "teacher") && (
+                              <div className="mb-4">
+                                <div className="content-header d-flex align-items-center mb-2">
+                                  <i className="bi bi-person-badge text-primary me-2 fs-14px"></i>
+                                  <small className="text-muted">Parent</small>
+                                </div>
+                                <span className="fw-semibold d-block">
+                                  {parentName}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Action Button */}
+                            <div className="d-flex justify-content-end">
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="fw-semibold p-2"
+                                onClick={() =>
+                                  navigate(`/students/${student.id}`, {
+                                    state: {
+                                      studentData: student.raw_data,
+                                    },
+                                  })
+                                }
+                              >
+                                <i className="bi bi-eye me-1"></i>
+                                View Full Details
+                              </Button>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              </div>
+            </>
           ) : (
-            /* Empty State */
+            /* Empty State - Removed "Last updated" time */
             <div className="content-header text-center py-5">
               <div className="mb-4">
                 <i className="bi bi-person-x display-4 text-muted opacity-50"></i>
               </div>
               <h6 className="fw-semibold mb-2">
-                {roleContent.emptyTitle}
+                No Students Found
               </h6>
               <p className="text-muted mb-4">
-                {roleContent.emptyDescription}
+                No students are enrolled in your classrooms yet.
               </p>
               <Button
                 variant="outline-primary"

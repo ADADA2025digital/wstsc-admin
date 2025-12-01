@@ -68,6 +68,30 @@ const AssignPrincipal = () => {
     return role?.role_name || role?.display_name || role?.name || "";
   };
 
+  // 🔹 Get available persons for nominator/seconder (excluding selected teacher and already selected persons)
+  const getAvailablePersons = (excludePeid = null) => {
+    return persons.filter((person) => {
+      // Exclude the selected teacher
+      if (selectedTeacher) {
+        const isSelectedTeacher = 
+          person.peid === selectedTeacher.peid ||
+          person.uid === selectedTeacher.uid ||
+          (selectedTeacher.tid && 
+           (person.user?.uid === selectedTeacher.uid || 
+            person.originalData?.tid === selectedTeacher.tid));
+        
+        if (isSelectedTeacher) return false;
+      }
+
+      // Exclude specific person if provided (for seconder to exclude nominator)
+      if (excludePeid && person.peid === excludePeid) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
   // 🔹 Fetch all persons for nominator & seconder
   const fetchPersons = async () => {
     try {
@@ -212,6 +236,31 @@ const AssignPrincipal = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 🔹 Reset nominator and seconder when selected teacher changes
+  useEffect(() => {
+    if (selectedTeacher) {
+      // Clear nominator if they match the selected teacher
+      if (nominator && (
+          nominator.peid === selectedTeacher.peid ||
+          nominator.uid === selectedTeacher.uid ||
+          (selectedTeacher.tid && nominator.originalData?.tid === selectedTeacher.tid)
+      )) {
+        console.log("🔄 Clearing nominator because it matches selected teacher");
+        setNominator(null);
+      }
+      
+      // Clear seconder if they match the selected teacher
+      if (seconder && (
+          seconder.peid === selectedTeacher.peid ||
+          seconder.uid === selectedTeacher.uid ||
+          (selectedTeacher.tid && seconder.originalData?.tid === selectedTeacher.tid)
+      )) {
+        console.log("🔄 Clearing seconder because it matches selected teacher");
+        setSeconder(null);
+      }
+    }
+  }, [selectedTeacher, nominator, seconder]);
+
   // Filter teachers based on search term
   const filteredTeachers = teachers.filter((teacher) => {
     if (!searchTerm) return true;
@@ -268,6 +317,26 @@ const AssignPrincipal = () => {
     if (!seconder) {
       console.error("❌ No seconder selected");
       setError("Please select a seconder");
+      console.groupEnd();
+      return;
+    }
+
+    // 🔹 Additional validation: Ensure nominator/seconder are not the selected teacher
+    if (nominator.peid === selectedTeacher.peid || nominator.uid === selectedTeacher.uid) {
+      setError("Nominator cannot be the same as the selected teacher");
+      console.groupEnd();
+      return;
+    }
+
+    if (seconder.peid === selectedTeacher.peid || seconder.uid === selectedTeacher.uid) {
+      setError("Seconder cannot be the same as the selected teacher");
+      console.groupEnd();
+      return;
+    }
+
+    // 🔹 Ensure nominator and seconder are different
+    if (nominator.peid === seconder.peid) {
+      setError("Nominator and seconder must be different persons");
       console.groupEnd();
       return;
     }
@@ -420,6 +489,11 @@ const AssignPrincipal = () => {
     const selectedPeid = e.target.value;
     const selectedPerson = persons.find((p) => p.peid === selectedPeid);
     setNominator(selectedPerson || null);
+    
+    // If seconder is the same as new nominator, clear seconder
+    if (seconder && selectedPeid === seconder.peid) {
+      setSeconder(null);
+    }
   };
 
   // Handle seconder selection (from persons state)
@@ -427,12 +501,28 @@ const AssignPrincipal = () => {
     const selectedPeid = e.target.value;
     const selectedPerson = persons.find((p) => p.peid === selectedPeid);
     setSeconder(selectedPerson || null);
+    
+    // If nominator is the same as new seconder, clear nominator
+    if (nominator && selectedPeid === nominator.peid) {
+      setNominator(null);
+    }
   };
 
   const isLoadingTeachersList = loadingTeachers;
   const isLoadingPersonsList = loadingPersons;
 
   const isLoading = isLoadingTeachersList || isLoadingPersonsList;
+
+  // Check if nominator is same as selected teacher
+  const isNominatorSameAsTeacher = nominator && selectedTeacher && 
+    (nominator.peid === selectedTeacher.peid || nominator.uid === selectedTeacher.uid);
+
+  // Check if seconder is same as selected teacher
+  const isSeconderSameAsTeacher = seconder && selectedTeacher && 
+    (seconder.peid === selectedTeacher.peid || seconder.uid === selectedTeacher.uid);
+
+  // Check if nominator and seconder are same person
+  const areNominatorAndSeconderSame = nominator && seconder && nominator.peid === seconder.peid;
 
   return (
     <Container fluid className="px-0 px-md-4 py-3">
@@ -547,7 +637,6 @@ const AssignPrincipal = () => {
                           <th>Position</th>
                           <th>Role</th>
                           <th>Status</th>
-                          {/* <th>ID</th> */}
                         </tr>
                       </thead>
                       <tbody>
@@ -601,11 +690,6 @@ const AssignPrincipal = () => {
                                   <h6 className="mb-1 fw-bold">
                                     {teacher.full_name}
                                   </h6>
-                                  {/* <div className="d-flex flex-wrap gap-1">
-                                    <Badge bg="secondary" className="fs-7">
-                                      {teacher.peid}
-                                    </Badge>
-                                  </div> */}
                                 </div>
                               </div>
                             </td>
@@ -654,16 +738,6 @@ const AssignPrincipal = () => {
                                 {teacher.person_status || "Unknown"}
                               </Badge>
                             </td>
-                            {/* <td>
-                              <div className="text-center">
-                                <small className="d-block text-muted">
-                                  TID: {teacher.tid}
-                                </small>
-                                <small className="text-muted">
-                                  UID: {teacher.uid}
-                                </small>
-                              </div>
-                            </td> */}
                           </tr>
                         ))}
                       </tbody>
@@ -695,24 +769,35 @@ const AssignPrincipal = () => {
                         value={nominator?.peid || ""}
                         onChange={handleNominatorSelect}
                         required
-                        disabled={isLoadingPersonsList}
+                        disabled={isLoadingPersonsList || !selectedTeacher}
                       >
                         <option value="">
                           {isLoadingPersonsList
                             ? "Loading persons..."
+                            : !selectedTeacher
+                            ? "Select a teacher first"
                             : "Choose a nominator..."}
                         </option>
                         {!isLoadingPersonsList &&
-                          persons.map((person) => (
+                          selectedTeacher &&
+                          getAvailablePersons().map((person) => (
                             <option key={person.peid} value={person.peid}>
-                              {person.full_name}
+                              {person.full_name} ({getPersonRoleDisplayName(person)})
                             </option>
                           ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
-                        Person who is nominating this teacher as principal
+                        Person who is nominating this teacher as principal (cannot be the teacher themselves)
                       </Form.Text>
                     </Form.Group>
+                    
+                    {isNominatorSameAsTeacher && (
+                      <Alert variant="danger" className="mt-2 py-2">
+                        <i className="bi bi-exclamation-triangle me-1"></i>
+                        Nominator cannot be the same as the selected teacher
+                      </Alert>
+                    )}
+
                     {nominator && (
                       <div className="bg-light p-3 rounded">
                         <h6 className="mb-2">Selected Nominator:</h6>
@@ -742,6 +827,7 @@ const AssignPrincipal = () => {
                       </div>
                     )}
                   </Col>
+                  
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>Seconder *</Form.Label>
@@ -749,24 +835,42 @@ const AssignPrincipal = () => {
                         value={seconder?.peid || ""}
                         onChange={handleSeconderSelect}
                         required
-                        disabled={isLoadingPersonsList}
+                        disabled={isLoadingPersonsList || !selectedTeacher}
                       >
                         <option value="">
                           {isLoadingPersonsList
                             ? "Loading persons..."
+                            : !selectedTeacher
+                            ? "Select a teacher first"
                             : "Choose a seconder..."}
                         </option>
                         {!isLoadingPersonsList &&
-                          persons.map((person) => (
+                          selectedTeacher &&
+                          getAvailablePersons(nominator?.peid).map((person) => (
                             <option key={person.peid} value={person.peid}>
-                              {person.full_name}
+                              {person.full_name} ({getPersonRoleDisplayName(person)})
                             </option>
                           ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
-                        Person who is seconding this nomination
+                        Person who is seconding this nomination (cannot be the teacher or the nominator)
                       </Form.Text>
                     </Form.Group>
+                    
+                    {isSeconderSameAsTeacher && (
+                      <Alert variant="danger" className="mt-2 py-2">
+                        <i className="bi bi-exclamation-triangle me-1"></i>
+                        Seconder cannot be the same as the selected teacher
+                      </Alert>
+                    )}
+
+                    {areNominatorAndSeconderSame && (
+                      <Alert variant="warning" className="mt-2 py-2">
+                        <i className="bi bi-exclamation-triangle me-1"></i>
+                        Nominator and seconder should be different persons
+                      </Alert>
+                    )}
+
                     {seconder && (
                       <div className="bg-light p-3 rounded">
                         <h6 className="mb-2">Selected Seconder:</h6>
@@ -849,12 +953,6 @@ const AssignPrincipal = () => {
                     </div>
                     <table className="table table-sm">
                       <tbody>
-                        {/* <tr>
-                          <td className="fw-bold text-muted" width="40%">
-                            PEID:
-                          </td>
-                          <td>{selectedTeacher.peid}</td>
-                        </tr> */}
                         <tr>
                           <td className="fw-bold text-muted">Email:</td>
                           <td>{selectedTeacher.person_email || "No email"}</td>
@@ -888,14 +986,6 @@ const AssignPrincipal = () => {
                             </Badge>
                           </td>
                         </tr>
-                        {/* <tr>
-                          <td className="fw-bold text-muted">Teacher ID:</td>
-                          <td>{selectedTeacher.tid}</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-muted">User ID:</td>
-                          <td>{selectedTeacher.uid}</td>
-                        </tr> */}
                       </tbody>
                     </table>
                   </div>
@@ -959,7 +1049,10 @@ const AssignPrincipal = () => {
                         assigningPrincipal ||
                         !selectedTeacher ||
                         !nominator ||
-                        !seconder
+                        !seconder ||
+                        isNominatorSameAsTeacher ||
+                        isSeconderSameAsTeacher ||
+                        areNominatorAndSeconderSame
                       }
                     >
                       {assigningPrincipal ? (
@@ -987,6 +1080,19 @@ const AssignPrincipal = () => {
                       Reset Selection
                     </Button>
                   </div>
+                  
+                  {/* Validation Summary */}
+                  {(isNominatorSameAsTeacher || isSeconderSameAsTeacher || areNominatorAndSeconderSame) && (
+                    <Alert variant="warning" className="mt-3">
+                      <i className="bi bi-exclamation-triangle me-2"></i>
+                      <strong>Validation Issues:</strong>
+                      <ul className="mb-0 mt-1">
+                        {isNominatorSameAsTeacher && <li>Nominator cannot be the selected teacher</li>}
+                        {isSeconderSameAsTeacher && <li>Seconder cannot be the selected teacher</li>}
+                        {areNominatorAndSeconderSame && <li>Nominator and seconder must be different persons</li>}
+                      </ul>
+                    </Alert>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-5">

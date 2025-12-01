@@ -516,6 +516,8 @@ const PrincipalDetails = () => {
                     ></i>
                   </div>
                   <h5>{principal.name}</h5>
+                  <p className="m-0">{principal.email}</p>
+                  <p>{principal.phone}</p>
 
                   {principal.status && (
                     <div className="mb-3">
@@ -528,7 +530,7 @@ const PrincipalDetails = () => {
                     </div>
                   )}
 
-                  <div className="d-flex justify-content-around mt-4">
+                  {/* <div className="d-flex justify-content-around mt-4">
                     <div className="text-center">
                       <div className="fw-bold text-primary">
                         {summary.total_schools}
@@ -547,7 +549,7 @@ const PrincipalDetails = () => {
                       </div>
                       <small className="text-muted">Qualifications</small>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </Card.Body>
             </Card>

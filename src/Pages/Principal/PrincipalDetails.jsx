@@ -588,26 +588,6 @@ const PrincipalDetails = () => {
                         </a>
                       </td>
                     </tr>
-                    {principal.rawData.nominator && (
-                      <tr>
-                        <td className="fw-bold">
-                          <i className="bi bi-person-check text-primary me-2"></i>
-                        </td>
-                        <td>
-                          Nominator: {principal.rawData.nominator.full_name}
-                        </td>
-                      </tr>
-                    )}
-                    {principal.rawData.seconder && (
-                      <tr>
-                        <td className="fw-bold">
-                          <i className="bi bi-people text-primary me-2"></i>
-                        </td>
-                        <td>
-                          Seconder: {principal.rawData.seconder.full_name}
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </Card.Body>

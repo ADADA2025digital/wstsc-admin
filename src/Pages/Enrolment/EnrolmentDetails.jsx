@@ -1551,7 +1551,7 @@ const EnrolmentDetails = () => {
                         </small>
                       )}
                   </span>
-                  {canApproveReject && (
+                  {canApproveReject && isPending && (
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-primary p-1"

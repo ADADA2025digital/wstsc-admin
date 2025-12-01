@@ -225,17 +225,17 @@ export default function PersonsList() {
   const getRoleBadgeClass = (roleName) => {
     switch (roleName) {
       case "admin":
-        return "bg-danger";
+        return "bg-info";
       case "teacher":
         return "bg-primary";
       case "parent":
         return "bg-success";
       case "student":
-        return "bg-info";
+        return "bg-secondary";
       case "staff":
         return "bg-warning";
       default:
-        return "bg-secondary";
+        return "bg-danger";
     }
   };
 

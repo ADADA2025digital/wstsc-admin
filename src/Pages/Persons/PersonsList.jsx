@@ -146,7 +146,7 @@ export default function PersonsList() {
       originalData: person.originalData
     });
 
-    navigate(`/persons/${encodeURIComponent(person.name)}`, {
+    navigate(`/dashboard/persons/${encodeURIComponent(person.name)}`, {
       state: {
         personId: person.id,
         personData: person.originalData,

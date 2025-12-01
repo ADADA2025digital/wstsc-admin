@@ -455,7 +455,7 @@ const StudentsList = () => {
         const studentId = $(this).data("student-id");
         const student = students.find((s) => s.id === studentId);
         if (student) {
-          navigate(`/students/${studentId}`, {
+          navigate(`/dashboard/students/${studentId}`, {
             state: {
               studentData: student.raw_data,
             },

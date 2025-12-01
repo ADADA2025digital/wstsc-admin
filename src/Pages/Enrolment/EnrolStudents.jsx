@@ -444,7 +444,7 @@ const EnrolStudents = () => {
         const student = students.find((s) => s.id === studentId);
         if (student) {
           console.log("🚀 Navigating to enrollment details:", studentId);
-          navigate(`/enrolment/${studentId}`, {
+          navigate(`/dashboard/enrolment/${studentId}`, {
             state: { studentData: student.raw_data },
           });
         } else {

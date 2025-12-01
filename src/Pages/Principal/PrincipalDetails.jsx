@@ -265,7 +265,7 @@ const PrincipalDetails = () => {
                   There is currently no principal assigned for the current
                   academic year. Click the button below to assign a principal.
                 </p>
-                <Link className="btn custom-btn" to="/assign-principal">
+                <Link className="btn custom-btn" to="/dashboard/assign-principal">
                   <i className="bi bi-plus-circle me-2"></i>
                   Assign Principal
                 </Link>
@@ -291,7 +291,7 @@ const PrincipalDetails = () => {
           variant="outline-primary"
           size="sm"
           as={Link}
-          to="/assign-principal"
+          to="/dashboard/assign-principal"
         >
           <i className="bi bi-plus-circle me-1"></i>
           Update / Assign Principal

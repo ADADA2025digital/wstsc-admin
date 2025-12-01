@@ -582,7 +582,7 @@ export default function ClassroomsList() {
 
     if (isParent) {
       console.log("👨‍👧 Parent viewing classroom with code:", cls.code);
-      navigate(`/classrooms/${cls.code}`, {
+      navigate(`/dashboard/classrooms/${cls.code}`, {
         state: {
           classroom: classroomWithUpdatedCount,
           userRole: userRole,
@@ -590,7 +590,7 @@ export default function ClassroomsList() {
       });
     } else {
       console.log("👨‍💼 Admin/Teacher viewing classroom with id:", cls.id);
-      navigate(`/classrooms/${cls.id}`, {
+      navigate(`/dashboard/classrooms/${cls.id}`, {
         state: {
           classroom: classroomWithUpdatedCount,
           userRole: userRole,

@@ -154,7 +154,7 @@ const ClassroomsStatus = () => {
   };
 
   const handleViewClassroom = (classroom) => {
-    navigate(`/classrooms/${classroom.class_id}`, {
+    navigate(`/dashboard/classrooms/${classroom.class_id}`, {
       state: { classroomData: classroom },
     });
   };

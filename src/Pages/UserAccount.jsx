@@ -443,7 +443,7 @@ const UserAccount = () => {
                 </div>
                 <div className="col-md-4 text-md-end mt-3 mt-md-0">
                   <ButtonGlobal
-                    onClick={() => navigate("/update-profile")}
+                    onClick={() => navigate("/dashboard/update-profile")}
                     className="btn custom-btn me-2"
                   >
                     <i className="bi bi-pencil-square me-1"></i>

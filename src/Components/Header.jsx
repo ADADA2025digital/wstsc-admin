@@ -642,7 +642,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                 style={{ minWidth: "200px" }}
               >
                 <Link
-                  to="/useraccount"
+                  to="/dashboard/useraccount"
                   className="dropdown-item d-flex align-items-center justify-content-end"
                   onClick={() => setProfileDropdownOpen(false)}
                 >

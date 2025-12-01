@@ -51,6 +51,20 @@ const Sidebar = ({
     if (isMobile) setIsSidebarVisible(false);
   };
 
+  // Helper function to add /dashboard prefix to routes
+  const dashboardRoute = (path) => {
+    // If path already starts with /dashboard, return as is
+    if (path.startsWith("/dashboard")) {
+      return path;
+    }
+    // If path is just "/", return "/dashboard"
+    if (path === "/") {
+      return "/dashboard";
+    }
+    // Otherwise add /dashboard prefix
+    return `/dashboard${path.startsWith("/") ? path : "/" + path}`;
+  };
+
   // Check user roles for conditional rendering
   const isTeacher = userRole === "teacher";
   const isParent = userRole === "parent";
@@ -69,13 +83,13 @@ const Sidebar = ({
       case "enrolment":
         // Admin: hide "Enrol the student"
         if (isAdmin) {
-          return [{ label: "View All", to: "/enrolments" }];
+          return [{ label: "View All", to: dashboardRoute("/enrolments") }];
         }
         // Parent: show all enrolment sub-items
         if (isParent) {
           return [
-            { label: "View All", to: "/enrolments" },
-            { label: "Enrol student", to: "/enrol" },
+            { label: "View All", to: dashboardRoute("/enrolments") },
+            { label: "Enrol student", to: dashboardRoute("/enrol") },
           ];
         }
         return [];
@@ -83,13 +97,18 @@ const Sidebar = ({
       case "classroom":
         // For teacher or parent, hide "View status Classrooms"
         if (isTeacher || isParent) {
-          return [{ label: "View all classrooms", to: "/classrooms" }];
+          return [
+            { label: "View all classrooms", to: dashboardRoute("/classrooms") },
+          ];
         }
         // Admin sees all classroom sub-items
         if (isAdmin) {
           return [
-            { label: "View all classrooms", to: "/classrooms" },
-            { label: "View Classrooms status", to: "/classroom-status" },
+            { label: "View all classrooms", to: dashboardRoute("/classrooms") },
+            {
+              label: "View Classrooms status",
+              to: dashboardRoute("/classroom-status"),
+            },
           ];
         }
         return [];
@@ -97,14 +116,18 @@ const Sidebar = ({
       case "students":
         // All roles that can see students get the same sub-items
         if (isAdmin || isTeacher || isParent) {
-          return [{ label: "View all students", to: "/students" }];
+          return [
+            { label: "View all students", to: dashboardRoute("/students") },
+          ];
         }
         return [];
 
       case "persons":
         // Only admin can see persons
         if (isAdmin) {
-          return [{ label: "View all persons", to: "/persons" }];
+          return [
+            { label: "View all persons", to: dashboardRoute("/persons") },
+          ];
         }
         return [];
 
@@ -112,7 +135,7 @@ const Sidebar = ({
         // Only admin can see principal management
         if (isAdmin) {
           return [
-            { label: "View All Principals", to: "/principals" },
+            { label: "View All Principals", to: dashboardRoute("/principals") },
           ];
         }
         return [];
@@ -176,7 +199,7 @@ const Sidebar = ({
             <li className="nav-item">
               <Link
                 className="nav-link d-flex align-items-center text-white p-0 py-2"
-                to="/dashboard"
+                to={dashboardRoute("/")}
                 onClick={() => setActiveSection(null)}
               >
                 <div className="d-flex align-items-center flex-grow-1">

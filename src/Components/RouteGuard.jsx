@@ -32,7 +32,7 @@ const RouteGuard = ({ children, requireProfileComplete = false }) => {
 
         // If profile completion is required, check user_status
         // BUT allow access to update-profile route even if profile is not complete
-        if (requireProfileComplete && location.pathname !== '/update-profile') {
+        if (requireProfileComplete && location.pathname !== '/dashboard/update-profile') {
           console.log('RouteGuard - Checking user_status:', userStatus);
 
           // If userStatus is active, allow access immediately
@@ -45,7 +45,7 @@ const RouteGuard = ({ children, requireProfileComplete = false }) => {
           // If no userStatus or not active, redirect to update profile
           if (!userStatus || userStatus === '') {
             console.log('❌ RouteGuard - user_status is EMPTY, redirecting to update-profile');
-            navigate('/update-profile', { replace: true });
+            navigate('/dashboard/update-profile', { replace: true });
             return;
           }
         }

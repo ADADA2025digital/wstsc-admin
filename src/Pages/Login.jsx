@@ -294,7 +294,7 @@ const Login = () => {
           // Profile needs completion - clear status and go to update profile
           localStorage.setItem("user_status", "");
           console.log('❌ Profile needs completion - redirecting to UPDATE PROFILE');
-          navigate("/update-profile", { replace: true });
+          navigate("/dashboard/update-profile", { replace: true });
           toast.info("Please complete your profile to continue");
         } else {
           // Profile is complete - set active status and go to home

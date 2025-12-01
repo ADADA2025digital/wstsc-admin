@@ -595,12 +595,12 @@ const StudentDetails = () => {
                         <td className="fw-bold" style={{ width: "140px" }}>Enrollment ID:</td>
                         <td>{student.enrollment_id || "N/A"}</td>
                       </tr>
-                      {student.status && (
+                      {/* {student.status && (
                         <tr>
                           <td className="fw-bold">Status:</td>
                           <td><Badge bg={getStatusVariant(student.status)}>{student.status}</Badge></td>
                         </tr>
-                      )}
+                      )} */}
                       <tr>
                         <td className="fw-bold">Mainstream School:</td>
                         <td>{student.mainstream_school_name || "N/A"}</td>
@@ -761,9 +761,9 @@ const StudentDetails = () => {
                           <Col md={6}>
                             <h6 className="mb-3">
                               {contact.preference === "first" ? "Primary" : "Secondary"} Emergency Contact
-                              <Badge bg={contact.preference === "first" ? "success" : "info"} className="ms-2">
+                              {/* <Badge bg={contact.preference === "first" ? "success" : "info"} className="ms-2">
                                 {contact.preference}
-                              </Badge>
+                              </Badge> */}
                             </h6>
                             <table borderless>
                               <tbody>
@@ -943,11 +943,11 @@ const StudentDetails = () => {
                   </div>
                 )}
 
-                {student.status && (
+                {/* {student.status && (
                   <div className="mb-3">
                     <Badge bg={getStatusVariant(student.status)} className="fs-6">{student.status}</Badge>
                   </div>
-                )}
+                )} */}
 
                 <div className="d-flex justify-content-around mt-4">
                   <div className="text-center">

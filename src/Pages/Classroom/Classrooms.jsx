@@ -7,24 +7,24 @@ const STATUS_OPTIONS = ["Active", "Inactive"];
 
 // Date formatting function for DD/MM/YYYY
 const formatDateToDDMMYYYY = (dateString) => {
-  if (!dateString) return '—';
-  
+  if (!dateString) return "—";
+
   try {
     const date = new Date(dateString);
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) {
-      return '—';
+      return "—";
     }
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
   } catch (error) {
-    console.error('Error formatting date:', error);
-    return '—';
+    console.error("Error formatting date:", error);
+    return "—";
   }
 };
 
@@ -33,7 +33,7 @@ export default function ClassroomsList() {
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [query, setQuery] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toDelete, setToDelete] = useState(null);
@@ -59,7 +59,7 @@ export default function ClassroomsList() {
       console.log("🔍 ClassroomsList - Current user data:", {
         role: parsedData?.primary_role?.role_name,
         uid: parsedData?.uid,
-        name: parsedData?.name
+        name: parsedData?.name,
       });
       return parsedData;
     } catch (error) {
@@ -84,7 +84,10 @@ export default function ClassroomsList() {
       console.log(`👨‍🎓 Student count for ${classId}: ${count}`);
       return count;
     } catch (error) {
-      console.error(`Error fetching student count for class ${classId}:`, error);
+      console.error(
+        `Error fetching student count for class ${classId}:`,
+        error
+      );
       return 0;
     }
   };
@@ -94,48 +97,59 @@ export default function ClassroomsList() {
     try {
       console.log("🔍 Fetching teacher data for user ID:", userId);
       console.log("🔍 Current user role:", userRole);
-      
+
       // For teacher role, we should have the teacher ID in userData
       if (userData?.teacher_id) {
         console.log("✅ Found teacher ID in userData:", userData.teacher_id);
         return userData.teacher_id;
       }
-      
+
       // Try profile endpoint first
       try {
         const profileResponse = await api.get("/profile/person");
         console.log("👤 Profile response:", profileResponse.data);
-        
-        const teacherId = profileResponse.data.data?.profile?.role_specific_records?.teacher?.tid;
-        
+
+        const teacherId =
+          profileResponse.data.data?.profile?.role_specific_records?.teacher
+            ?.tid;
+
         if (teacherId) {
           console.log("✅ Found teacher ID via profile:", teacherId);
           return teacherId;
         }
       } catch (error) {
-        console.warn("❌ Failed to get teacher ID via profile endpoint:", error);
+        console.warn(
+          "❌ Failed to get teacher ID via profile endpoint:",
+          error
+        );
       }
-      
+
       // Try teachers/user endpoint
       try {
         const teacherResponse = await api.get(`/teachers/user/${userId}`);
         console.log("👨‍🏫 Teacher response:", teacherResponse.data);
-        
-        const teacherId = teacherResponse.data.data?.tid || 
-                         teacherResponse.data.data?.teacher_id ||
-                         teacherResponse.data.data?.id;
-        
+
+        const teacherId =
+          teacherResponse.data.data?.tid ||
+          teacherResponse.data.data?.teacher_id ||
+          teacherResponse.data.data?.id;
+
         if (teacherId) {
-          console.log("✅ Found teacher ID via /teachers/user endpoint:", teacherId);
+          console.log(
+            "✅ Found teacher ID via /teachers/user endpoint:",
+            teacherId
+          );
           return teacherId;
         }
       } catch (error) {
-        console.warn("❌ Failed to get teacher ID via /teachers/user endpoint:", error);
+        console.warn(
+          "❌ Failed to get teacher ID via /teachers/user endpoint:",
+          error
+        );
       }
-      
+
       console.warn("⚠️ Could not find teacher ID for user:", userId);
       return null;
-      
     } catch (error) {
       console.error("❌ Error getting teacher ID:", error);
       return null;
@@ -146,29 +160,39 @@ export default function ClassroomsList() {
   const fetchClassroomTeacherCount = async (classId) => {
     try {
       console.log(`🔍 Fetching teachers for classroom ${classId}`);
-      const response = await api.get(`/classroom-teachers/classroom/${classId}/teachers`);
-      console.log(`📊 Classroom teachers response for ${classId}:`, response.data);
-      
+      const response = await api.get(
+        `/classroom-teachers/classroom/${classId}/teachers`
+      );
+      console.log(
+        `📊 Classroom teachers response for ${classId}:`,
+        response.data
+      );
+
       let teachersCount = 0;
-      
+
       if (response.data.success) {
         const data = response.data.data;
-        
+
         if (data.teachers && Array.isArray(data.teachers)) {
-          const activeTeachers = data.teachers.filter(teacher => 
-            teacher.status === "active" && teacher.is_current === true
+          const activeTeachers = data.teachers.filter(
+            (teacher) =>
+              teacher.status === "active" && teacher.is_current === true
           );
           teachersCount = activeTeachers.length;
-          console.log(`👨‍🏫 Found ${teachersCount} active teachers for classroom ${classId}`);
+          console.log(
+            `👨‍🏫 Found ${teachersCount} active teachers for classroom ${classId}`
+          );
         } else if (data.total !== undefined) {
           teachersCount = data.total;
         }
       }
-      
+
       return teachersCount;
-      
     } catch (error) {
-      console.error(`❌ Error fetching teacher count for classroom ${classId}:`, error);
+      console.error(
+        `❌ Error fetching teacher count for classroom ${classId}:`,
+        error
+      );
       return 0;
     }
   };
@@ -178,42 +202,48 @@ export default function ClassroomsList() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Re-fetch user data to ensure we have the latest role
       const currentUserData = getUserData();
       const currentUserRole = currentUserData?.primary_role?.role_name;
       const currentUserId = currentUserData?.uid;
-      
+
       console.log("🔄 Fetching classrooms for:", {
         role: currentUserRole,
         userId: currentUserId,
-        isTeacher: currentUserRole === "teacher"
+        isTeacher: currentUserRole === "teacher",
       });
 
       let response;
-      
+
       if (currentUserRole === "admin") {
         // Admin: Get all classrooms
         console.log("🛠️ ADMIN: Fetching all classrooms");
         response = await api.get("/classrooms");
-        
+
         const classroomsData = await Promise.all(
           response.data.data.classrooms.map(async (cls) => {
             let studentCount = cls.current_students_count || 0;
             let teacherCount = cls.current_teachers_count || 0;
-            
+
             try {
               studentCount = await fetchClassroomStudentCount(cls.class_id);
             } catch (error) {
-              console.warn(`Could not fetch accurate student count for class ${cls.class_id}:`, error);
+              console.warn(
+                `Could not fetch accurate student count for class ${cls.class_id}:`,
+                error
+              );
             }
-            
+
             try {
               teacherCount = await fetchClassroomTeacherCount(cls.class_id);
             } catch (error) {
-              console.warn(`Could not fetch accurate teacher count for class ${cls.class_id}:`, error);
+              console.warn(
+                `Could not fetch accurate teacher count for class ${cls.class_id}:`,
+                error
+              );
             }
-            
+
             return {
               id: cls.c_id,
               c_id: cls.c_id,
@@ -227,28 +257,29 @@ export default function ClassroomsList() {
             };
           })
         );
-        
+
         setClassrooms(classroomsData);
-        
       } else if (currentUserRole === "teacher") {
         // Teacher: Get teacher-specific classrooms
         console.log("👨‍🏫 TEACHER: Fetching assigned classrooms");
-        
+
         const teacherId = await getTeacherId();
-        
+
         if (!teacherId) {
           console.error("❌ No teacher ID found for current user");
           setClassrooms([]);
           setError("Teacher profile not found. Please contact administrator.");
           return;
         }
-        
+
         console.log("🎯 Using teacher ID:", teacherId);
-        
+
         // Use the API endpoint from your documentation
-        response = await api.get(`/classroom-teachers/teacher/${teacherId}/classrooms`);
+        response = await api.get(
+          `/classroom-teachers/teacher/${teacherId}/classrooms`
+        );
         console.log("📋 Teacher classrooms API response:", response.data);
-        
+
         // Parse the response according to your API structure
         let classroomsArray = [];
         if (response.data.data?.classrooms) {
@@ -256,9 +287,11 @@ export default function ClassroomsList() {
         } else if (response.data.data && Array.isArray(response.data.data)) {
           classroomsArray = response.data.data;
         }
-        
-        console.log(`📚 Found ${classroomsArray.length} classrooms for teacher`);
-        
+
+        console.log(
+          `📚 Found ${classroomsArray.length} classrooms for teacher`
+        );
+
         // DETAILED DEBUGGING: Analyze each classroom assignment
         console.log("🔍 DETAILED CLASSROOM ASSIGNMENT ANALYSIS:");
         classroomsArray.forEach((item, index) => {
@@ -272,43 +305,66 @@ export default function ClassroomsList() {
             teacher_id: item.teacher_id,
             start_date: item.crtid_date,
             end_date: item.end_date,
-            notes: item.notes
+            notes: item.notes,
           });
-          
+
           // Check each condition separately
           const isActiveAssignment = item.status === "active";
           const isCurrentAssignment = item.is_current === true;
           const classroomIsActive = item.classroom?.is_active === true;
-          const isNotExpired = !item.end_date || new Date(item.end_date) > new Date();
-          
+          const isNotExpired =
+            !item.end_date || new Date(item.end_date) > new Date();
+
           console.log(`   Conditions for ${item.classroom?.class_name}:`);
-          console.log(`   - Assignment active (status === "active"): ${isActiveAssignment}`);
-          console.log(`   - Assignment current (is_current === true): ${isCurrentAssignment}`);
+          console.log(
+            `   - Assignment active (status === "active"): ${isActiveAssignment}`
+          );
+          console.log(
+            `   - Assignment current (is_current === true): ${isCurrentAssignment}`
+          );
           console.log(`   - Classroom active: ${classroomIsActive}`);
           console.log(`   - Not expired: ${isNotExpired}`);
-          console.log(`   - SHOULD INCLUDE: ${isActiveAssignment && isCurrentAssignment && classroomIsActive && isNotExpired}`);
+          console.log(
+            `   - SHOULD INCLUDE: ${
+              isActiveAssignment &&
+              isCurrentAssignment &&
+              classroomIsActive &&
+              isNotExpired
+            }`
+          );
         });
 
         // STRICT FILTERING: Only include classrooms that meet ALL criteria
-        const activeClassrooms = classroomsArray.filter(item => {
+        const activeClassrooms = classroomsArray.filter((item) => {
           const isActiveAssignment = item.status === "active";
           const isCurrentAssignment = item.is_current === true;
           const classroomIsActive = item.classroom?.is_active === true;
-          const isNotExpired = !item.end_date || new Date(item.end_date) > new Date();
-          
-          const shouldInclude = isActiveAssignment && isCurrentAssignment && classroomIsActive && isNotExpired;
-          
+          const isNotExpired =
+            !item.end_date || new Date(item.end_date) > new Date();
+
+          const shouldInclude =
+            isActiveAssignment &&
+            isCurrentAssignment &&
+            classroomIsActive &&
+            isNotExpired;
+
           if (!shouldInclude) {
-            console.log(`❌ EXCLUDING ${item.classroom?.class_name} - doesn't meet all criteria`);
+            console.log(
+              `❌ EXCLUDING ${item.classroom?.class_name} - doesn't meet all criteria`
+            );
           } else {
-            console.log(`✅ INCLUDING ${item.classroom?.class_name} - meets all criteria`);
+            console.log(
+              `✅ INCLUDING ${item.classroom?.class_name} - meets all criteria`
+            );
           }
-          
+
           return shouldInclude;
         });
-        
-        console.log(`✅ Filtered to ${activeClassrooms.length} active classroom assignments (from ${classroomsArray.length} total)`);
-        
+
+        console.log(
+          `✅ Filtered to ${activeClassrooms.length} active classroom assignments (from ${classroomsArray.length} total)`
+        );
+
         // MANUAL OVERRIDE: If you want to show only specific classrooms, uncomment and modify this section
         // Replace "ADV_001" with the actual classroom code that should be assigned
         /*
@@ -320,30 +376,40 @@ export default function ClassroomsList() {
         console.log(`🔧 MANUAL FILTER: Showing only ${manuallyFilteredClassrooms.length} classroom(s) with code ${specificClassroomCode}`);
         const finalClassrooms = manuallyFilteredClassrooms.length > 0 ? manuallyFilteredClassrooms : activeClassrooms;
         */
-        
+
         // Use the filtered classrooms (or manually filtered if enabled)
         const finalClassrooms = activeClassrooms;
-        
+
         const classroomsData = await Promise.all(
           finalClassrooms.map(async (item) => {
             // Extract classroom data from the response structure
             const classroom = item.classroom || item;
-            
+
             let studentCount = classroom.current_students_count || 0;
             let teacherCount = classroom.current_teachers_count || 1;
-            
+
             try {
-              studentCount = await fetchClassroomStudentCount(classroom.class_id);
+              studentCount = await fetchClassroomStudentCount(
+                classroom.class_id
+              );
             } catch (error) {
-              console.warn(`Could not fetch student count for ${classroom.class_id}:`, error);
+              console.warn(
+                `Could not fetch student count for ${classroom.class_id}:`,
+                error
+              );
             }
-            
+
             try {
-              teacherCount = await fetchClassroomTeacherCount(classroom.class_id);
+              teacherCount = await fetchClassroomTeacherCount(
+                classroom.class_id
+              );
             } catch (error) {
-              console.warn(`Could not fetch teacher count for ${classroom.class_id}:`, error);
+              console.warn(
+                `Could not fetch teacher count for ${classroom.class_id}:`,
+                error
+              );
             }
-            
+
             return {
               id: classroom.c_id || classroom.class_id,
               c_id: classroom.c_id || classroom.class_id,
@@ -357,29 +423,31 @@ export default function ClassroomsList() {
               // Include assignment details for debugging
               assignment_status: item.status,
               is_current: item.is_current,
-              assignment_data: item
+              assignment_data: item,
             };
           })
         );
-        
+
         console.log("🎯 FINAL TEACHER CLASSROOMS:", classroomsData);
         setClassrooms(classroomsData);
-        
       } else {
         // Parent: Get parent's children classrooms
         try {
           console.log("👨‍👧 PARENT: Fetching parent enrollments");
           response = await api.get("/my-enrollments");
-          
+
           const enrollments = response.data.data?.enrollments || [];
           const classroomMap = new Map();
-          
-          enrollments.forEach(enrollment => {
+
+          enrollments.forEach((enrollment) => {
             const classInfo = enrollment.student;
-            
-            if (classInfo?.enrol_class_in_WSTSC && classInfo?.status === "approved") {
+
+            if (
+              classInfo?.enrol_class_in_WSTSC &&
+              classInfo?.status === "approved"
+            ) {
               const classCode = classInfo.enrol_class_in_WSTSC;
-              
+
               if (!classroomMap.has(classCode)) {
                 classroomMap.set(classCode, {
                   id: classCode,
@@ -390,11 +458,12 @@ export default function ClassroomsList() {
                   students: 0,
                   teachers: 1,
                   is_active: true,
-                  created_at: classInfo.enrolment_date || classInfo.submitted_at,
-                  students_info: []
+                  created_at:
+                    classInfo.enrolment_date || classInfo.submitted_at,
+                  students_info: [],
                 });
               }
-              
+
               const classroom = classroomMap.get(classCode);
               classroom.students_info.push({
                 student_id: classInfo.student_id,
@@ -405,18 +474,19 @@ export default function ClassroomsList() {
                 date_of_birth: classInfo.date_of_birth,
                 mainstream_school: classInfo.mainstream_school_name,
                 enrollment_year: classInfo.mainstream_enrollment_year,
-                enrollment_status: classInfo.status
+                enrollment_status: classInfo.status,
               });
             }
           });
-          
-          const classroomsData = Array.from(classroomMap.values()).map(classroom => ({
-            ...classroom,
-            students: classroom.students_info.length
-          }));
-          
+
+          const classroomsData = Array.from(classroomMap.values()).map(
+            (classroom) => ({
+              ...classroom,
+              students: classroom.students_info.length,
+            })
+          );
+
           setClassrooms(classroomsData);
-          
         } catch (parentError) {
           console.error("❌ Error fetching parent enrollments:", parentError);
           setClassrooms([]);
@@ -435,7 +505,7 @@ export default function ClassroomsList() {
     console.log("🎯 ClassroomsList useEffect triggered", {
       userRole,
       userId,
-      classroomsCount: classrooms.length
+      classroomsCount: classrooms.length,
     });
     fetchClassrooms();
   }, [fetchClassrooms]);
@@ -449,10 +519,10 @@ export default function ClassroomsList() {
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    
+    window.addEventListener("storage", handleStorageChange);
+
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [fetchClassrooms]);
 
@@ -462,7 +532,11 @@ export default function ClassroomsList() {
       console.log("🔍 CURRENT CLASSROOMS ANALYSIS:");
       console.log(`Role: ${userRole}, Total classrooms: ${classrooms.length}`);
       classrooms.forEach((cls, index) => {
-        console.log(`Classroom ${index + 1}: ${cls.name} (${cls.code}) - Students: ${cls.students}, Teachers: ${cls.teachers}`);
+        console.log(
+          `Classroom ${index + 1}: ${cls.name} (${cls.code}) - Students: ${
+            cls.students
+          }, Teachers: ${cls.teachers}`
+        );
       });
     }
   }, [classrooms, userRole]);
@@ -490,7 +564,7 @@ export default function ClassroomsList() {
   // Handle view for both parent and admin - navigate to same path
   const handleView = async (cls) => {
     console.log("👁️ Navigating to classroom:", cls);
-    
+
     // For all user roles, fetch the most up-to-date student count before navigating
     let accurateStudentCount = cls.students;
     try {
@@ -499,26 +573,26 @@ export default function ClassroomsList() {
     } catch (error) {
       console.warn("Could not fetch updated student count, using cached value");
     }
-    
+
     const classroomWithUpdatedCount = {
       ...cls,
-      students: accurateStudentCount
+      students: accurateStudentCount,
     };
-    
+
     if (isParent) {
       console.log("👨‍👧 Parent viewing classroom with code:", cls.code);
       navigate(`/classrooms/${cls.code}`, {
-        state: { 
+        state: {
           classroom: classroomWithUpdatedCount,
-          userRole: userRole
+          userRole: userRole,
         },
       });
     } else {
       console.log("👨‍💼 Admin/Teacher viewing classroom with id:", cls.id);
       navigate(`/classrooms/${cls.id}`, {
-        state: { 
+        state: {
           classroom: classroomWithUpdatedCount,
-          userRole: userRole
+          userRole: userRole,
         },
       });
     }
@@ -580,9 +654,10 @@ export default function ClassroomsList() {
     } catch (err) {
       console.error("❌ Error creating classroom:", err);
       if (err.response) {
-        const errorMessage = err.response.data?.message || 
-                           err.response.data?.error || 
-                           "Failed to create classroom";
+        const errorMessage =
+          err.response.data?.message ||
+          err.response.data?.error ||
+          "Failed to create classroom";
         setCreateError(errorMessage);
       } else if (err.request) {
         setCreateError("Network error: Unable to connect to server");
@@ -612,13 +687,13 @@ export default function ClassroomsList() {
 
     try {
       const classroomId = toDelete.c_id || toDelete.id;
-      
+
       if (!classroomId) {
         throw new Error("Classroom ID not found");
       }
 
       const response = await api.delete(`/classrooms/${classroomId}`);
-      
+
       if (response.data.success) {
         console.log("✅ Classroom deleted successfully:", response.data.data);
         await fetchClassrooms();
@@ -627,22 +702,23 @@ export default function ClassroomsList() {
       } else {
         throw new Error(response.data.message || "Failed to delete classroom");
       }
-      
+
       cancelDelete();
     } catch (err) {
       console.error("❌ Error deleting classroom:", err);
       let errorMessage = "Failed to delete classroom. Please try again.";
-      
+
       if (err.response) {
-        errorMessage = err.response.data?.message || 
-                      err.response.data?.error || 
-                      errorMessage;
+        errorMessage =
+          err.response.data?.message ||
+          err.response.data?.error ||
+          errorMessage;
       } else if (err.request) {
         errorMessage = "Network error: Unable to connect to server";
       } else {
         errorMessage = err.message || errorMessage;
       }
-      
+
       alert(errorMessage);
     } finally {
       setDeleting(false);
@@ -664,7 +740,10 @@ export default function ClassroomsList() {
         <div className="alert alert-danger" role="alert">
           <i className="bi bi-exclamation-triangle-fill me-2"></i>
           {error}
-          <button className="btn btn-sm btn-outline-danger ms-3" onClick={fetchClassrooms}>
+          <button
+            className="btn btn-sm btn-outline-danger ms-3"
+            onClick={fetchClassrooms}
+          >
             Retry
           </button>
         </div>
@@ -678,12 +757,15 @@ export default function ClassroomsList() {
       <div className="container-fluid px-4 py-3">
         {/* Success Message */}
         {successMessage && (
-          <div className="alert alert-success alert-dismissible fade show mb-4" role="alert">
+          <div
+            className="alert alert-success alert-dismissible fade show mb-4"
+            role="alert"
+          >
             <i className="bi bi-check-circle-fill me-2"></i>
             {successMessage}
-            <button 
-              type="button" 
-              className="btn-close" 
+            <button
+              type="button"
+              className="btn-close"
               onClick={() => setSuccessMessage(null)}
             ></button>
           </div>
@@ -693,9 +775,7 @@ export default function ClassroomsList() {
           <div className="col-md-4 content-header">
             <h4 className="H4-heading fw-bold m-0">
               My Classrooms
-              <small className="text-muted ms-2 fs-6">
-                (Assigned to Me)
-              </small>
+              <small className="text-muted ms-2 fs-6">(Assigned to Me)</small>
             </h4>
           </div>
 
@@ -729,7 +809,8 @@ export default function ClassroomsList() {
           <div className="row mb-3">
             <div className="col-md-6">
               <p className="mb-0">
-                Showing {filtered.length} of {classrooms.length} assigned classrooms
+                Showing {filtered.length} of {classrooms.length} assigned
+                classrooms
                 {totalStudents > 0 && (
                   <span className="text-muted ms-2">
                     • Total Students: <strong>{totalStudents}</strong>
@@ -828,12 +909,15 @@ export default function ClassroomsList() {
       <div className="container-fluid px-4 py-3">
         {/* Success Message */}
         {successMessage && (
-          <div className="alert alert-success alert-dismissible fade show mb-4" role="alert">
+          <div
+            className="alert alert-success alert-dismissible fade show mb-4"
+            role="alert"
+          >
             <i className="bi bi-check-circle-fill me-2"></i>
             {successMessage}
-            <button 
-              type="button" 
-              className="btn-close" 
+            <button
+              type="button"
+              className="btn-close"
               onClick={() => setSuccessMessage(null)}
             ></button>
           </div>
@@ -879,7 +963,8 @@ export default function ClassroomsList() {
           <div className="row mb-3">
             <div className="col-md-6">
               <p className="mb-0">
-                Showing {filtered.length} of {classrooms.length} classrooms with your children
+                Showing {filtered.length} of {classrooms.length} classrooms with
+                your children
                 {totalStudents > 0 && (
                   <span className="text-muted ms-2">
                     • Total Children: <strong>{totalStudents}</strong>
@@ -919,13 +1004,14 @@ export default function ClassroomsList() {
 
                     <div className="text-muted small mb-3">
                       <div className="mb-2">
-                        <i className="bi bi-people me-1" /> 
+                        <i className="bi bi-people me-1" />
                         <strong>Your Children in this Class:</strong>
                       </div>
                       {cls.students_info?.map((student, index) => (
                         <div key={index} className="mb-1">
                           <i className="bi bi-person me-1" />
-                          {student.preferred_name || student.first_name} {student.family_name}
+                          {student.preferred_name || student.first_name}{" "}
+                          {student.family_name}
                           {student.enrollment_year && (
                             <small className="text-muted ms-1">
                               ({student.enrollment_year})
@@ -953,17 +1039,15 @@ export default function ClassroomsList() {
             {filtered.length === 0 && (
               <div className="content-header col-12">
                 <div className="text-center text-muted py-5">
-                  <i
-                    className="bi bi-backpack"
-                    style={{ fontSize: "2rem" }}
-                  />
+                  <i className="bi bi-backpack" style={{ fontSize: "2rem" }} />
                   <p className="mb-0 mt-2">
                     {query
                       ? "No classrooms match your search."
                       : "No classroom enrollments found for your children."}
                   </p>
                   <small className="text-muted">
-                    {!query && "If you recently enrolled your children, please check back later for updates."}
+                    {!query &&
+                      "If you recently enrolled your children, please check back later for updates."}
                   </small>
                 </div>
               </div>
@@ -980,31 +1064,32 @@ export default function ClassroomsList() {
       <div className="container-fluid px-md-4 px-0 py-3">
         {/* Success Message */}
         {successMessage && (
-          <div className="alert alert-success alert-dismissible fade show mb-4" role="alert">
+          <div
+            className="alert alert-success alert-dismissible fade show mb-4"
+            role="alert"
+          >
             <i className="bi bi-check-circle-fill me-2"></i>
             {successMessage}
-            <button 
-              type="button" 
-              className="btn-close" 
+            <button
+              type="button"
+              className="btn-close"
               onClick={() => setSuccessMessage(null)}
             ></button>
           </div>
         )}
 
         <div className="row align-items-center mb-4">
-          <div className="col-md-4">
+          <div className="col-12 col-md-4">
             <h4 className="H4-heading fw-bold m-0">
               Classrooms
               {userRole && (
-                <small className="ms-2 fs-6">
-                  (All Classrooms)
-                </small>
+                <small className="ms-2 fs-6">(All Classrooms)</small>
               )}
             </h4>
           </div>
 
-          <div className="col-md-8">
-            <div className="d-flex gap-3 align-items-center">
+          <div className="col-12 col-md-8">
+            <div className="d-flex flex-column flex-md-row gap-3 align-items-center">
               <div className="input-group flex-grow-1">
                 <span className="input-group-text">
                   <i className="bi bi-search" />
@@ -1017,29 +1102,31 @@ export default function ClassroomsList() {
                 />
               </div>
 
-              {canCreateClassroom && (
-                <button
-                  className="btn custom-btn flex-shrink-0"
-                  onClick={openCreateModal}
-                  title="Add Classroom"
-                  style={{ minWidth: "150px" }}
-                >
-                  <i className="bi bi-plus-lg me-2" />
-                  New Classroom
-                </button>
-              )}
+              <div className="d-flex gap-3">
+                {canCreateClassroom && (
+                  <button
+                    className="btn custom-btn flex-shrink-0"
+                    onClick={openCreateModal}
+                    title="Add Classroom"
+                    style={{ minWidth: "150px" }}
+                  >
+                    <i className="bi bi-plus-lg me-2" />
+                    New Classroom
+                  </button>
+                )}
 
-              <button
-                onClick={handleRefresh}
-                className="btn btn-outline-secondary d-flex align-items-center justify-content-center flex-shrink-0"
-                style={{
-                  width: "40px",
-                  height: "40px",
-                }}
-                title="Refresh classrooms"
-              >
-                <i className="bi bi-arrow-clockwise" />
-              </button>
+                <button
+                  onClick={handleRefresh}
+                  className="btn btn-outline-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                  }}
+                  title="Refresh classrooms"
+                >
+                  <i className="bi bi-arrow-clockwise" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1104,7 +1191,9 @@ export default function ClassroomsList() {
                       {cls.created_at && (
                         <div
                           className="text-truncate"
-                          title={`Created: ${formatDateToDDMMYYYY(cls.created_at)}`}
+                          title={`Created: ${formatDateToDDMMYYYY(
+                            cls.created_at
+                          )}`}
                         >
                           <i className="bi bi-calendar me-1" /> Created:{" "}
                           {formatDateToDDMMYYYY(cls.created_at)}

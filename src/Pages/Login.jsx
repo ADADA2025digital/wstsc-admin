@@ -300,7 +300,7 @@ const Login = () => {
           // Profile is complete - set active status and go to home
           localStorage.setItem("user_status", "active");
           console.log('✅ Profile complete - redirecting to HOME');
-          navigate("/", { replace: true });
+          navigate("/dashboard", { replace: true });
         }
 
       }

@@ -176,7 +176,7 @@ const Sidebar = ({
             <li className="nav-item">
               <Link
                 className="nav-link d-flex align-items-center text-white p-0 py-2"
-                to="/"
+                to="/dashboard"
                 onClick={() => setActiveSection(null)}
               >
                 <div className="d-flex align-items-center flex-grow-1">

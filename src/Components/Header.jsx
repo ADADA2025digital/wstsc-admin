@@ -434,7 +434,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
         stopGlobalLoading();
 
         // Navigate to home page instead of reloading
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       }, 1500);
     } catch (error) {
       console.error("❌ PROFILE SWITCH FAILED:", error);
@@ -554,7 +554,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
 
           {!isMobile && (
             <Link
-              to="/"
+              to="/dashboard"
               className="navbar-brand d-flex align-items-center gap-2"
             >
               <span className="fw-bold">WSTSC</span>
@@ -774,7 +774,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
       {/* Mobile bottom navigation */}
       {isMobile && (
         <nav className="navbar fixed-bottom d-flex justify-content-around py-2 px-3">
-          <Link to="/">
+          <Link to="/dashboard">
             <HeaderIcon type="bi-house" />
           </Link>
 

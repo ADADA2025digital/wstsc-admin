@@ -17,7 +17,7 @@ export default function RootLayout() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [userRoles, setUserRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const { isGlobalLoading, loadingMessage } = useLoading();
 
   const isAuthenticated = () => {
@@ -28,8 +28,10 @@ export default function RootLayout() {
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.log(
+          `Error attempting to enable full-screen mode: ${err.message}`
+        );
       });
       setFullScreen(true);
     } else {
@@ -60,13 +62,13 @@ export default function RootLayout() {
 
       try {
         setIsLoading(true);
-        const response = await api.get('/roles');
-        
+        const response = await api.get("/roles");
+
         if (response.data && response.data.data) {
           setUserRoles(response.data.data);
         }
       } catch (error) {
-        console.error('Failed to fetch user roles:', error);
+        console.error("Failed to fetch user roles:", error);
       } finally {
         setIsLoading(false);
       }
@@ -87,7 +89,9 @@ export default function RootLayout() {
           {loadingMessage && (
             <div className="text-center mt-3">
               <p className="loading-message">{loadingMessage}</p>
-              <p className="loading-sub-message">Please wait while we update your profile...</p>
+              <p className="loading-sub-message">
+                Please wait while we update your profile...
+              </p>
             </div>
           )}
         </div>
@@ -107,7 +111,7 @@ export default function RootLayout() {
 
   // Redirect to dashboard if authenticated and on login page
   if (isAuthenticated() && isLoginPage) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />; 
   }
 
   return (
@@ -130,7 +134,7 @@ export default function RootLayout() {
               setCollapsed={setCollapsed}
               collapsed={collapsed}
               isMobile={isMobile}
-              userRoles={userRoles} 
+              userRoles={userRoles}
             />
           </>
         )}

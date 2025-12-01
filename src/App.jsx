@@ -4,7 +4,12 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./App.css";
 import "./assets/Styles/Style.css";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Cookies from "js-cookie";
 import RootLayout from "./Pages/layout";
 import Home from "./Pages/Home";
@@ -38,19 +43,20 @@ import { LoadingProvider } from "./Context/LoadingContext";
 const AuthDebugger = () => {
   React.useEffect(() => {
     const debugInfo = {
-      'Token': !!Cookies.get('token'),
-      'Authenticated': localStorage.getItem('authenticated'),
-      'User Status': localStorage.getItem('user_status'),
-      'User Data': localStorage.getItem('userData') ? 'Exists' : 'Missing',
-      'Profile Completed': localStorage.getItem('userData') ? 
-        JSON.parse(localStorage.getItem('userData')).profile_completed : 'N/A'
+      Token: !!Cookies.get("token"),
+      Authenticated: localStorage.getItem("authenticated"),
+      "User Status": localStorage.getItem("user_status"),
+      "User Data": localStorage.getItem("userData") ? "Exists" : "Missing",
+      "Profile Completed": localStorage.getItem("userData")
+        ? JSON.parse(localStorage.getItem("userData")).profile_completed
+        : "N/A",
     };
-    
-    console.log('=== AUTH DEBUG INFO ===');
+
+    console.log("=== AUTH DEBUG INFO ===");
     Object.entries(debugInfo).forEach(([key, value]) => {
       console.log(`${key}:`, value);
     });
-    console.log('========================');
+    console.log("========================");
   }, []);
 
   return null;
@@ -63,26 +69,41 @@ const StatusDebugger = () => {
   React.useEffect(() => {
     const updateDebugInfo = () => {
       setDebugInfo({
-        'Token': !!Cookies.get('token'),
-        'Authenticated': localStorage.getItem('authenticated'),
-        'User Status': localStorage.getItem('user_status'),
-        'User Data': localStorage.getItem('userData') ? JSON.parse(localStorage.getItem('userData')) : 'Missing',
-        'Profile Completed': localStorage.getItem('userData') ? 
-          JSON.parse(localStorage.getItem('userData')).profile_completed : 'N/A'
+        Token: !!Cookies.get("token"),
+        Authenticated: localStorage.getItem("authenticated"),
+        "User Status": localStorage.getItem("user_status"),
+        "User Data": localStorage.getItem("userData")
+          ? JSON.parse(localStorage.getItem("userData"))
+          : "Missing",
+        "Profile Completed": localStorage.getItem("userData")
+          ? JSON.parse(localStorage.getItem("userData")).profile_completed
+          : "N/A",
       });
     };
 
     updateDebugInfo();
-    
+
     // Update on storage changes
     const handleStorageChange = () => updateDebugInfo();
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   return (
-    <div style={{ position: 'fixed', bottom: 10, right: 10, background: 'white', padding: '10px', border: '1px solid #ccc', zIndex: 9999, fontSize: '12px', maxWidth: '300px' }}>
+    <div
+      style={{
+        position: "fixed",
+        bottom: 10,
+        right: 10,
+        background: "white",
+        padding: "10px",
+        border: "1px solid #ccc",
+        zIndex: 9999,
+        fontSize: "12px",
+        maxWidth: "300px",
+      }}
+    >
       <h6>Auth Debug Info:</h6>
       <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
     </div>
@@ -102,16 +123,19 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/setup-password" element={<SetupPassword />} />
 
-          {/* Protected routes with layout */}
+          {/* Root redirect to dashboard */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Dashboard routes with layout */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <AuthGuard>
                 <RootLayout />
               </AuthGuard>
             }
           >
-            {/* Routes that require completed profile */}
+            {/* Dashboard home */}
             <Route
               index
               element={
@@ -122,7 +146,7 @@ function App() {
             />
 
             <Route
-              path="/useraccount"
+              path="useraccount"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <UserAccount />
@@ -131,7 +155,7 @@ function App() {
             />
 
             <Route
-              path="/persons"
+              path="persons"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <PersonsList />
@@ -139,7 +163,7 @@ function App() {
               }
             />
             <Route
-              path="/persons/:name"
+              path="persons/:name"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <PersonDetails />
@@ -148,7 +172,7 @@ function App() {
             />
 
             <Route
-              path="/enrolments"
+              path="enrolments"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <EnrolStudents />
@@ -156,7 +180,7 @@ function App() {
               }
             />
             <Route
-              path="/enrolment/:id"
+              path="enrolment/:id"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <EnrolmentDetails />
@@ -164,7 +188,7 @@ function App() {
               }
             />
             <Route
-              path="/enrol"
+              path="enrol"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <EnrolmentForm />
@@ -173,7 +197,7 @@ function App() {
             />
 
             <Route
-              path="/teachers"
+              path="teachers"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <TeachersTable />
@@ -181,7 +205,7 @@ function App() {
               }
             />
             <Route
-              path="/teachers/:id"
+              path="teachers/:id"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <TeacherDetails />
@@ -190,7 +214,7 @@ function App() {
             />
 
             <Route
-              path="/parents"
+              path="parents"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <ParentTable />
@@ -198,7 +222,7 @@ function App() {
               }
             />
             <Route
-              path="/parents/:name"
+              path="parents/:name"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <ParentDetails />
@@ -207,7 +231,7 @@ function App() {
             />
 
             <Route
-              path="/classrooms"
+              path="classrooms"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <ClassroomsList />
@@ -215,7 +239,7 @@ function App() {
               }
             />
             <Route
-              path="/classrooms/:id"
+              path="classrooms/:id"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <ClassroomDetails />
@@ -223,7 +247,7 @@ function App() {
               }
             />
             <Route
-              path="/classroom-status"
+              path="classroom-status"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <ClassroomsStatus />
@@ -232,7 +256,7 @@ function App() {
             />
 
             <Route
-              path="/students"
+              path="students"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <StudentsList />
@@ -240,7 +264,7 @@ function App() {
               }
             />
             <Route
-              path="/students/:id"
+              path="students/:id"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <StudentDetails />
@@ -249,7 +273,7 @@ function App() {
             />
 
             <Route
-              path="/principals"
+              path="principals"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <PrincipalDetails />
@@ -258,7 +282,7 @@ function App() {
             />
 
             <Route
-              path="/assign-principal"
+              path="assign-principal"
               element={
                 <RouteGuard requireProfileComplete={true}>
                   <AssignPrincipal />

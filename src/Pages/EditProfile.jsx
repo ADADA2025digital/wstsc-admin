@@ -640,7 +640,7 @@ const EditProfile = () => {
             );
 
             // Use window.location for a hard redirect to ensure clean state
-            window.location.href = "/";
+            window.location.href = "/dashboard";
           }, 1500);
         } else {
           // For voluntary updates, just show success message and stay on the page

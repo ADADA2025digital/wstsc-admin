@@ -544,7 +544,7 @@ const PersonDetails = () => {
   const getRoleBadgeClass = (roleName) => {
     switch (roleName) {
       case "admin":
-        return "bg-danger";
+        return "bg-info";
       case "principal":
         return "bg-purple";
       case "vice_principal":

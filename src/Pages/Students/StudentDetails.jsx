@@ -823,10 +823,6 @@ const StudentDetails = () => {
                               <table borderless size="sm">
                                 <tbody>
                                   <tr>
-                                    <td className="fw-bold">Class ID:</td>
-                                    <td>{classInfo.class_id || "N/A"}</td>
-                                  </tr>
-                                  <tr>
                                     <td className="fw-bold">Class Name:</td>
                                     <td>
                                       {loadingClassrooms ? (

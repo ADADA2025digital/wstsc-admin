@@ -15,7 +15,7 @@ import api from "../../config/axiosConfig";
 import Loader from "../../Pages/Loader";
 
 const PrincipalDetails = () => {
-  const [activeTab, setActiveTab] = useState("personal");
+  const [activeTab, setActiveTab] = useState("position");
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingAllPrincipals, setLoadingAllPrincipals] = useState(true);
@@ -389,7 +389,7 @@ const PrincipalDetails = () => {
                   onSelect={(tab) => setActiveTab(tab)}
                   className="mb-0"
                 >
-                  <Tab
+                  {/* <Tab
                     eventKey="personal"
                     title={
                       <span>
@@ -397,7 +397,7 @@ const PrincipalDetails = () => {
                         Personal Details
                       </span>
                     }
-                  />
+                  /> */}
                   <Tab
                     eventKey="position"
                     title={
@@ -411,7 +411,7 @@ const PrincipalDetails = () => {
               </Card.Header>
               <Card.Body>
                 {/* Personal Details Tab */}
-                {activeTab === "personal" && (
+                {/* {activeTab === "personal" && (
                   <div>
                     <Row>
                       <Col md={12}>
@@ -447,7 +447,7 @@ const PrincipalDetails = () => {
                       </Col>
                     </Row>
                   </div>
-                )}
+                )} */}
 
                 {/* Position Details Tab */}
                 {activeTab === "position" && (

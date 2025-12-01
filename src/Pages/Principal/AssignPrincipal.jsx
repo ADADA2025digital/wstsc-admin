@@ -147,7 +147,7 @@ const AssignPrincipal = () => {
     }
   };
 
-  // 🔹 Fetch available teachers from the dedicated API endpoint
+  // 🔹 Fetch available teachers from the dedicated API endpoint (excluding existing principals)
   const fetchTeachers = async () => {
     try {
       setLoadingTeachers(true);
@@ -161,11 +161,54 @@ const AssignPrincipal = () => {
 
       if (response.data.success) {
         const teachersData = response.data.data.teachers || [];
-        console.log(`👨‍🏫 Teachers loaded: ${teachersData.length}`);
+        console.log(`👨‍🏫 All teachers loaded: ${teachersData.length}`);
+        
+        // 🔹 STEP 1: Fetch current principals to check who's already a principal
+        console.log("🟡 Fetching current principals...");
+        let currentPrincipals = [];
+        try {
+          const principalsResponse = await api.get("/principals/current");
+          if (principalsResponse.data.success) {
+            currentPrincipals = principalsResponse.data.data.principals || [];
+            console.log(`👔 Current principals found: ${currentPrincipals.length}`);
+          }
+        } catch (err) {
+          console.warn("⚠️ Could not fetch principals, proceeding with all teachers", err);
+        }
+
+        // Extract teacher IDs/PEIDs who are already principals
+        const existingPrincipalTids = currentPrincipals.map(p => p.tid);
+        const existingPrincipalPeids = currentPrincipals.map(p => p.peid);
+        
+        console.log("📋 Existing principal TIDs:", existingPrincipalTids);
+        console.log("📋 Existing principal PEIDs:", existingPrincipalPeids);
+
+        // Filter out teachers who are already principals
+        const availableTeachers = teachersData.filter(teacher => {
+          const teacherTid = teacher.tid;
+          const teacherPeid = teacher.person?.peid || `T${teacher.tid}`;
+          
+          // Check if teacher is already a principal by tid or peid
+          const isAlreadyPrincipal = 
+            existingPrincipalTids.includes(teacherTid) ||
+            existingPrincipalPeids.includes(teacherPeid) ||
+            teacher.position === "principal" || // Also check if current position is principal
+            teacher.position_display_name?.toLowerCase().includes("principal") ||
+            teacher.role?.role_name?.toLowerCase().includes("principal") ||
+            teacher.role?.display_name?.toLowerCase().includes("principal");
+          
+          if (isAlreadyPrincipal) {
+            console.log(`⚠️ Filtered out teacher ${teacher.full_name || teacher.name} (TID: ${teacherTid}) - already a principal`);
+          }
+          
+          return !isAlreadyPrincipal;
+        });
+
+        console.log(`👨‍🏫 Available teachers (excluding principals): ${availableTeachers.length}`);
         console.log("📋 Raw teachers data:", teachersData);
 
         // Transform the teacher data to match our expected format
-        const transformedTeachers = teachersData.map((teacher) => ({
+        const transformedTeachers = availableTeachers.map((teacher) => ({
           // Primary identifiers
           tid: teacher.tid,
           uid: teacher.uid,
@@ -207,6 +250,11 @@ const AssignPrincipal = () => {
 
         console.log("📋 Transformed teachers:", transformedTeachers);
         setTeachers(transformedTeachers);
+        
+        // Show warning if no teachers available
+        if (availableTeachers.length === 0) {
+          setError("No teachers available for principal assignment. All eligible teachers are already principals.");
+        }
       } else {
         console.error("❌ Teachers API returned success: false", response.data);
         setError("Failed to fetch teachers");
@@ -524,6 +572,13 @@ const AssignPrincipal = () => {
   // Check if nominator and seconder are same person
   const areNominatorAndSeconderSame = nominator && seconder && nominator.peid === seconder.peid;
 
+  // 🔹 Refresh data after assignment (if user cancels reset)
+  const handleRefreshData = async () => {
+    setError("");
+    setSuccessMessage("");
+    await Promise.all([fetchTeachers(), fetchPersons()]);
+  };
+
   return (
     <Container fluid className="px-0 px-md-4 py-3">
       {/* Header */}
@@ -536,10 +591,20 @@ const AssignPrincipal = () => {
                 Select a teacher to assign as principal and choose nominators
               </p>
             </div>
-            <Button variant="outline-secondary" as={Link} to="/principals">
-              <i className="bi bi-arrow-left me-2"></i>
-              Back to Principal Details
-            </Button>
+            <div className="d-flex gap-2">
+              <Button 
+                variant="outline-primary" 
+                onClick={handleRefreshData}
+                disabled={loadingTeachers || loadingPersons}
+              >
+                <i className="bi bi-arrow-clockwise me-2"></i>
+                Refresh Data
+              </Button>
+              <Button variant="outline-secondary" as={Link} to="/principals">
+                <i className="bi bi-arrow-left me-2"></i>
+                Back to Principal Details
+              </Button>
+            </div>
           </div>
         </Col>
       </Row>
@@ -570,7 +635,7 @@ const AssignPrincipal = () => {
                 </h5>
               </div>
               <small className="text-muted">
-                {filteredTeachers.length} teachers match your search
+                {filteredTeachers.length} teachers available for principal assignment
               </small>
             </Card.Header>
             <Card.Body>
@@ -595,6 +660,10 @@ const AssignPrincipal = () => {
                     </Button>
                   )}
                 </InputGroup>
+                <small className="text-muted mt-1 d-block">
+                  <i className="bi bi-info-circle me-1"></i>
+                  Teachers who are already principals are not shown in this list
+                </small>
               </div>
 
               {/* Teachers List */}
@@ -612,16 +681,36 @@ const AssignPrincipal = () => {
                   <p className="text-muted">
                     {searchTerm
                       ? "Try adjusting your search terms"
-                      : "There are no available teachers in the system."}
+                      : "All eligible teachers are already assigned as principals or there are no available teachers."}
                   </p>
-                  {searchTerm && (
-                    <Button
-                      variant="outline-primary"
-                      onClick={() => setSearchTerm("")}
-                    >
-                      Clear Search
-                    </Button>
-                  )}
+                  <div className="d-flex gap-2 justify-content-center">
+                    {searchTerm ? (
+                      <Button
+                        variant="outline-primary"
+                        onClick={() => setSearchTerm("")}
+                      >
+                        Clear Search
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline-primary"
+                          as={Link}
+                          to="/principals"
+                        >
+                          <i className="bi bi-eye me-2"></i>
+                          View Current Principals
+                        </Button>
+                        <Button
+                          variant="outline-secondary"
+                          onClick={handleRefreshData}
+                        >
+                          <i className="bi bi-arrow-clockwise me-2"></i>
+                          Refresh List
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div style={{ maxHeight: "500px", overflowY: "auto" }}>
@@ -787,7 +876,7 @@ const AssignPrincipal = () => {
                           ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
-                        Person who is nominating this teacher as principal
+                        Person who is nominating this teacher as principal (cannot be the teacher themselves)
                       </Form.Text>
                     </Form.Group>
                     
@@ -853,7 +942,7 @@ const AssignPrincipal = () => {
                           ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
-                        Person who is seconding this nomination
+                        Person who is seconding this nomination (cannot be the teacher or the nominator)
                       </Form.Text>
                     </Form.Group>
                     

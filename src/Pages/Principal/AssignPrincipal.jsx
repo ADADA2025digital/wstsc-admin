@@ -582,7 +582,7 @@ const AssignPrincipal = () => {
                   </InputGroup.Text>
                   <Form.Control
                     type="text"
-                    placeholder="Search teachers by name, email, PEID, or position..."
+                    placeholder="Search teachers by name, email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />

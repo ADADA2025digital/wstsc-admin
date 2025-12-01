@@ -18,16 +18,18 @@ const PrincipalDetails = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingAllPrincipals, setLoadingAllPrincipals] = useState(true);
   const [error, setError] = useState(null);
+  const [errorAllPrincipals, setErrorAllPrincipals] = useState(null);
 
   // ✅ Current principal
   const [principal, setPrincipal] = useState(null);
 
-  // ✅ All principals list
+  // ✅ All principals list (historical data)
   const [principals, setPrincipals] = useState([]);
 
-  // Transform API data to match component structure
-  const transformPrincipalData = (apiData) => {
+  // Transform API data for current principal
+  const transformCurrentPrincipalData = (apiData) => {
     const teacher = apiData.teacher?.person || {};
 
     return {
@@ -39,11 +41,11 @@ const PrincipalDetails = () => {
       name: teacher.full_name || "N/A",
       email: teacher.person_email || "N/A",
       phone: teacher.person_phone || "N/A",
-      status: "active", // Default to active for current principal
+      status: "active", // Current principal is active by default
       date_of_birth: null,
       gender: null,
       address: null,
-      join_date: null, // Not available in API
+      join_date: null,
       // Additional API data
       rawData: apiData,
       teacher_id: apiData.teacher?.tid,
@@ -54,84 +56,114 @@ const PrincipalDetails = () => {
     };
   };
 
+  // Transform API data for all principals (if different structure)
+  const transformAllPrincipalData = (apiData) => {
+    const teacher = apiData.teacher?.person || {};
+    
+    return {
+      id: apiData.tpid,
+      principal_id: `PRIN-${apiData.year}-${String(apiData.tpid).padStart(
+        3,
+        "0"
+      )}`,
+      name: teacher.full_name || "N/A",
+      email: teacher.person_email || "N/A",
+      phone: teacher.person_phone || "N/A",
+      status: apiData.status || "active", // Use API status or default
+      date_of_birth: null,
+      gender: null,
+      address: null,
+      join_date: apiData.created_at || apiData.assigned_date || null,
+      // Additional API data
+      rawData: apiData,
+      teacher_id: apiData.teacher?.tid,
+      position: apiData.position,
+      year: apiData.year,
+      nominator: apiData.nominator,
+      seconder: apiData.seconder,
+      // Historical data might have different structure
+      end_date: apiData.end_date || null,
+      tenure_years: apiData.tenure_years || null,
+    };
+  };
+
   // Fetch current principal data
   const fetchCurrentPrincipal = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch current principal
       const response = await api.get("/principals/current");
       const currentPrincipalData = response.data?.data?.current_principal;
 
       if (response.data.success && currentPrincipalData) {
-        // Transform current principal data
-        const transformedPrincipal = transformPrincipalData(currentPrincipalData);
+        const transformedPrincipal = transformCurrentPrincipalData(currentPrincipalData);
         setPrincipal(transformedPrincipal);
-
-        // Also fetch all principals for the list (if you have a separate endpoint)
-        // If not, you can still use the current principal as the only one
-        // and set principals array with just this one
-        try {
-          const allPrincipalsResponse = await api.get("/principals");
-          const apiPrincipals = allPrincipalsResponse.data?.data?.principals || [];
-          
-          if (allPrincipalsResponse.data.success) {
-            const transformedPrincipals = apiPrincipals.map(transformPrincipalData);
-            setPrincipals(transformedPrincipals);
-          } else {
-            // If no all principals endpoint, use current principal as the only one
-            setPrincipals([transformedPrincipal]);
-          }
-        } catch (allErr) {
-          console.warn("Could not fetch all principals, using current only:", allErr);
-          setPrincipals([transformedPrincipal]);
-        }
       } else {
         setPrincipal(null);
-        setPrincipals([]);
       }
     } catch (err) {
-      console.error("Error fetching principal:", err);
-      setError("Failed to fetch principal data");
+      console.error("Error fetching current principal:", err);
+      setError("Failed to fetch current principal data");
       setPrincipal(null);
-      setPrincipals([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Alternative simpler approach if you only want current principal and have no all principals endpoint
-  const fetchPrincipalSimple = async () => {
+  // Fetch all principals (historical data)
+  const fetchAllPrincipals = async () => {
     try {
-      setLoading(true);
-      setError(null);
+      setLoadingAllPrincipals(true);
+      setErrorAllPrincipals(null);
 
-      const response = await api.get("/principals/current");
-      const currentPrincipalData = response.data?.data?.current_principal;
+      // Try to fetch all principals from /principals endpoint
+      const response = await api.get("/principals");
+      
+      if (response.data.success) {
+        // Check different possible response structures
+        let apiPrincipals = [];
+        
+        if (Array.isArray(response.data.data)) {
+          apiPrincipals = response.data.data;
+        } else if (response.data.data?.principals) {
+          apiPrincipals = response.data.data.principals;
+        } else if (response.data.data?.all_principals) {
+          apiPrincipals = response.data.data.all_principals;
+        } else if (response.data.data) {
+          // If data is an object with principal records
+          apiPrincipals = Object.values(response.data.data);
+        }
 
-      if (response.data.success && currentPrincipalData) {
-        // Transform current principal data
-        const transformedPrincipal = transformPrincipalData(currentPrincipalData);
-        setPrincipal(transformedPrincipal);
-        setPrincipals([transformedPrincipal]); // Set principals with just current
+        const transformedPrincipals = apiPrincipals.map(transformAllPrincipalData);
+        
+        // Sort by year descending (most recent first)
+        const sortedPrincipals = transformedPrincipals.sort((a, b) => b.year - a.year);
+        setPrincipals(sortedPrincipals);
       } else {
-        setPrincipal(null);
         setPrincipals([]);
       }
     } catch (err) {
-      console.error("Error fetching principal:", err);
-      setError("Failed to fetch principal data");
-      setPrincipal(null);
+      console.error("Error fetching all principals:", err);
+      setErrorAllPrincipals("Failed to fetch historical principals data");
       setPrincipals([]);
     } finally {
-      setLoading(false);
+      setLoadingAllPrincipals(false);
     }
+  };
+
+  // Fetch both current and all principals
+  const fetchAllData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchCurrentPrincipal(),
+      fetchAllPrincipals()
+    ]);
+    setLoading(false);
   };
 
   useEffect(() => {
-    // Use the simpler approach first
-    fetchPrincipalSimple();
+    fetchAllData();
   }, []);
 
   const getStatusVariant = (status) => {
@@ -142,6 +174,8 @@ const PrincipalDetails = () => {
       case "approved":
         return "success";
       case "inactive":
+      case "past":
+      case "former":
         return "secondary";
       case "pending":
         return "warning";
@@ -158,7 +192,7 @@ const PrincipalDetails = () => {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-US", {
         year: "numeric",
-        month: "long",
+        month: "short",
         day: "numeric",
       });
     } catch (error) {
@@ -174,29 +208,28 @@ const PrincipalDetails = () => {
     }, 1000);
   };
 
-  const summary = principal
-    ? {
-        total_schools: 0,
-        years_experience: 0, // Calculate if you have join_date
-        qualification_count: 0,
-      }
-    : {
-        total_schools: 0,
-        years_experience: 0,
-        qualification_count: 0,
-      };
+  const getTenureDuration = (startYear, endYear) => {
+    if (!startYear) return "N/A";
+    
+    if (!endYear || endYear === startYear) {
+      return `${startYear} (1 year)`;
+    }
+    
+    const duration = endYear - startYear + 1;
+    return `${startYear} - ${endYear} (${duration} ${duration === 1 ? 'year' : 'years'})`;
+  };
 
   if (loading) {
     return <Loader />;
   }
 
-  if (error && principals.length === 0) {
+  if (error && !principal) {
     return (
       <Container fluid className="px-4 py-3">
         <Alert variant="danger">
           <Alert.Heading>Error</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={fetchPrincipalSimple}>
+          <Button variant="outline-danger" onClick={fetchAllData}>
             Retry
           </Button>
         </Alert>
@@ -240,7 +273,6 @@ const PrincipalDetails = () => {
     );
   }
 
-  // Principal Exists - Show Details
   return (
     <Container fluid className="px-0 px-md-4 py-3">
       {/* Header */}
@@ -305,7 +337,7 @@ const PrincipalDetails = () => {
 
               <div className="card-body">
                 <Row>
-                  <Col md={6}>
+                  <Col md={12}>
                     <table borderless="true">
                       <tbody>
                         <tr>
@@ -336,60 +368,12 @@ const PrincipalDetails = () => {
                             </a>
                           </td>
                         </tr>
-                        <tr>
-                          <td className="fw-bold">Position:</td>
-                          <td>{principal.position}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </Col>
-                  <Col md={6}>
-                    <table borderless="true">
-                      <tbody>
-                        <tr>
-                          <td className="fw-bold">Status:</td>
-                          <td>
-                            <Badge bg={getStatusVariant(principal.status)}>
-                              {principal.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                        <tr>
+                                                <tr>
                           <td className="fw-bold">Academic Year:</td>
                           <td>{principal.year}</td>
                         </tr>
-                        <tr>
-                          <td className="fw-bold">Teacher ID:</td>
-                          <td>{principal.teacher_id || "N/A"}</td>
-                        </tr>
                       </tbody>
                     </table>
-                  </Col>
-                </Row>
-
-                {/* Nominator and Seconder Information */}
-                <Row className="mt-3">
-                  <Col md={6} className="content-header">
-                    <h6 className="mb-2">Nominator</h6>
-                    <p className="mb-1">
-                      {principal.nominator?.full_name || "N/A"}
-                    </p>
-                    {principal.nominator?.peid && (
-                      <small className="text-muted">
-                        ID: {principal.nominator.peid}
-                      </small>
-                    )}
-                  </Col>
-                  <Col md={6} className="content-header">
-                    <h6 className="mb-2">Seconder</h6>
-                    <p className="mb-1">
-                      {principal.seconder?.full_name || "N/A"}
-                    </p>
-                    {principal.seconder?.peid && (
-                      <small className="text-muted">
-                        ID: {principal.seconder.peid}
-                      </small>
-                    )}
                   </Col>
                 </Row>
               </div>
@@ -430,7 +414,7 @@ const PrincipalDetails = () => {
                 {activeTab === "personal" && (
                   <div>
                     <Row>
-                      <Col md={6}>
+                      <Col md={12}>
                         <h6 className="mb-3">Contact Information</h6>
                         <table borderless="true">
                           <tbody>
@@ -461,25 +445,6 @@ const PrincipalDetails = () => {
                           </tbody>
                         </table>
                       </Col>
-                      <Col md={6}>
-                        <h6 className="mb-3">Teacher Information</h6>
-                        <table borderless="true">
-                          <tbody>
-                            <tr>
-                              <td className="fw-bold" style={{ width: "120px" }}>
-                                Teacher ID:
-                              </td>
-                              <td>{principal.teacher_id || "N/A"}</td>
-                            </tr>
-                            <tr>
-                              <td className="fw-bold">Person ID:</td>
-                              <td>
-                                {principal.rawData.teacher?.person?.peid || "N/A"}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </Col>
                     </Row>
                   </div>
                 )}
@@ -501,10 +466,6 @@ const PrincipalDetails = () => {
                             <tr>
                               <td className="fw-bold">Academic Year:</td>
                               <td>{principal.year}</td>
-                            </tr>
-                            <tr>
-                              <td className="fw-bold">Principal ID:</td>
-                              <td>{principal.principal_id}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -533,55 +494,115 @@ const PrincipalDetails = () => {
             </Card>
           )}
 
-          {/* All Principals List */}
+          {/* All Principals List - Principal History */}
           <Card className="mb-4">
-            <Card.Header>
+            <Card.Header className="d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Principal History</h5>
+              <Button 
+                variant="outline-secondary" 
+                size="sm"
+                onClick={fetchAllPrincipals}
+                disabled={loadingAllPrincipals}
+              >
+                <i className={`bi ${loadingAllPrincipals ? 'bi-arrow-clockwise spin' : 'bi-arrow-clockwise'} me-1`}></i>
+                Refresh
+              </Button>
             </Card.Header>
             <Card.Body>
-              {principals.length === 0 ? (
-                <p className="text-muted mb-0">No principals found.</p>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle">
-                    <thead>
-                      <tr>
-                        <th>Year</th>
-                        <th>Name</th>
-                        <th>Position</th>
-                        <th>Status</th>
-                        <th>Nominator</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {principals.map((p) => (
-                        <tr
-                          key={p.id}
-                          className={
-                            principal && p.id === principal.id
-                              ? "table-primary"
-                              : ""
-                          }
-                        >
-                          <td>{p.year}</td>
-                          <td>{p.name}</td>
-                          <td>{p.position}</td>
-                          <td>
-                            <Badge bg={getStatusVariant(p.status)}>
-                              {p.status}
-                            </Badge>
-                          </td>
-                          <td>{p.nominator?.full_name || "N/A"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {loadingAllPrincipals ? (
+                <div className="text-center py-3">
+                  <div className="spinner-border spinner-border-sm text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                  <span className="ms-2">Loading principals history...</span>
                 </div>
-              )}
-              {principal && (
-                <small className="text-muted">
-                  Highlighted row indicates the current principal.
-                </small>
+              ) : errorAllPrincipals ? (
+                <Alert variant="warning" className="mb-0">
+                  <i className="bi bi-exclamation-triangle me-2"></i>
+                  {errorAllPrincipals}
+                  <Button 
+                    variant="outline-warning" 
+                    size="sm" 
+                    className="ms-2"
+                    onClick={fetchAllPrincipals}
+                  >
+                    Retry
+                  </Button>
+                </Alert>
+              ) : principals.length === 0 ? (
+                <Alert variant="info" className="mb-0">
+                  <i className="bi bi-info-circle me-2"></i>
+                  No historical principal records found.
+                </Alert>
+              ) : (
+                <>
+                  <div className="table-responsive">
+                    <table className="table table-sm align-middle">
+                      <thead>
+                        <tr>
+                          <th>Academic Year</th>
+                          <th>Principal Name</th>
+                          <th>Position</th>
+                          <th>Status</th>
+                          <th>Tenure</th>
+                          <th>Nominator</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {principals.map((p) => {
+                          const isCurrentPrincipal = principal && p.id === principal.id;
+                          const tenureText = getTenureDuration(p.year, p.end_date || p.year);
+                          
+                          return (
+                            <tr
+                              key={p.id}
+                              className={isCurrentPrincipal ? "table-success" : ""}
+                            >
+                              <td>
+                                <span className="fw-bold">{p.year}</span>
+                                {isCurrentPrincipal && (
+                                  <Badge bg="success" className="ms-2">Current</Badge>
+                                )}
+                              </td>
+                              <td>
+                                <div className="d-flex align-items-center">
+                                  <div className="me-2">
+                                    <i className="bi bi-person-circle"></i>
+                                  </div>
+                                  <div>
+                                    <div className="fw-medium">{p.name}</div>
+                                    <small className="text-muted">{p.email}</small>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <Badge bg="primary" className="fw-normal">
+                                  {p.position}
+                                </Badge>
+                              </td>
+                              <td>
+                                <Badge bg={getStatusVariant(p.status)}>
+                                  {p.status}
+                                </Badge>
+                              </td>
+                              <td>
+                                <small>{tenureText}</small>
+                                {p.join_date && (
+                                  <div className="text-muted">
+                                    <small>Started: {formatDate(p.join_date)}</small>
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <small>{p.nominator?.full_name || "N/A"}</small>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </Card.Body>
           </Card>
@@ -592,7 +613,7 @@ const PrincipalDetails = () => {
           {principal && (
             <Card className="mb-4">
               <Card.Header>
-                <h5 className="mb-0">Principal Summary</h5>
+                <h5 className="mb-0">Current Principal Summary</h5>
               </Card.Header>
               <Card.Body>
                 <div className="content-header text-center">
@@ -636,43 +657,23 @@ const PrincipalDetails = () => {
               </Card.Body>
             </Card>
           )}
-
-          {/* Quick Actions */}
-          {principal && (
-            <Card>
-              <Card.Header>
-                <h5 className="mb-0">Quick Actions</h5>
-              </Card.Header>
-              <Card.Body>
-                <div className="d-grid gap-2">
-                  <Button
-                    variant="outline-primary"
-                    as={Link}
-                    to={`/edit-principal/${principal.id}`}
-                  >
-                    <i className="bi bi-pencil me-2"></i>
-                    Edit Principal Details
-                  </Button>
-                  <Button
-                    variant="outline-success"
-                    onClick={handleQuickStatusToggle}
-                    disabled={updatingStatus}
-                  >
-                    <i className="bi bi-toggle-on me-2"></i>
-                    {updatingStatus ? "Updating..." : "Toggle Status"}
-                  </Button>
-                  <Button variant="outline-info" as={Link} to="/reports">
-                    <i className="bi bi-file-earmark-text me-2"></i>
-                    Generate Report
-                  </Button>
-                </div>
-              </Card.Body>
-            </Card>
-          )}
         </Col>
       </Row>
     </Container>
   );
 };
+
+// Add CSS for spinning refresh icon
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .bi-arrow-clockwise.spin {
+    animation: spin 1s linear infinite;
+  }
+`;
+document.head.appendChild(style);
 
 export default PrincipalDetails;

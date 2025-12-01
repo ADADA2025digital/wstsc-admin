@@ -787,7 +787,7 @@ const AssignPrincipal = () => {
                           ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
-                        Person who is nominating this teacher as principal (cannot be the teacher themselves)
+                        Person who is nominating this teacher as principal
                       </Form.Text>
                     </Form.Group>
                     
@@ -853,7 +853,7 @@ const AssignPrincipal = () => {
                           ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
-                        Person who is seconding this nomination (cannot be the teacher or the nominator)
+                        Person who is seconding this nomination
                       </Form.Text>
                     </Form.Group>
                     

@@ -349,8 +349,8 @@ const EnrolmentDetails = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
 
-  // Classroom edit modal states
-  const [showClassroomModal, setShowClassroomModal] = useState(false);
+  // Inline classroom edit states
+  const [isEditingClassroom, setIsEditingClassroom] = useState(false);
   const [selectedClassroom, setSelectedClassroom] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState("");
@@ -375,6 +375,18 @@ const EnrolmentDetails = () => {
       }
     });
   }, []);
+
+  // Initialize selected classroom when student data changes
+  useEffect(() => {
+    if (studentData) {
+      setSelectedClassroom(
+        studentData?.student?.classroom_info?.class_id ||
+          studentData?.student?.enrol_class_in_WSTSC ||
+          studentData?.student?.com_school_enr_grade ||
+          ""
+      );
+    }
+  }, [studentData]);
 
   // Get user role from localStorage on component mount
   useEffect(() => {
@@ -693,26 +705,7 @@ const EnrolmentDetails = () => {
 
   const handleBack = () => navigate("/enrolments");
 
-  // Classroom Edit Modal Functions
-  const handleOpenClassroomModal = () => {
-    if (!canApproveReject) return;
-
-    // Set the current classroom as selected
-    const currentClassroomId =
-      studentData?.student?.classroom_info?.class_id ||
-      studentData?.student?.enrol_class_in_WSTSC ||
-      studentData?.student?.com_school_enr_grade;
-    setSelectedClassroom(currentClassroomId || "");
-    setUpdateError("");
-    setShowClassroomModal(true);
-  };
-
-  const handleCloseClassroomModal = () => {
-    setShowClassroomModal(false);
-    setSelectedClassroom("");
-    setUpdateError("");
-  };
-
+  // Inline Classroom Update Function
   const handleUpdateClassroom = async () => {
     if (!selectedClassroom) {
       setUpdateError("Please select a classroom");
@@ -763,7 +756,8 @@ const EnrolmentDetails = () => {
           },
         }));
 
-        handleCloseClassroomModal();
+        // Exit edit mode
+        setIsEditingClassroom(false);
 
         // Show success message
         setEmailStatus("classroom_updated");
@@ -1530,40 +1524,104 @@ const EnrolmentDetails = () => {
               </div>
             </div>
 
+            {/* Commity School Enrollment Class - Inline Edit */}
             <div className="col-md-3">
-              <div className="d-flex flex-column align-items-start">
-                <span className="small fw-semibold">
+              <div className="d-flex flex-column">
+                <span className="small fw-semibold mb-1">
                   Commity School Enrollment Class
                 </span>
-                <div className="d-flex align-items-center gap-2">
-                  <span className="fs-6">
-                    {student?.classroom_info?.class_name ||
-                      `Class ${
-                        student?.enrol_class_in_WSTSC ||
-                        student?.com_school_enr_grade
-                      }` ||
-                      "—"}
-                    {!student?.classroom_info?.class_name &&
-                      !student?.enrol_class_in_WSTSC &&
-                      !student?.com_school_enr_grade && (
-                        <small className="text-danger d-block">
-                          No class data found
-                        </small>
-                      )}
-                  </span>
-                  {canApproveReject && isPending && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary p-1"
-                      onClick={handleOpenClassroomModal}
-                      title="Edit classroom"
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </button>
+                
+                {isEditingClassroom ? (
+                  <div className="d-flex flex-column">
+                    <div className="input-group input-group-sm">
+                      <Form.Select
+                        value={selectedClassroom}
+                        onChange={(e) => setSelectedClassroom(e.target.value)}
+                        className={`form-select-sm ${updateError ? "is-invalid" : ""}`}
+                        disabled={updateLoading}
+                      >
+                        <option value="">Select class...</option>
+                        {classrooms.map((classroom) => (
+                          <option key={classroom.class_id} value={classroom.class_id}>
+                            {classroom.class_name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                      <button
+                        className="btn btn-success btn-sm"
+                        type="button"
+                        onClick={handleUpdateClassroom}
+                        disabled={updateLoading || !selectedClassroom}
+                        title="Save"
+                      >
+                        {updateLoading ? (
+                          <span className="spinner-border spinner-border-sm" />
+                        ) : (
+                          <i className="bi bi-check"></i>
+                        )}
+                      </button>
+                      <button
+                        className="btn btn-outline-secondary btn-sm"
+                        type="button"
+                        onClick={() => {
+                          setIsEditingClassroom(false);
+                          setUpdateError("");
+                          // Reset to current classroom
+                          setSelectedClassroom(
+                            student?.classroom_info?.class_id ||
+                              student?.enrol_class_in_WSTSC ||
+                              student?.com_school_enr_grade ||
+                              ""
+                          );
+                        }}
+                        disabled={updateLoading}
+                        title="Cancel"
+                      >
+                        <i className="bi bi-x"></i>
+                      </button>
+                    </div>
+                    {updateError && (
+                      <div className="text-danger small mt-1">{updateError}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="d-flex align-items-center">
+                    <span className="fs-6 me-2">
+                      {student?.classroom_info?.class_name ||
+                        `Class ${student?.enrol_class_in_WSTSC || student?.com_school_enr_grade}` ||
+                        "—"}
+                    </span>
+                    {canApproveReject && isPending && (
+                      <button
+                        className="btn btn-link p-0 text-decoration-none"
+                        onClick={() => {
+                          setIsEditingClassroom(true);
+                          // Set initial value to current classroom
+                          setSelectedClassroom(
+                            student?.classroom_info?.class_id ||
+                              student?.enrol_class_in_WSTSC ||
+                              student?.com_school_enr_grade ||
+                              ""
+                          );
+                          setUpdateError("");
+                        }}
+                        title="Edit classroom"
+                      >
+                        <i className="bi bi-pencil fs-6"></i>
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {!student?.classroom_info?.class_name &&
+                  !student?.enrol_class_in_WSTSC &&
+                  !student?.com_school_enr_grade &&
+                  !isEditingClassroom && (
+                    <small className="text-danger">No class data found</small>
                   )}
-                </div>
               </div>
             </div>
+
             <div className="col-md-3">
               <div className="d-flex flex-column">
                 <span className="small fw-semibold">
@@ -1930,9 +1988,7 @@ const EnrolmentDetails = () => {
                               {medical_details.special_learning_needs_details && (
                                 <small className="text-muted">
                                   Details:{" "}
-                                  {
                                     medical_details.special_learning_needs_details
-                                  }
                                 </small>
                               )}
                             </div>
@@ -2050,92 +2106,6 @@ const EnrolmentDetails = () => {
           </Tabs>
         </div>
       </div>
-
-      {/* Classroom Edit Modal */}
-      {canApproveReject && (
-        <Modal
-          show={showClassroomModal}
-          onHide={handleCloseClassroomModal}
-          size="md"
-          centered
-          backdrop="static"
-        >
-          <Modal.Header closeButton>
-            <Modal.Title>
-              <i className="bi bi-pencil-square text-primary me-2"></i>
-              Edit Classroom
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="mb-3">
-              <Form.Label htmlFor="classroomSelect" className="fw-semibold">
-                Select Classroom <span className="text-danger">*</span>
-              </Form.Label>
-              <Form.Select
-                id="classroomSelect"
-                value={selectedClassroom}
-                onChange={(e) => setSelectedClassroom(e.target.value)}
-                className={updateError ? "is-invalid" : ""}
-              >
-                <option value="">Choose a classroom...</option>
-                {classrooms.map((classroom) => (
-                  <option key={classroom.class_id} value={classroom.class_id}>
-                    {classroom.class_name} ({classroom.class_id})
-                  </option>
-                ))}
-              </Form.Select>
-              {updateError && (
-                <div className="invalid-feedback">{updateError}</div>
-              )}
-              <Form.Text className="text-muted">
-                Select the classroom for {student?.first_given_name}{" "}
-                {student?.family_name}
-              </Form.Text>
-            </div>
-            {selectedClassroom && (
-              <div className="alert alert-info">
-                <i className="bi bi-info-circle me-2"></i>
-                Selected:{" "}
-                {
-                  classrooms.find(
-                    (classroom) => classroom.class_id === selectedClassroom
-                  )?.class_name
-                }
-              </div>
-            )}
-          </Modal.Body>
-          <Modal.Footer className="d-flex justify-content-between">
-            <Button
-              variant="secondary"
-              onClick={handleCloseClassroomModal}
-              disabled={updateLoading}
-            >
-              <i className="bi bi-x-circle me-2"></i>
-              Cancel
-            </Button>
-            <ButtonGlobal
-              onClick={handleUpdateClassroom}
-              className="btn btn-primary"
-              disabled={updateLoading || !selectedClassroom}
-            >
-              {updateLoading ? (
-                <>
-                  <div
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                  ></div>
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check2 me-2" />
-                  Update Classroom
-                </>
-              )}
-            </ButtonGlobal>
-          </Modal.Footer>
-        </Modal>
-      )}
 
       {/* Accept Confirmation Modal */}
       {canApproveReject && (

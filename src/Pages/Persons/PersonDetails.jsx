@@ -907,7 +907,7 @@ const PersonDetails = () => {
                               )}
                           </div>
                         </div>
-                        <div className="d-flex gap-3">
+                        {/* <div className="d-flex gap-3">
                           <span className="small">Actions</span>
                           <Button
                             variant="primary"
@@ -917,7 +917,7 @@ const PersonDetails = () => {
                             <i className="bi bi-pencil me-1"></i>
                             Edit Roles
                           </Button>
-                        </div>
+                        </div> */}
                       </div>
                     </InfoCard>
                   </Col>

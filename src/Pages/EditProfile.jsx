@@ -21,7 +21,7 @@ import { useUserData } from "../hooks/useUserData";
 
 // Nationalities array
 const nationalities = [
-  "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", 
+  "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan",
   "Anguillan", "Argentine", "Armenian", "Australian", "Austrian", "Azerbaijani",
   "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian",
   "Belizean", "Beninese", "Bermudian", "Bhutanese", "Bolivian", "Botswanan",
@@ -66,7 +66,7 @@ const EditProfile = () => {
   const navigate = useNavigate();
   const { updateUserData } = useUserData();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // not heavily used but kept
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
   const [apiMessage, setApiMessage] = useState({ type: "", text: "" });
@@ -117,37 +117,39 @@ const EditProfile = () => {
 
   // Check authentication when component mounts
   useEffect(() => {
-    const token = Cookies.get('token');
-    const authenticated = localStorage.getItem('authenticated');
-    
-    console.log('EditProfile - Auth check:', {
+    const token = Cookies.get("token");
+    const authenticated = localStorage.getItem("authenticated");
+
+    console.log("EditProfile - Auth check:", {
       token: !!token,
-      authenticated
+      authenticated,
     });
 
-    if (!token || authenticated !== 'true') {
-      console.log('EditProfile: No auth, redirecting to login');
-      navigate('/login');
+    if (!token || authenticated !== "true") {
+      console.log("EditProfile: No auth, redirecting to login");
+      navigate("/login");
       return;
     }
-    
+
     // NEW: Check if this is mandatory first-time profile completion
-    const userStatus = localStorage.getItem('user_status');
-    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-    
-    console.log('EditProfile - User status check:', {
+    const userStatus = localStorage.getItem("user_status");
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+
+    console.log("EditProfile - User status check:", {
       userStatus,
       userData,
-      is_first_login: userData.is_first_login
+      is_first_login: userData.is_first_login,
     });
 
     // If user_status is empty AND it's first login, then it's mandatory
-    if ((!userStatus || userStatus === '') && userData.is_first_login) {
+    if ((!userStatus || userStatus === "") && userData.is_first_login) {
       setIsMandatoryProfile(true);
-      console.log('✅ EditProfile - This is MANDATORY first-time profile completion');
+      console.log(
+        "✅ EditProfile - This is MANDATORY first-time profile completion"
+      );
     } else {
       setIsMandatoryProfile(false);
-      console.log('✅ EditProfile - This is VOLUNTARY profile update');
+      console.log("✅ EditProfile - This is VOLUNTARY profile update");
     }
 
     fetchUserProfile();
@@ -377,8 +379,8 @@ const EditProfile = () => {
 
       // Create preview
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfilePicturePreview(e.target.result);
+      reader.onload = (event) => {
+        setProfilePicturePreview(event.target.result);
       };
       reader.readAsDataURL(file);
     }
@@ -394,10 +396,10 @@ const EditProfile = () => {
     setIsUploadingPicture(true);
 
     try {
-      const formData = new FormData();
-      formData.append("profile_picture", profilePictureFile);
+      const formDataUpload = new FormData();
+      formDataUpload.append("profile_picture", profilePictureFile);
 
-      const response = await api.post("/profile/picture", formData, {
+      const response = await api.post("/profile/picture", formDataUpload, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -414,24 +416,28 @@ const EditProfile = () => {
         if (newPhotoUrl) {
           setProfilePicture(newPhotoUrl);
           setProfilePicturePreview(newPhotoUrl);
-          
+
           // 🔥 CRITICAL: Update localStorage and emit event
           const userData = JSON.parse(localStorage.getItem("userData") || "{}");
           const updatedUserData = {
             ...userData,
-            photo_url: newPhotoUrl
+            photo_url: newPhotoUrl,
           };
           localStorage.setItem("userData", JSON.stringify(updatedUserData));
-          
+
           // Update the global user data hook
           updateUserData(updatedUserData);
-          
+
           // Emit custom event to notify Header component
-          window.dispatchEvent(new CustomEvent('profileUpdated', {
-            detail: { photo_url: newPhotoUrl }
-          }));
-          
-          console.log("📸 EditProfile: Profile picture updated and event emitted");
+          window.dispatchEvent(
+            new CustomEvent("profileUpdated", {
+              detail: { photo_url: newPhotoUrl },
+            })
+          );
+
+          console.log(
+            "📸 EditProfile: Profile picture updated and event emitted"
+          );
         }
 
         // Clear the file input but DON'T refresh the entire form data
@@ -441,7 +447,6 @@ const EditProfile = () => {
         if (newPhotoUrl) {
           setOriginalData((prev) => ({
             ...prev,
-            // No form fields to update, just the photo URL in state
           }));
         }
       } else {
@@ -474,14 +479,88 @@ const EditProfile = () => {
     setProfilePicturePreview(profilePicture); // Reset to current profile picture
   };
 
-  // Submit form using axios - FIXED VERSION
+  // 🔍 Client-side validation with regex
+  const validateForm = () => {
+    const errors = {};
+    const nameRegex = /^[A-Za-z]{3,}$/; // 3+ letters, no symbols/numbers
+
+    // Helper to push error in Laravel-style shape: { field: [ 'msg' ] }
+    const setError = (field, message) => {
+      errors[field] = errors[field] || [];
+      errors[field].push(message);
+    };
+
+    // ---- Name validation ----
+    const nameFields = [
+      { key: "first_name", label: "First Name", required: true },
+      { key: "middle_name", label: "Middle Name", required: false },
+      { key: "last_name", label: "Last Name", required: true },
+    ];
+
+    nameFields.forEach(({ key, label, required }) => {
+      const value = (formData[key] || "").trim();
+
+      if (required && !value) {
+        setError(key, `${label} is required.`);
+        return;
+      }
+
+      // Only validate pattern if there is a value
+      if (value && !nameRegex.test(value)) {
+        setError(
+          key,
+          `${label} must have at least 3 letters and contain only alphabets (no numbers or symbols).`
+        );
+      }
+    });
+
+    // ---- Phone validation ----
+    const validatePhone = (field, label, required) => {
+      const raw = (formData[field] || "").trim();
+      const digitsOnly = raw.replace(/\D/g, ""); // strip non-digits
+
+      if (required && !raw) {
+        setError(field, `${label} is required.`);
+        return;
+      }
+
+      if (raw && digitsOnly.length < 10) {
+        setError(field, `${label} must contain at least 10 digits.`);
+      }
+    };
+
+    validatePhone("phone", "Primary Phone", true);
+    validatePhone("alternate_phone", "Alternate Phone", false);
+
+    return errors;
+  };
+
+  // Submit form using axios - FIXED VERSION + client validation
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
-    if (!formData.first_name || !formData.last_name || !formData.phone) {
-      showMessage("warning", "Please fill in all required fields");
-      return;
+    // ✅ Client-side regex validation
+    const clientErrors = validateForm();
+
+    if (Object.keys(clientErrors).length > 0) {
+      // Set field errors so they show under each field
+      setFieldErrors(clientErrors);
+
+      // Build a combined message for the alert
+      const errorMessage = Object.values(clientErrors).flat().join(", ");
+
+      setValidationAlert({
+        show: true,
+        message: errorMessage,
+      });
+
+      showMessage(
+        "warning",
+        "Please fix the highlighted fields before saving.",
+        5000
+      );
+
+      return; // ⛔️ Don’t hit the API if validation fails
     }
 
     setIsSubmitting(true);
@@ -529,38 +608,47 @@ const EditProfile = () => {
           phone: formData.phone,
           name: `${formData.first_name} ${formData.last_name}`.trim(),
           // Clear the first login flag after successful profile completion
-          is_first_login: false
+          is_first_login: false,
         };
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
-        
+
         // Update global user data
         updateUserData(updatedUserData);
 
         // NEW: Only set user_status to "active" and redirect if this was mandatory first-time completion
         if (isMandatoryProfile) {
           localStorage.setItem("user_status", "active");
-          console.log('✅ EditProfile - MANDATORY profile completed, user_status set to ACTIVE');
-          
-          toast.success("Profile completed successfully! Redirecting to dashboard...");
+          console.log(
+            "✅ EditProfile - MANDATORY profile completed, user_status set to ACTIVE"
+          );
+
+          toast.success(
+            "Profile completed successfully! Redirecting to dashboard..."
+          );
 
           // Use a slightly longer timeout to ensure everything is committed
           setTimeout(() => {
-            console.log('🔄 EditProfile - Final auth status before navigation:', {
-              user_status: localStorage.getItem('user_status'),
-              userData: JSON.parse(localStorage.getItem('userData') || '{}'),
-              token: !!Cookies.get('token')
-            });
-            
+            console.log(
+              "🔄 EditProfile - Final auth status before navigation:",
+              {
+                user_status: localStorage.getItem("user_status"),
+                userData: JSON.parse(
+                  localStorage.getItem("userData") || "{}"
+                ),
+                token: !!Cookies.get("token"),
+              }
+            );
+
             // Use window.location for a hard redirect to ensure clean state
             window.location.href = "/";
           }, 1500);
         } else {
           // For voluntary updates, just show success message and stay on the page
-          console.log('✅ EditProfile - VOLUNTARY profile update completed');
+          console.log("✅ EditProfile - VOLUNTARY profile update completed");
           toast.success("Profile updated successfully!");
-          
+
           // Emit event to update header
-          window.dispatchEvent(new CustomEvent('profileUpdated'));
+          window.dispatchEvent(new CustomEvent("profileUpdated"));
         }
       } else {
         throw new Error(response.data.message || "Failed to update profile");
@@ -570,7 +658,7 @@ const EditProfile = () => {
 
       let errorMessage = "Error updating profile. Please try again.";
 
-      // Handle validation errors (422 status)
+      // Handle validation errors (422 status from backend)
       if (error.response?.status === 422) {
         const validationErrors = error.response.data.errors;
         if (validationErrors) {
@@ -580,7 +668,7 @@ const EditProfile = () => {
           // Extract all validation error messages for the alert
           errorMessage = Object.values(validationErrors)
             .flat()
-            .map((error) => (typeof error === "string" ? error : String(error)))
+            .map((err) => (typeof err === "string" ? err : String(err)))
             .join(", ");
 
           // Show validation alert without timer
@@ -592,9 +680,8 @@ const EditProfile = () => {
           errorMessage = error.response.data.message;
           showMessage("danger", errorMessage);
         }
-      }
-      // Handle other API errors
-      else if (error.response?.data?.message) {
+      } else if (error.response?.data?.message) {
+        // Handle other API errors
         errorMessage = error.response.data.message;
         showMessage("danger", errorMessage);
       } else if (error.message) {
@@ -610,7 +697,11 @@ const EditProfile = () => {
     // NEW: Different behavior for mandatory vs voluntary profile updates
     if (isMandatoryProfile) {
       // For mandatory profile completion, show warning but allow going back
-      if (window.confirm("You need to complete your profile to access the dashboard. Are you sure you want to cancel?")) {
+      if (
+        window.confirm(
+          "You need to complete your profile to access the dashboard. Are you sure you want to cancel?"
+        )
+      ) {
         setFormData(originalData);
         setProfilePictureFile(null);
         setProfilePicturePreview(profilePicture);
@@ -629,7 +720,8 @@ const EditProfile = () => {
     }
   };
 
-  const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
+  const hasChanges =
+    JSON.stringify(formData) !== JSON.stringify(originalData);
 
   // Helper function to get field error
   const getFieldError = (fieldName) => {
@@ -690,8 +782,8 @@ const EditProfile = () => {
             Complete Your Profile
           </Alert.Heading>
           <p className="mb-0">
-            Welcome! Before you can access the dashboard, please complete your profile information. 
-            This is required for your first login.
+            Welcome! Before you can access the dashboard, please complete your
+            profile information. This is required for your first login.
           </p>
         </Alert>
       )}
@@ -703,10 +795,9 @@ const EditProfile = () => {
             {isMandatoryProfile ? "Complete Your Profile" : "Edit Profile"}
           </h4>
           <p className="text-muted mb-0">
-            {isMandatoryProfile 
-              ? "Please provide your information to continue" 
-              : "Update your personal information and preferences"
-            }
+            {isMandatoryProfile
+              ? "Please provide your information to continue"
+              : "Update your personal information and preferences"}
             {hasChanges && (
               <Badge bg="warning" text="dark" className="ms-2">
                 Unsaved Changes
@@ -731,10 +822,11 @@ const EditProfile = () => {
             disabled={isSubmitting || !hasChanges}
           >
             <i className="bi bi-floppy me-1"></i>{" "}
-            {isSubmitting 
-              ? "Saving..." 
-              : isMandatoryProfile ? "Complete Profile" : "Save Changes"
-            }
+            {isSubmitting
+              ? "Saving..."
+              : isMandatoryProfile
+              ? "Complete Profile"
+              : "Save Changes"}
           </ButtonGlobal>
         </div>
       </div>
@@ -814,7 +906,9 @@ const EditProfile = () => {
                                 required
                                 placeholder="Enter your last name"
                                 className={`rounded-0 ${
-                                  getFieldError("last_name") ? "is-invalid" : ""
+                                  getFieldError("last_name")
+                                    ? "is-invalid"
+                                    : ""
                                 }`}
                               />
                               {getFieldError("last_name") && (
@@ -965,12 +1059,12 @@ const EditProfile = () => {
                                     : ""
                                 }`}
                               />
-                              {getFieldError("occupation") && (
-                                <Form.Control.Feedback type="invalid">
-                                  {getFieldError("occupation")}
-                                </Form.Control.Feedback>
-                              )}
                             </Form.Group>
+                            {getFieldError("occupation") && (
+                              <Form.Control.Feedback type="invalid">
+                                {getFieldError("occupation")}
+                              </Form.Control.Feedback>
+                            )}
                           </div>
                         </div>
                       </InfoCard>
@@ -1136,7 +1230,9 @@ const EditProfile = () => {
                               value={formData.postal_code}
                               onChange={handleInputChange}
                               className={`rounded-0 ${
-                                getFieldError("postal_code") ? "is-invalid" : ""
+                                getFieldError("postal_code")
+                                  ? "is-invalid"
+                                  : ""
                               }`}
                               placeholder="3000"
                             />
@@ -1155,138 +1251,152 @@ const EditProfile = () => {
             </Tab>
 
             {/* Profile Picture Tab */}
-{/* Profile Picture Tab */}
-<Tab eventKey="picture" title="Profile Picture">
-  <div className="p-4">
-    <Row className="g-4">
-      <Col md={12}>
-        <InfoCard title="Profile Picture" className="bg-white">
-          <Row className="align-items-center">
-            {/* Left Side - Profile Picture Preview */}
-            <Col md={6} className="text-center">
-              <div className="mb-4 position-relative">
-                {profilePicturePreview ? (
-                  <div className="position-relative">
-                    <Image
-                      src={profilePicturePreview}
-                      alt="Profile preview"
-                      roundedCircle
-                      style={{
-                        width: "200px",
-                        height: "200px",
-                        objectFit: "cover",
-                        border: "3px solid #dee2e6",
-                      }}
-                    />
-                    {/* Plus icon overlay on existing image */}
-                    <div 
-                      className="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center cursor-pointer"
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        border: "3px solid white",
-                      }}
-                      onClick={() => document.getElementById('profile-picture-input').click()}
+            <Tab eventKey="picture" title="Profile Picture">
+              <div className="p-4">
+                <Row className="g-4">
+                  <Col md={12}>
+                    <InfoCard
+                      title="Profile Picture"
+                      className="bg-white"
                     >
-                      <i className="bi bi-plus text-white fs-6"></i>
-                    </div>
-                  </div>
-                ) : (
-                  <div 
-                    className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto cursor-pointer position-relative"
-                    style={{
-                      width: "200px",
-                      height: "200px",
-                      border: "3px dashed #dee2e6",
-                    }}
-                    onClick={() => document.getElementById('profile-picture-input').click()}
-                  >
-                    <i className="bi bi-person fs-1 text-muted"></i>
-                    {/* Plus icon in center for empty state */}
-                    <div 
-                      className="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center"
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        border: "3px solid white",
-                      }}
-                    >
-                      <i className="bi bi-plus text-white fs-6"></i>
-                    </div>
-                  </div>
-                )}
+                      <Row className="align-items-center">
+                        {/* Left Side - Profile Picture Preview */}
+                        <Col md={6} className="text-center">
+                          <div className="mb-4 position-relative">
+                            {profilePicturePreview ? (
+                              <div className="position-relative">
+                                <Image
+                                  src={profilePicturePreview}
+                                  alt="Profile preview"
+                                  roundedCircle
+                                  style={{
+                                    width: "200px",
+                                    height: "200px",
+                                    objectFit: "cover",
+                                    border: "3px solid #dee2e6",
+                                  }}
+                                />
+                                {/* Plus icon overlay on existing image */}
+                                <div
+                                  className="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center cursor-pointer"
+                                  style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    border: "3px solid white",
+                                  }}
+                                  onClick={() =>
+                                    document
+                                      .getElementById(
+                                        "profile-picture-input"
+                                      )
+                                      .click()
+                                  }
+                                >
+                                  <i className="bi bi-plus text-white fs-6"></i>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto cursor-pointer position-relative"
+                                style={{
+                                  width: "200px",
+                                  height: "200px",
+                                  border: "3px dashed #dee2e6",
+                                }}
+                                onClick={() =>
+                                  document
+                                    .getElementById("profile-picture-input")
+                                    .click()
+                                }
+                              >
+                                <i className="bi bi-person fs-1 text-muted"></i>
+                                {/* Plus icon in center for empty state */}
+                                <div
+                                  className="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center"
+                                  style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    border: "3px solid white",
+                                  }}
+                                >
+                                  <i className="bi bi-plus text-white fs-6"></i>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </Col>
+
+                        {/* Right Side - Form Controls */}
+                        <Col md={6}>
+                          {/* Hidden File Input (for plus icon) */}
+                          <Form.Control
+                            id="profile-picture-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProfilePictureChange}
+                            style={{ display: "none" }}
+                            className="rounded-0 w-100"
+                          />
+
+                          {/* Visible File Input (original) */}
+                          <Form.Group className="mb-3">
+                            <Form.Label className="d-block text-start">
+                              Choose a new profile picture
+                            </Form.Label>
+                            <Form.Control
+                              type="file"
+                              accept="image/*"
+                              onChange={handleProfilePictureChange}
+                              style={{ maxWidth: "100%" }}
+                              className="rounded-0 w-100"
+                            />
+                            <Form.Text className="text-muted d-block text-start">
+                              Supported formats: JPEG, PNG, GIF. Max size: 5MB
+                            </Form.Text>
+                          </Form.Group>
+
+                          {/* Action Buttons */}
+                          <div className="d-flex gap-2 justify-content-start">
+                            <ButtonGlobal
+                              onClick={handleProfilePictureUpload}
+                              className="btn custom-btn"
+                              disabled={
+                                !profilePictureFile || isUploadingPicture
+                              }
+                            >
+                              <i className="bi bi-upload me-1"></i>
+                              {isUploadingPicture
+                                ? "Uploading..."
+                                : "Upload Picture"}
+                            </ButtonGlobal>
+
+                            {profilePictureFile && (
+                              <ButtonGlobal
+                                onClick={handleRemovePicture}
+                                className="btn btn-outline-secondary"
+                                disabled={isUploadingPicture}
+                              >
+                                <i className="bi bi-x me-1"></i>
+                                Cancel
+                              </ButtonGlobal>
+                            )}
+                          </div>
+
+                          {/* Current Picture Info */}
+                          {profilePicture && !profilePictureFile && (
+                            <div className="content-header mt-3">
+                              <p className="text-muted small mb-0 text-start">
+                                Current profile picture is active
+                              </p>
+                            </div>
+                          )}
+                        </Col>
+                      </Row>
+                    </InfoCard>
+                  </Col>
+                </Row>
               </div>
-            </Col>
-
-            {/* Right Side - Form Controls */}
-            <Col md={6}>
-              {/* Hidden File Input (for plus icon) */}
-              <Form.Control
-                id="profile-picture-input"
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePictureChange}
-                style={{ display: 'none' }}
-                className="rounded-0 w-100"
-              />
-
-              {/* Visible File Input (original) */}
-              <Form.Group className="mb-3">
-                <Form.Label className="d-block text-start">
-                  Choose a new profile picture
-                </Form.Label>
-                <Form.Control
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePictureChange}
-                  style={{ maxWidth: "100%" }}
-                  className="rounded-0 w-100"
-                />
-                <Form.Text className="text-muted d-block text-start">
-                  Supported formats: JPEG, PNG, GIF. Max size: 5MB
-                </Form.Text>
-              </Form.Group>
-
-              {/* Action Buttons */}
-              <div className="d-flex gap-2 justify-content-start">
-                <ButtonGlobal
-                  onClick={handleProfilePictureUpload}
-                  className="btn custom-btn"
-                  disabled={!profilePictureFile || isUploadingPicture}
-                >
-                  <i className="bi bi-upload me-1"></i>
-                  {isUploadingPicture
-                    ? "Uploading..."
-                    : "Upload Picture"}
-                </ButtonGlobal>
-
-                {profilePictureFile && (
-                  <ButtonGlobal
-                    onClick={handleRemovePicture}
-                    className="btn btn-outline-secondary"
-                    disabled={isUploadingPicture}
-                  >
-                    <i className="bi bi-x me-1"></i>
-                    Cancel
-                  </ButtonGlobal>
-                )}
-              </div>
-
-              {/* Current Picture Info */}
-              {profilePicture && !profilePictureFile && (
-                <div className="content-header mt-3">
-                  <p className="text-muted small mb-0 text-start">
-                    Current profile picture is active
-                  </p>
-                </div>
-              )}
-            </Col>
-          </Row>
-        </InfoCard>
-      </Col>
-    </Row>
-  </div>
-</Tab>
+            </Tab>
           </Tabs>
         </div>
       </div>

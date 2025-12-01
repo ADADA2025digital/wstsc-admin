@@ -505,7 +505,7 @@ const EnrolmentDetails = () => {
         status: rawData.status || rawData.student_status,
         submitted_by: rawData.submitter?.name || "System",
         submitted_at: rawData.submitted_at,
-        approved_by: rawData.approved_by || rawData.approver?.name,
+        approved_by: rawData.approved_by || rawData.approver?.name || "Admin",
         approved_at: rawData.approved_at,
         rejected_by: rawData.rejected_by || rawData.rejecter?.name,
         rejected_at: rawData.rejected_at,
@@ -892,7 +892,7 @@ const EnrolmentDetails = () => {
             student: {
               ...prevData.student,
               status: "approved",
-              approved_by: responseData.approved_by || "Admin",
+              approved_by: responseData.approved_by || "Admin", // Save the approver's name
               approved_at: responseData.approved_at || new Date().toISOString(),
               ...(responseData.enrid && { enrollment_id: responseData.enrid }),
               ...(responseData.student_name && {
@@ -987,7 +987,7 @@ const EnrolmentDetails = () => {
             student: {
               ...prevData.student,
               status: "rejected",
-              rejected_by: responseData.rejected_by || "Admin",
+              rejected_by: responseData.rejected_by || "Admin", // Save the rejecter's name
               rejected_at: responseData.rejected_at || new Date().toISOString(),
               rejection_reason:
                 responseData.rejection_reason || rejectionReason.trim(),
@@ -1275,7 +1275,7 @@ const EnrolmentDetails = () => {
             <div className="alert alert-success mt-2 py-2" role="alert">
               <i className="bi bi-check2-circle me-2"></i>
               <strong>Enrolment Approved!</strong>
-              {student?.approved_by && ` `}
+              {student?.approved_by && ` by ${student.approved_by}`}
               {student?.approved_at &&
                 ` on ${formatDateToDDMMYYYY(student.approved_at)}`}
             </div>
@@ -1286,7 +1286,7 @@ const EnrolmentDetails = () => {
             <div className="alert alert-danger mt-2 py-2" role="alert">
               <i className="bi bi-x-circle me-2"></i>
               <strong>Enrolment Rejected!</strong>
-              {student?.rejected_by && ` `}
+              {student?.rejected_by && ` by ${student.rejected_by}`}
               {student?.rejected_at &&
                 ` on ${formatDateToDDMMYYYY(student.rejected_at)}`}
               {student?.rejection_reason &&
@@ -1367,7 +1367,7 @@ const EnrolmentDetails = () => {
               >
                 {student?.status ? student.status.toUpperCase() : "—"}
               </span>
-            </div>{" "}
+            </div>
           </div>
         </div>
         <div className="card-body p-4">
@@ -1468,6 +1468,59 @@ const EnrolmentDetails = () => {
                 </span>
               </div>
             </div>
+
+            {/* Approval/Rejection Information Section */}
+            {isApproved && student?.approved_by && (
+              <div className="col-md-4">
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold">Approved By</span>
+                  <span className="fs-6 text-success">
+                    <i className="bi bi-person-check me-2"></i>
+                    {student.approved_by}
+                  </span>
+                  {student?.approved_at && (
+                    <small className="text-muted">
+                      on {formatDateToDDMMYYYY(student.approved_at)}
+                    </small>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isRejected && student?.rejected_by && (
+              <div className="col-md-4">
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold">Rejected By</span>
+                  <span className="fs-6 text-danger">
+                    <i className="bi bi-person-x me-2"></i>
+                    {student.rejected_by}
+                  </span>
+                  {student?.rejected_at && (
+                    <small className="text-muted">
+                      on {formatDateToDDMMYYYY(student.rejected_at)}
+                    </small>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Submitted Information */}
+            {student?.submitted_by && (
+              <div className="col-md-4">
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold">Submitted By</span>
+                  <span className="fs-6">
+                    <i className="bi bi-person me-2"></i>
+                    {student.submitted_by}
+                  </span>
+                  {student?.submitted_at && (
+                    <small className="text-muted">
+                      on {formatDateToDDMMYYYY(student.submitted_at)}
+                    </small>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

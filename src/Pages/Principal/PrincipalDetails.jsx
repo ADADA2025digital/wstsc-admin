@@ -305,7 +305,7 @@ const PrincipalDetails = () => {
       )}
 
       <Row>
-        <Col lg={8}>
+        <Col lg={12}>
           {/* Current Principal Information Card */}
           {principal && (
             <div className="card mb-4">
@@ -649,8 +649,7 @@ const PrincipalDetails = () => {
           </Card>
         </Col>
 
-        <Col lg={4}>
-          {/* Principal Summary */}
+        {/* <Col lg={4}>
           {principal && (
             <Card className="mb-4">
               <Card.Header>
@@ -698,7 +697,7 @@ const PrincipalDetails = () => {
               </Card.Body>
             </Card>
           )}
-        </Col>
+        </Col> */}
       </Row>
     </Container>
   );

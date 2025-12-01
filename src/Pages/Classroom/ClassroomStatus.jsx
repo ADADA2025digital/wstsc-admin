@@ -306,9 +306,9 @@ const ClassroomsStatus = () => {
   );
 
   return (
-    <div className="container-fluid px-4 py-3">
+    <div className="container-fluid px-0 px-md-4 py-3">
       {/* Header Section */}
-      <div className="content-header d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Classroom Management</h4>
           <p className="text-muted mb-0">
@@ -316,7 +316,7 @@ const ClassroomsStatus = () => {
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 mt-3 mt-md-0">
           <ButtonGlobal
             onClick={fetchClassrooms}
             className="btn btn-outline-secondary"

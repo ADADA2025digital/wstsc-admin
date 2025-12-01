@@ -977,7 +977,7 @@ export default function ClassroomsList() {
   // Admin view
   return (
     <>
-      <div className="container-fluid px-4 py-3">
+      <div className="container-fluid px-md-4 px-0 py-3">
         {/* Success Message */}
         {successMessage && (
           <div className="alert alert-success alert-dismissible fade show mb-4" role="alert">

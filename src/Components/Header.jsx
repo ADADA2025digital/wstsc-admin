@@ -667,7 +667,7 @@ const Header = ({ setIsSidebarVisible, setCollapsed, toggleFullScreen }) => {
                     {isSwitchProfileOpen && (
                       <div
                         ref={switchProfileRef}
-                        className="dropdown-menu position-absolute end-100 top-0 mt-0 shadow rounded-0"
+                        className="dropdown-menu accounts-dropdown position-absolute end-100 top-0 mt-0 shadow rounded-0"
                         style={{
                           minWidth: "280px",
                           marginRight: "1px",

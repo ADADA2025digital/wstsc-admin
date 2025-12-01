@@ -1004,3 +1004,12 @@ body.dark-mode .custom-data-table td {
     opacity: 0;
   }
 }
+
+/* Accounts Dropdown */
+
+@media (max-width: 480px) {
+  .accounts-dropdown {
+    left: -100px;
+    top: 100px !important;
+  }
+}

@@ -398,7 +398,7 @@ export default function PersonsList() {
   }
 
   return (
-    <div className="container-fluid px-4 py-3">
+    <div className="container-fluid px-0 px-md-4 py-3">
       <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Persons List</h4>

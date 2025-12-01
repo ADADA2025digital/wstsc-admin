@@ -803,7 +803,7 @@ export default function ClassroomDetails() {
   if (error) {
     console.log("❌ RENDERING ERROR STATE:", error);
     return (
-      <div className="container-fluid px-4 py-3">
+      <div className="container-fluid px-md-4 px-0 py-3">
         <Alert variant="danger">
           <div className="d-flex align-items-start">
             <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
@@ -831,7 +831,7 @@ export default function ClassroomDetails() {
   if (!classroom) {
     console.log("⚠️ RENDERING NO DATA STATE");
     return (
-      <div className="container-fluid px-4 py-3">
+      <div className="container-fluid px-md-4 px-0 py-3">
         <Alert variant="warning">
           <div className="d-flex align-items-start">
             <i className="bi bi-info-circle-fill me-3 fs-4"></i>
@@ -865,7 +865,7 @@ export default function ClassroomDetails() {
   });
 
   return (
-    <div className="container-fluid px-4 py-3">
+    <div className="container-fluid px-md-4 px-0 py-3">
       {/* API Message Alert */}
       {apiMessage.text && (
         <Alert
@@ -878,7 +878,7 @@ export default function ClassroomDetails() {
       )}
 
       {/* Header */}
-      <div className="content-header d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex flex-md-row flex-column justify-content-start justify-content-md-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Classroom Details</h4>
           <p className="text-muted mb-0">
@@ -888,7 +888,7 @@ export default function ClassroomDetails() {
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex flex-md-row flex-column align-items-center gap-3 mt-3 mt-md-0">
           {/* Buttons Section */}
           <div className="d-flex align-items-center gap-2">
             <ButtonGlobal
@@ -1106,7 +1106,7 @@ export default function ClassroomDetails() {
             >
               <div className="p-3">
                 <div
-                  className="d-flex justify-content-between align-items-center mb-3"
+                  className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3"
                 >
                   <h5 className="mb-0">
                     Teachers Assigned to {classroom.name}
@@ -1114,7 +1114,7 @@ export default function ClassroomDetails() {
 
                   {/* Assign Teacher Button - MOVED TO TEACHERS TAB */}
                   {canEdit && (
-                    <div className="d-flex align-items-center gap-2">
+                    <div className="d-flex align-items-center gap-2 mt-3 mt-md-0">
                       {/* Conditionally show Assign Teacher button or inactive message */}
                       {classroom.isActive ? (
                         <ButtonGlobal

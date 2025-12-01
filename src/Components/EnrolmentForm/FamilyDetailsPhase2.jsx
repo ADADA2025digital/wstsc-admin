@@ -42,26 +42,231 @@ export default function FamilyDetailsPhase2({ onNext }) {
   ];
 
   const nationalities = [
-    "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Anguillan", "Argentine", "Armenian", "Australian",
-    "Austrian", "Azerbaijani", "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian", "Belizean", "Beninese",
-    "Bermudian", "Bhutanese", "Bolivian", "Botswanan", "Brazilian", "British", "British Virgin Islander", "Bruneian", "Bulgarian", "Burkinan",
-    "Burmese", "Burundian", "Cambodian", "Cameroonian", "Canadian", "Cape Verdean", "Cayman Islander", "Central African", "Chadian", "Chilean",
-    "Chinese", "Citizen of Antigua and Barbuda", "Citizen of Bosnia and Herzegovina", "Citizen of Guinea-Bissau", "Citizen of Kiribati", "Citizen of Seychelles",
-    "Citizen of the Dominican Republic", "Citizen of Vanuatu", "Colombian", "Comoran", "Congolese (Congo)", "Congolese (DRC)", "Cook Islander", "Costa Rican",
-    "Croatian", "Cuban", "Cymraes", "Cymro", "Cypriot", "Czech", "Danish", "Djiboutian", "Dominican", "Dutch", "East Timorese", "Ecuadorean", "Egyptian",
-    "Emirati", "English", "Equatorial Guinean", "Eritrean", "Estonian", "Ethiopian", "Faroese", "Fijian", "Filipino", "Finnish", "French", "Gabonese",
-    "Gambian", "Georgian", "German", "Ghanaian", "Gibraltarian", "Greek", "Greenlandic", "Grenadian", "Guamanian", "Guatemalan", "Guinean", "Guyanese",
-    "Haitian", "Honduran", "Hong Konger", "Hungarian", "Icelandic", "Indian", "Indonesian", "Iranian", "Iraqi", "Irish", "Israeli", "Italian", "Ivorian",
-    "Jamaican", "Japanese", "Jordanian", "Kazakh", "Kenyan", "Kittitian", "Kosovan", "Kuwaiti", "Kyrgyz", "Lao", "Latvian", "Lebanese", "Liberian", "Libyan",
-    "Liechtenstein citizen", "Lithuanian", "Luxembourger", "Macanese", "Macedonian", "Malagasy", "Malawian", "Malaysian", "Maldivian", "Malian", "Maltese",
-    "Marshallese", "Martiniquais", "Mauritanian", "Mauritian", "Mexican", "Micronesian", "Moldovan", "Monegasque", "Mongolian", "Montenegrin", "Montserratian",
-    "Moroccan", "Mosotho", "Mozambican", "Namibian", "Nauruan", "Nepalese", "New Zealander", "Nicaraguan", "Nigerian", "Nigerien", "Niuean", "North Korean",
-    "Northern Irish", "Norwegian", "Omani", "Pakistani", "Palauan", "Palestinian", "Panamanian", "Papua New Guinean", "Paraguayan", "Peruvian", "Pitcairn Islander",
-    "Polish", "Portuguese", "Prydeinig", "Puerto Rican", "Qatari", "Romanian", "Russian", "Rwandan", "Salvadorean", "Sammarinese", "Samoan", "Sao Tomean",
-    "Saudi Arabian", "Scottish", "Senegalese", "Serbian", "Sierra Leonean", "Singaporean", "Slovak", "Slovenian", "Solomon Islander", "Somali", "South African",
-    "South Korean", "South Sudanese", "Spanish", "Sri Lankan", "St Helenian", "St Lucian", "Stateless", "Sudanese", "Surinamese", "Swazi", "Swedish", "Swiss",
-    "Syrian", "Taiwanese", "Tajik", "Tanzanian", "Thai", "Togolese", "Tongan", "Trinidadian", "Tristanian", "Tunisian", "Turkish", "Turkmen", "Turks and Caicos Islander",
-    "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan", "Uzbek", "Vatican citizen", "Venezuelan", "Vietnamese", "Vincentian", "Wallisian", "Welsh", "Yemeni", "Zambian", "Zimbabwean",
+    "Afghan",
+    "Albanian",
+    "Algerian",
+    "American",
+    "Andorran",
+    "Angolan",
+    "Anguillan",
+    "Argentine",
+    "Armenian",
+    "Australian",
+    "Austrian",
+    "Azerbaijani",
+    "Bahamian",
+    "Bahraini",
+    "Bangladeshi",
+    "Barbadian",
+    "Belarusian",
+    "Belgian",
+    "Belizean",
+    "Beninese",
+    "Bermudian",
+    "Bhutanese",
+    "Bolivian",
+    "Botswanan",
+    "Brazilian",
+    "British",
+    "British Virgin Islander",
+    "Bruneian",
+    "Bulgarian",
+    "Burkinan",
+    "Burmese",
+    "Burundian",
+    "Cambodian",
+    "Cameroonian",
+    "Canadian",
+    "Cape Verdean",
+    "Cayman Islander",
+    "Central African",
+    "Chadian",
+    "Chilean",
+    "Chinese",
+    "Citizen of Antigua and Barbuda",
+    "Citizen of Bosnia and Herzegovina",
+    "Citizen of Guinea-Bissau",
+    "Citizen of Kiribati",
+    "Citizen of Seychelles",
+    "Citizen of the Dominican Republic",
+    "Citizen of Vanuatu",
+    "Colombian",
+    "Comoran",
+    "Congolese (Congo)",
+    "Congolese (DRC)",
+    "Cook Islander",
+    "Costa Rican",
+    "Croatian",
+    "Cuban",
+    "Cymraes",
+    "Cymro",
+    "Cypriot",
+    "Czech",
+    "Danish",
+    "Djiboutian",
+    "Dominican",
+    "Dutch",
+    "East Timorese",
+    "Ecuadorean",
+    "Egyptian",
+    "Emirati",
+    "English",
+    "Equatorial Guinean",
+    "Eritrean",
+    "Estonian",
+    "Ethiopian",
+    "Faroese",
+    "Fijian",
+    "Filipino",
+    "Finnish",
+    "French",
+    "Gabonese",
+    "Gambian",
+    "Georgian",
+    "German",
+    "Ghanaian",
+    "Gibraltarian",
+    "Greek",
+    "Greenlandic",
+    "Grenadian",
+    "Guamanian",
+    "Guatemalan",
+    "Guinean",
+    "Guyanese",
+    "Haitian",
+    "Honduran",
+    "Hong Konger",
+    "Hungarian",
+    "Icelandic",
+    "Indian",
+    "Indonesian",
+    "Iranian",
+    "Iraqi",
+    "Irish",
+    "Israeli",
+    "Italian",
+    "Ivorian",
+    "Jamaican",
+    "Japanese",
+    "Jordanian",
+    "Kazakh",
+    "Kenyan",
+    "Kittitian",
+    "Kosovan",
+    "Kuwaiti",
+    "Kyrgyz",
+    "Lao",
+    "Latvian",
+    "Lebanese",
+    "Liberian",
+    "Libyan",
+    "Liechtenstein citizen",
+    "Lithuanian",
+    "Luxembourger",
+    "Macanese",
+    "Macedonian",
+    "Malagasy",
+    "Malawian",
+    "Malaysian",
+    "Maldivian",
+    "Malian",
+    "Maltese",
+    "Marshallese",
+    "Martiniquais",
+    "Mauritanian",
+    "Mauritian",
+    "Mexican",
+    "Micronesian",
+    "Moldovan",
+    "Monegasque",
+    "Mongolian",
+    "Montenegrin",
+    "Montserratian",
+    "Moroccan",
+    "Mosotho",
+    "Mozambican",
+    "Namibian",
+    "Nauruan",
+    "Nepalese",
+    "New Zealander",
+    "Nicaraguan",
+    "Nigerian",
+    "Nigerien",
+    "Niuean",
+    "North Korean",
+    "Northern Irish",
+    "Norwegian",
+    "Omani",
+    "Pakistani",
+    "Palauan",
+    "Palestinian",
+    "Panamanian",
+    "Papua New Guinean",
+    "Paraguayan",
+    "Peruvian",
+    "Pitcairn Islander",
+    "Polish",
+    "Portuguese",
+    "Prydeinig",
+    "Puerto Rican",
+    "Qatari",
+    "Romanian",
+    "Russian",
+    "Rwandan",
+    "Salvadorean",
+    "Sammarinese",
+    "Samoan",
+    "Sao Tomean",
+    "Saudi Arabian",
+    "Scottish",
+    "Senegalese",
+    "Serbian",
+    "Sierra Leonean",
+    "Singaporean",
+    "Slovak",
+    "Slovenian",
+    "Solomon Islander",
+    "Somali",
+    "South African",
+    "South Korean",
+    "South Sudanese",
+    "Spanish",
+    "Sri Lankan",
+    "St Helenian",
+    "St Lucian",
+    "Stateless",
+    "Sudanese",
+    "Surinamese",
+    "Swazi",
+    "Swedish",
+    "Swiss",
+    "Syrian",
+    "Taiwanese",
+    "Tajik",
+    "Tanzanian",
+    "Thai",
+    "Togolese",
+    "Tongan",
+    "Trinidadian",
+    "Tristanian",
+    "Tunisian",
+    "Turkish",
+    "Turkmen",
+    "Turks and Caicos Islander",
+    "Tuvaluan",
+    "Ugandan",
+    "Ukrainian",
+    "Uruguayan",
+    "Uzbek",
+    "Vatican citizen",
+    "Venezuelan",
+    "Vietnamese",
+    "Vincentian",
+    "Wallisian",
+    "Welsh",
+    "Yemeni",
+    "Zambian",
+    "Zimbabwean",
   ];
 
   const nationalityOptions = nationalities.map((n) => ({
@@ -89,7 +294,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
     validateSection,
     errors,
   } = useEnrolmentForm();
-  
+
   const [sectionError, setSectionError] = useState("");
   const [touchedFields, setTouchedFields] = useState({
     parent_carer_1: {},
@@ -418,11 +623,11 @@ export default function FamilyDetailsPhase2({ onNext }) {
     if (section === "parent_carer_2" && showCarer2) {
       const requiredFieldsCarer2 = [
         "title",
-        "first_name", 
+        "first_name",
         "last_name",
         "gender",
         "relationship_to_student",
-        "date_of_birth"
+        "date_of_birth",
       ];
       return requiredFieldsCarer2.includes(field);
     }
@@ -452,17 +657,23 @@ export default function FamilyDetailsPhase2({ onNext }) {
     ];
 
     // Required fields for carer 2 (only when shown)
-    const requiredFieldsCarer2 = showCarer2 ? [
-      "title",
-      "first_name",
-      "last_name", 
-      "gender",
-      "relationship_to_student",
-      "date_of_birth"
-    ] : [];
+    const requiredFieldsCarer2 = showCarer2
+      ? [
+          "title",
+          "first_name",
+          "last_name",
+          "gender",
+          "relationship_to_student",
+          "date_of_birth",
+        ]
+      : [];
 
-    const fieldsToCheck = section === "parent_carer_1" ? requiredFieldsCarer1 : 
-                         section === "parent_carer_2" ? requiredFieldsCarer2 : [];
+    const fieldsToCheck =
+      section === "parent_carer_1"
+        ? requiredFieldsCarer1
+        : section === "parent_carer_2"
+        ? requiredFieldsCarer2
+        : [];
 
     const missingFields = [];
     const isValid = fieldsToCheck.every((field) => {
@@ -522,7 +733,13 @@ export default function FamilyDetailsPhase2({ onNext }) {
     });
 
     // Validate optional fields for carer 1 (only if they have values)
-    const optionalFieldsCarer1 = ["suburb", "middle_name", "alternative_phone", "address_type", "street_number"];
+    const optionalFieldsCarer1 = [
+      "suburb",
+      "middle_name",
+      "alternative_phone",
+      "address_type",
+      "street_number",
+    ];
     optionalFieldsCarer1.forEach((field) => {
       const value = formData.parent_carer_1[field];
       // Only validate if field has value (all fields are optional)
@@ -545,9 +762,9 @@ export default function FamilyDetailsPhase2({ onNext }) {
         "title",
         "first_name",
         "last_name",
-        "gender", 
+        "gender",
         "relationship_to_student",
-        "date_of_birth"
+        "date_of_birth",
       ];
 
       // First validate required fields
@@ -561,10 +778,21 @@ export default function FamilyDetailsPhase2({ onNext }) {
 
       // Then validate optional fields (only if they have values)
       const optionalFieldsCarer2 = [
-        "middle_name", "country_of_birth", "nationality", "email", 
-        "mobile_phone", "alternative_phone", "marital_status", "occupation",
-        "street_number", "street_name", "suburb", "state", "postal_code", 
-        "country", "address_type"
+        "middle_name",
+        "country_of_birth",
+        "nationality",
+        "email",
+        "mobile_phone",
+        "alternative_phone",
+        "marital_status",
+        "occupation",
+        "street_number",
+        "street_name",
+        "suburb",
+        "state",
+        "postal_code",
+        "country",
+        "address_type",
       ];
 
       optionalFieldsCarer2.forEach((field) => {
@@ -598,9 +826,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
     // User can proceed if:
     // - Parent 1 is complete AND has no errors
     // - AND if carer 2 is shown, then carer 2 must also be complete AND have no errors
-    const canProceed = 
-      (hasParent1Complete && !hasParent1Errors) && 
-      (showCarer2 ? (hasParent2Complete && !hasParent2Errors) : true);
+    const canProceed =
+      hasParent1Complete &&
+      !hasParent1Errors &&
+      (showCarer2 ? hasParent2Complete && !hasParent2Errors : true);
 
     if (canProceed) {
       setSectionError("");
@@ -609,10 +838,12 @@ export default function FamilyDetailsPhase2({ onNext }) {
       }
     } else {
       // Provide more specific error message
-      let errorMessage = "Please complete all required fields for Parent/Carer 1";
+      let errorMessage =
+        "Please complete all required fields for Parent/Carer 1";
 
       if (hasParent1Errors) {
-        errorMessage = "Please fix the validation errors in Parent/Carer 1 details";
+        errorMessage =
+          "Please fix the validation errors in Parent/Carer 1 details";
 
         // Add specific field information if available
         if (parent1FailedFields.length > 0) {
@@ -623,9 +854,11 @@ export default function FamilyDetailsPhase2({ onNext }) {
       } else if (!hasParent1Complete) {
         errorMessage = "Please complete all required fields for Parent/Carer 1";
       } else if (showCarer2 && !hasParent2Complete) {
-        errorMessage = "Please complete all required fields for Parent/Carer 2 (Title, First name, Last name, Gender, Relationship to student, and Date of Birth)";
+        errorMessage =
+          "Please complete all required fields for Parent/Carer 2 (Title, First name, Last name, Gender, Relationship to student, and Date of Birth)";
       } else if (showCarer2 && hasParent2Errors) {
-        errorMessage = "Please fix the validation errors in Parent/Carer 2 details";
+        errorMessage =
+          "Please fix the validation errors in Parent/Carer 2 details";
       }
 
       setSectionError(errorMessage);
@@ -636,7 +869,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
   const handleShowCarer2Change = (checked) => {
     // Update the persisted state in formData
     updateFormData("ui_state", "showCarer2", checked);
-    
+
     // Clear any existing errors for carer 2 when hiding the section
     if (!checked) {
       setSectionError("");
@@ -646,7 +879,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
   // Show loading state while fetching data
   if (isLoading) {
     return (
-      <section className="container bg-light p-3">
+      <section className="container enrol-form bg-light p-3">
         <div className="d-flex justify-content-center align-items-center py-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading parent details...</span>
@@ -745,7 +978,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
         </div>
       )}
 
-      <section className="container bg-light p-3">
+      <section className="container enrol-form bg-light p-3">
         <h2 className="h4 mb-3">
           Parent/Carer 1 with whom this student normally lives
         </h2>
@@ -1045,7 +1278,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
               options={stateOptions}
             />
           </div>
-                    <div className="col-md-3">
+          <div className="col-md-3">
             <SelectInput
               id="suburb1"
               label="Suburb"
@@ -1200,7 +1433,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
                     handleBlur("parent_carer_2", "relationship_to_student")
                   }
                   error={getError("parent_carer_2", "relationship_to_student")}
-                  required={shouldShowRequired("parent_carer_2", "relationship_to_student")}
+                  required={shouldShowRequired(
+                    "parent_carer_2",
+                    "relationship_to_student"
+                  )}
                   options={relationOptions}
                 />
               </div>
@@ -1215,7 +1451,10 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   }
                   onBlur={() => handleBlur("parent_carer_2", "date_of_birth")}
                   error={getError("parent_carer_2", "date_of_birth")}
-                  required={shouldShowRequired("parent_carer_2", "date_of_birth")}
+                  required={shouldShowRequired(
+                    "parent_carer_2",
+                    "date_of_birth"
+                  )}
                 />
               </div>
               <div className="col-md-3">
@@ -1398,7 +1637,7 @@ export default function FamilyDetailsPhase2({ onNext }) {
                   options={stateOptions}
                 />
               </div>
-                            <div className="col-md-3">
+              <div className="col-md-3">
                 <SelectInput
                   id="suburb2"
                   label="Suburb"

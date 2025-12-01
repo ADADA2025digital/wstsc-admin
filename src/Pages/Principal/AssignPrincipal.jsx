@@ -1,4 +1,3 @@
-// src/pages/AssignPrincipal.js
 import React, { useState, useEffect } from "react";
 import {
   Container,
@@ -7,12 +6,10 @@ import {
   Card,
   Button,
   Badge,
-  Table,
   Alert,
   Spinner,
   Form,
-  InputGroup,
-  Breadcrumb
+  InputGroup
 } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
@@ -77,27 +74,41 @@ const AssignPrincipal = () => {
       if (response.data.success) {
         const teachersData = response.data.data.teachers || [];
         console.log(`👨‍🏫 Teachers loaded: ${teachersData.length}`);
+        console.log("📋 Raw teachers data:", teachersData);
         
         // Transform the teacher data to match our expected format
         const transformedTeachers = teachersData.map(teacher => ({
-          // Map the API response to our expected person structure
+          // Primary identifiers
+          tid: teacher.tid,
+          uid: teacher.uid,
           peid: teacher.person?.peid || `T${teacher.tid}`,
+          
+          // Personal information
           person_first_name: teacher.person?.first_name || teacher.name?.split(' ')[0] || '',
           person_last_name: teacher.person?.last_name || teacher.name?.split(' ').slice(1).join(' ') || '',
           full_name: teacher.person?.full_name || teacher.name || '',
           person_email: teacher.person?.email || teacher.email || '',
           person_phone: teacher.person?.phone || teacher.phone || '',
-          person_status: teacher.status || 'active',
-          person_dob: null, // Not provided in the API
+          
+          // Status and position
+          person_status: teacher.person?.status || teacher.status || 'active',
+          position: teacher.position,
+          position_display_name: teacher.position_display_name,
+          
+          // Role information
           user: {
             uid: teacher.uid,
-            last_login: null, // Not provided in the API
             role: teacher.role || {
               roleid: teacher.role?.roleid,
               role_name: teacher.role?.role_name || 'teacher',
               display_name: teacher.role?.display_name || 'Teacher'
             }
           },
+          
+          // Additional data
+          profile_picture: teacher.profile_picture,
+          photo_url: teacher.photo_url || teacher.person?.photo_url,
+          
           // Keep original data for reference
           originalData: teacher
         }));
@@ -136,22 +147,25 @@ const AssignPrincipal = () => {
 
   // Filter teachers based on search term
   const filteredTeachers = teachers.filter(teacher => {
+    if (!searchTerm) return true;
+    
     const searchLower = searchTerm.toLowerCase();
     return (
       teacher.full_name?.toLowerCase().includes(searchLower) ||
       teacher.person_email?.toLowerCase().includes(searchLower) ||
-      teacher.peid?.toLowerCase().includes(searchLower)
+      teacher.peid?.toLowerCase().includes(searchLower) ||
+      teacher.position_display_name?.toLowerCase().includes(searchLower)
     );
   });
 
   // Handle teacher selection
   const handleTeacherSelect = (teacher) => {
     console.log("🎯 Teacher selected:", {
+      tid: teacher.tid,
       peid: teacher.peid,
       full_name: teacher.full_name,
-      user_id: teacher.user?.uid,
-      role: teacher.user?.role,
-      originalData: teacher.originalData
+      position: teacher.position,
+      user_id: teacher.uid
     });
     setSelectedTeacher(teacher);
     setSuccessMessage("");
@@ -191,37 +205,12 @@ const AssignPrincipal = () => {
       return;
     }
 
-    // Validate data before sending
-    console.log("🔍 Validating data before submission...");
-    
-    if (!selectedTeacher.user?.uid) {
-      console.error("❌ Invalid teacher: Missing user ID", selectedTeacher);
-      setError("Invalid teacher selection: Missing user ID");
-      console.groupEnd();
-      return;
-    }
-
-    if (!nominator.peid) {
-      console.error("❌ Invalid nominator: Missing PEID", nominator);
-      setError("Invalid nominator selection: Missing PEID");
-      console.groupEnd();
-      return;
-    }
-
-    if (!seconder.peid) {
-      console.error("❌ Invalid seconder: Missing PEID", seconder);
-      setError("Invalid seconder selection: Missing PEID");
-      console.groupEnd();
-      return;
-    }
-
     try {
       setAssigningPrincipal(true);
       setError("");
 
-      // Use teacher_id from the original API data
       const submissionData = {
-        teacher_id: Number(selectedTeacher.originalData?.tid || selectedTeacher.user.uid),
+        teacher_id: Number(selectedTeacher.tid),
         position: String(formData.position).trim(),
         year: Number(formData.year),
         nominated_by: String(nominator.peid).trim(),
@@ -230,30 +219,21 @@ const AssignPrincipal = () => {
       };
 
       console.log("📤 Prepared submission data:", submissionData);
-      console.log("🔍 Data type check:", {
-        teacher_id_type: typeof submissionData.teacher_id,
-        year_type: typeof submissionData.year,
-        nominated_by_type: typeof submissionData.nominated_by,
-        seconded_by_type: typeof submissionData.seconded_by
-      });
 
       console.log("👥 Selected individuals:", {
         teacher: {
           name: selectedTeacher.full_name,
+          tid: selectedTeacher.tid,
           peid: selectedTeacher.peid,
-          user_id: selectedTeacher.user?.uid,
-          teacher_id: selectedTeacher.originalData?.tid,
-          email: selectedTeacher.person_email
+          current_position: selectedTeacher.position
         },
         nominator: {
           name: nominator.full_name,
-          peid: nominator.peid,
-          role: nominator.user?.role?.role_name
+          peid: nominator.peid
         },
         seconder: {
           name: seconder.full_name,
-          peid: seconder.peid,
-          role: seconder.user?.role?.role_name
+          peid: seconder.peid
         }
       });
 
@@ -261,7 +241,6 @@ const AssignPrincipal = () => {
       const response = await api.post("/principals", submissionData);
       
       console.log("✅ API Response received:", response);
-      console.log("📊 Response data:", response.data);
       
       if (response.data.success) {
         console.log("🎉 Principal assigned successfully!");
@@ -276,35 +255,13 @@ const AssignPrincipal = () => {
     } catch (err) {
       console.error("❌ Error assigning principal:", err);
       
-      // Detailed error logging
-      console.group("🔍 Detailed Error Analysis");
-      
       if (err.response) {
-        // Server responded with error status
-        console.error("📡 Server Response Error:");
-        console.error("Status:", err.response.status);
-        console.error("Response Data:", err.response.data);
-        
         if (err.response.status === 422) {
-          console.error("🛑 422 Validation Error Details:");
           if (err.response.data.errors) {
-            console.error("Validation Errors:", err.response.data.errors);
-            
-            // Show specific field errors
-            if (err.response.data.errors.tid) {
-              console.error("🔍 TID Error:", err.response.data.errors.tid);
-              setError(`Teacher validation error: ${err.response.data.errors.tid[0]}`);
-            } else if (err.response.data.errors.teacher_id) {
-              console.error("🔍 Teacher ID Error:", err.response.data.errors.teacher_id);
-              setError(`Teacher validation error: ${err.response.data.errors.teacher_id[0]}`);
-            } else {
-              const errorMessages = Object.entries(err.response.data.errors)
-                .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-                .join('; ');
-              setError(`Validation failed: ${errorMessages}`);
-            }
-          } else if (err.response.data.message) {
-            setError(`Validation error: ${err.response.data.message}`);
+            const errorMessages = Object.entries(err.response.data.errors)
+              .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+              .join('; ');
+            setError(`Validation failed: ${errorMessages}`);
           } else {
             setError("Data validation failed. Please check all fields and try again.");
           }
@@ -314,16 +271,10 @@ const AssignPrincipal = () => {
           setError(`Request failed with status ${err.response.status}`);
         }
       } else if (err.request) {
-        // Request was made but no response received
-        console.error("🌐 Network Error - No response received");
         setError("Network error: Please check your connection and try again.");
       } else {
-        // Something else happened
-        console.error("⚡ Unexpected Error:", err.message);
         setError("An unexpected error occurred. Please try again.");
       }
-      
-      console.groupEnd();
     } finally {
       setAssigningPrincipal(false);
       console.groupEnd();
@@ -339,10 +290,10 @@ const AssignPrincipal = () => {
         return "danger";
       case "teacher":
         return "success";
-      case "staff":
-        return "info";
       case "parent":
         return "warning";
+      case "principal":
+        return "primary";
       default:
         return "secondary";
     }
@@ -350,9 +301,10 @@ const AssignPrincipal = () => {
 
   // Get role display name
   const getRoleDisplayName = (person) => {
-    if (!person.user || !person.user.role) return "No Role";
+    if (!person.user || !person.user.role) return person.position_display_name || "No Role";
     
     return person.user.role.display_name || 
+           person.position_display_name ||
            person.user.role.role_name || 
            "Unknown Role";
   };
@@ -370,21 +322,6 @@ const AssignPrincipal = () => {
         return "warning";
       default:
         return "info";
-    }
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric"
-      });
-    } catch (error) {
-      return "Invalid Date";
     }
   };
 
@@ -416,15 +353,6 @@ const AssignPrincipal = () => {
     loadData();
   }, []);
 
-  // Log when selections change
-  useEffect(() => {
-    console.log("🔄 Selection state updated:", {
-      selectedTeacher: selectedTeacher ? selectedTeacher.full_name : "None",
-      nominator: nominator ? nominator.full_name : "None", 
-      seconder: seconder ? seconder.full_name : "None"
-    });
-  }, [selectedTeacher, nominator, seconder]);
-
   const isLoading = loadingPersons || loadingTeachers;
 
   return (
@@ -432,7 +360,7 @@ const AssignPrincipal = () => {
       {/* Header */}
       <Row className="mb-4">
         <Col>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="content-header d-flex justify-content-between align-items-center">
             <div>
               <h2 className="h4 fw-bold">Assign Principal</h2>
               <p className="text-muted mb-0">
@@ -469,7 +397,7 @@ const AssignPrincipal = () => {
         <Col lg={8}>
           {/* Search and Teachers List Card */}
           <Card className="mb-4">
-            <Card.Header className="bg-light">
+            <Card.Header className="content-header">
               <h5 className="mb-0">
                 <i className="bi bi-person-badge me-2"></i>
                 Available Teachers ({teachers.length})
@@ -487,7 +415,7 @@ const AssignPrincipal = () => {
                   </InputGroup.Text>
                   <Form.Control
                     type="text"
-                    placeholder="Search teachers by name, email, or PEID..."
+                    placeholder="Search teachers by name, email, PEID, or position..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -505,12 +433,12 @@ const AssignPrincipal = () => {
               {/* Teachers List */}
               {isLoading ? (
                 <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" size="lg" />
+                  <Spinner animation="border" variant="primary" />
                   <p className="mt-3 text-muted">Loading teachers...</p>
                 </div>
               ) : filteredTeachers.length === 0 ? (
                 <div className="text-center py-5">
-                  <i className="bi bi-person-x display-1 text-muted mb-3"></i>
+                  <i className="bi bi-person-x display-6 text-muted mb-3"></i>
                   <h5 className="text-muted">
                     {searchTerm ? "No teachers found" : "No Teachers Available"}
                   </h5>
@@ -530,94 +458,111 @@ const AssignPrincipal = () => {
                   )}
                 </div>
               ) : (
-                <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                  <Table responsive hover className="mb-0">
-                    <thead className="bg-light">
-                      <tr>
-                        <th width="60px" className="text-center">Select</th>
-                        <th>Teacher Details</th>
-                        <th>Contact</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Teacher ID</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTeachers.map((teacher) => (
-                        <tr
-                          key={teacher.peid}
-                          onClick={() => handleTeacherSelect(teacher)}
-                          style={{
-                            cursor: "pointer",
-                            backgroundColor: selectedTeacher?.peid === teacher.peid ? "#e3f2fd" : "transparent",
-                            borderLeft: selectedTeacher?.peid === teacher.peid ? "4px solid #0d6efd" : "4px solid transparent"
-                          }}
-                          className="align-middle"
-                        >
-                          <td className="text-center">
-                            <Form.Check
-                              type="radio"
-                              name="selectedTeacher"
-                              checked={selectedTeacher?.peid === teacher.peid}
-                              onChange={() => handleTeacherSelect(teacher)}
-                            />
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <div
-                                className="bg-success rounded-circle d-flex align-items-center justify-content-center text-white me-3"
-                                style={{ width: "40px", height: "40px" }}
-                              >
-                                <i className="bi bi-person-fill"></i>
-                              </div>
-                              <div>
-                                <h6 className="mb-1">{teacher.full_name}</h6>
-                                <div className="d-flex flex-wrap gap-1">
-                                  <Badge bg="primary" className="fs-7">
-                                    {teacher.peid}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div>
-                              <div className="mb-1">
-                                <i className="bi bi-envelope text-muted me-1"></i>
-                                <small>{teacher.person_email || "No email"}</small>
-                              </div>
-                              {teacher.person_phone && (
-                                <div>
-                                  <i className="bi bi-telephone text-muted me-1"></i>
-                                  <small>{teacher.person_phone}</small>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            <Badge bg={getRoleVariant(teacher.user?.role?.role_name)}>
-                              {getRoleDisplayName(teacher)}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Badge bg={getStatusVariant(teacher.person_status)}>
-                              {teacher.person_status || "Unknown"}
-                            </Badge>
-                          </td>
-                          <td>
-                            <div className="text-center">
-                              <small className="text-muted d-block">
-                                TID: {teacher.originalData?.tid || "N/A"}
-                              </small>
-                              <small className="text-muted">
-                                UID: {teacher.user?.uid || "N/A"}
-                              </small>
-                            </div>
-                          </td>
+                <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                  <div className="table-responsive">
+                    <table className="table table-hover mb-0">
+                      <thead className="bg-light">
+                        <tr>
+                          <th width="60px" className="text-center">Select</th>
+                          <th>Teacher Details</th>
+                          <th>Contact</th>
+                          <th>Position</th>
+                          <th>Role</th>
+                          <th>Status</th>
+                          <th>ID</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                      </thead>
+                      <tbody>
+                        {filteredTeachers.map((teacher) => (
+                          <tr
+                            key={teacher.tid}
+                            onClick={() => handleTeacherSelect(teacher)}
+                            style={{
+                              cursor: "pointer",
+                              backgroundColor: selectedTeacher?.tid === teacher.tid ? "#e3f2fd" : "transparent",
+                              borderLeft: selectedTeacher?.tid === teacher.tid ? "4px solid #0d6efd" : "4px solid transparent"
+                            }}
+                            className="align-middle"
+                          >
+                            <td className="text-center">
+                              <Form.Check
+                                type="radio"
+                                name="selectedTeacher"
+                                checked={selectedTeacher?.tid === teacher.tid}
+                                onChange={() => handleTeacherSelect(teacher)}
+                              />
+                            </td>
+                            <td>
+                              <div className="d-flex align-items-center">
+                                {teacher.photo_url ? (
+                                  <img 
+                                    src={teacher.photo_url} 
+                                    alt={teacher.full_name}
+                                    className="rounded-circle me-3"
+                                    style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                                  />
+                                ) : (
+                                  <div
+                                    className="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-3"
+                                    style={{ width: "40px", height: "40px" }}
+                                  >
+                                    <i className="bi bi-person-fill"></i>
+                                  </div>
+                                )}
+                                <div>
+                                  <h6 className="mb-1 fw-bold">{teacher.full_name}</h6>
+                                  <div className="d-flex flex-wrap gap-1">
+                                    <Badge bg="secondary" className="fs-7">
+                                      {teacher.peid}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div>
+                                <div className="mb-1">
+                                  <i className="bi bi-envelope text-muted me-1"></i>
+                                  <small>{teacher.person_email || "No email"}</small>
+                                </div>
+                                {teacher.person_phone && (
+                                  <div>
+                                    <i className="bi bi-telephone text-muted me-1"></i>
+                                    <small>{teacher.person_phone}</small>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <Badge bg={teacher.position === 'principal' ? 'primary' : 'info'}>
+                                {teacher.position_display_name || teacher.position || 'Teacher'}
+                              </Badge>
+                            </td>
+                            <td>
+                              <Badge bg={getRoleVariant(teacher.user?.role?.role_name)}>
+                                {getRoleDisplayName(teacher)}
+                              </Badge>
+                            </td>
+                            <td>
+                              <Badge bg={getStatusVariant(teacher.person_status)}>
+                                {teacher.person_status || "Unknown"}
+                              </Badge>
+                            </td>
+                            <td>
+                              <div className="text-center">
+                                <small className="d-block text-muted">
+                                  TID: {teacher.tid}
+                                </small>
+                                <small className="text-muted">
+                                  UID: {teacher.uid}
+                                </small>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </Card.Body>
@@ -626,7 +571,7 @@ const AssignPrincipal = () => {
           {/* Nominator and Seconder Selection Card */}
           {selectedTeacher && (
             <Card>
-              <Card.Header className="bg-light">
+              <Card.Header className="content-header">
                 <h5 className="mb-0">
                   <i className="bi bi-people me-2"></i>
                   Nomination Details
@@ -648,7 +593,7 @@ const AssignPrincipal = () => {
                         <option value="">Choose a nominator...</option>
                         {persons.map((person) => (
                           <option key={person.peid} value={person.peid}>
-                            {person.full_name} - {getRoleDisplayName(person)}
+                            {person.full_name} - {person.user?.role?.display_name || 'No Role'}
                           </option>
                         ))}
                       </Form.Select>
@@ -670,7 +615,7 @@ const AssignPrincipal = () => {
                             <strong>{nominator.full_name}</strong>
                             <div>
                               <Badge bg={getRoleVariant(nominator.user?.role?.role_name)}>
-                                {getRoleDisplayName(nominator)}
+                                {nominator.user?.role?.display_name || 'No Role'}
                               </Badge>
                             </div>
                             <small className="text-muted">{nominator.person_email}</small>
@@ -690,7 +635,7 @@ const AssignPrincipal = () => {
                         <option value="">Choose a seconder...</option>
                         {persons.map((person) => (
                           <option key={person.peid} value={person.peid}>
-                            {person.full_name} - {getRoleDisplayName(person)}
+                            {person.full_name} - {person.user?.role?.display_name || 'No Role'}
                           </option>
                         ))}
                       </Form.Select>
@@ -712,7 +657,7 @@ const AssignPrincipal = () => {
                             <strong>{seconder.full_name}</strong>
                             <div>
                               <Badge bg={getRoleVariant(seconder.user?.role?.role_name)}>
-                                {getRoleDisplayName(seconder)}
+                                {seconder.user?.role?.display_name || 'No Role'}
                               </Badge>
                             </div>
                             <small className="text-muted">{seconder.person_email}</small>
@@ -730,7 +675,7 @@ const AssignPrincipal = () => {
         <Col lg={4}>
           {/* Assignment Details Card */}
           <Card className="sticky-top" style={{ top: "20px" }}>
-            <Card.Header className="bg-light">
+            <Card.Header>
               <h5 className="mb-0">
                 <i className="bi bi-gear me-2"></i>
                 Assignment Details
@@ -746,18 +691,27 @@ const AssignPrincipal = () => {
                       Selected Teacher
                     </h6>
                     <div className="text-center mb-3">
-                      <div
-                        className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center text-white mb-2"
-                        style={{ width: "60px", height: "60px" }}
-                      >
-                        <i className="bi bi-person-fill fs-4"></i>
-                      </div>
+                      {selectedTeacher.photo_url ? (
+                        <img 
+                          src={selectedTeacher.photo_url} 
+                          alt={selectedTeacher.full_name}
+                          className="rounded-circle mb-2"
+                          style={{ width: "60px", height: "60px", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <div
+                          className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center text-white mb-2"
+                          style={{ width: "60px", height: "60px" }}
+                        >
+                          <i className="bi bi-person-fill fs-4"></i>
+                        </div>
+                      )}
                       <h6 className="mb-1">{selectedTeacher.full_name}</h6>
                       <Badge bg={getRoleVariant(selectedTeacher.user?.role?.role_name)}>
                         {getRoleDisplayName(selectedTeacher)}
                       </Badge>
                     </div>
-                    <Table borderless size="sm">
+                    <table className="table table-sm">
                       <tbody>
                         <tr>
                           <td className="fw-bold text-muted" width="40%">PEID:</td>
@@ -766,6 +720,14 @@ const AssignPrincipal = () => {
                         <tr>
                           <td className="fw-bold text-muted">Email:</td>
                           <td>{selectedTeacher.person_email || "No email"}</td>
+                        </tr>
+                        <tr>
+                          <td className="fw-bold text-muted">Current Position:</td>
+                          <td>
+                            <Badge bg={selectedTeacher.position === 'principal' ? 'primary' : 'info'}>
+                              {selectedTeacher.position_display_name || selectedTeacher.position}
+                            </Badge>
+                          </td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">Status:</td>
@@ -777,14 +739,14 @@ const AssignPrincipal = () => {
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">Teacher ID:</td>
-                          <td>{selectedTeacher.originalData?.tid || "N/A"}</td>
+                          <td>{selectedTeacher.tid}</td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">User ID:</td>
-                          <td>{selectedTeacher.user?.uid || "N/A"}</td>
+                          <td>{selectedTeacher.uid}</td>
                         </tr>
                       </tbody>
-                    </Table>
+                    </table>
                   </div>
 
                   {/* Assignment Form */}
@@ -867,9 +829,9 @@ const AssignPrincipal = () => {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-5 text-muted">
-                  <i className="bi bi-person-badge display-1"></i>
-                  <h5 className="mt-3">No Teacher Selected</h5>
+                <div className="text-center py-5">
+                  <i className="bi bi-person-badge display-6 text-muted mb-3"></i>
+                  <h5 className="text-muted">No Teacher Selected</h5>
                   <p>
                     Please select a teacher from the list to assign as principal
                   </p>

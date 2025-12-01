@@ -968,7 +968,7 @@ const UserAccount = () => {
                       </div>
                     </form>
                   ) : (
-                    <div className="text-center py-4">
+                    <div className="content-header text-center py-4">
                       <i
                         className="bi bi-shield-lock text-muted"
                         style={{ fontSize: "3rem" }}

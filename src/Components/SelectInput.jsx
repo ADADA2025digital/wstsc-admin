@@ -27,7 +27,7 @@ const SelectInput = ({
       
       <select
         id={id}
-        className={`form-select rounded-0 ${error ? 'is-invalid' : ''}`}
+        className={`form-select custom-select rounded-0 ${error ? 'is-invalid' : ''}`}
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}

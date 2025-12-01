@@ -690,7 +690,7 @@ export default function ClassroomsList() {
         )}
 
         <div className="row align-items-center mb-4">
-          <div className="col-md-4">
+          <div className="col-md-4 content-header">
             <h4 className="H4-heading fw-bold m-0">
               My Classrooms
               <small className="text-muted ms-2 fs-6">
@@ -802,7 +802,7 @@ export default function ClassroomsList() {
             ))}
 
             {filtered.length === 0 && (
-              <div className="col-12">
+              <div className="content-header col-12">
                 <div className="text-center text-muted py-5">
                   <i
                     className="bi bi-door-closed"
@@ -840,7 +840,7 @@ export default function ClassroomsList() {
         )}
 
         <div className="row align-items-center mb-4">
-          <div className="col-md-4">
+          <div className="col-md-4 content-header">
             <h4 className="H4-heading fw-bold m-0">
               Classrooms
               <small className="text-muted ms-2 fs-6">
@@ -951,7 +951,7 @@ export default function ClassroomsList() {
             ))}
 
             {filtered.length === 0 && (
-              <div className="col-12">
+              <div className="content-header col-12">
                 <div className="text-center text-muted py-5">
                   <i
                     className="bi bi-backpack"
@@ -1044,7 +1044,7 @@ export default function ClassroomsList() {
           </div>
         </div>
 
-        <div className="card p-4 rounded-3 shadow">
+        <div className="card class-card p-4 rounded-3 shadow">
           <div className="row mb-3">
             <div className="col-md-6">
               <p className="mb-0">

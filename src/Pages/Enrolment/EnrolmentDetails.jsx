@@ -1815,7 +1815,7 @@ const EnrolmentDetails = () => {
                       {personal_declaration && (
                         <Row className="g-4">
                           <Col md={6}>
-                            <div className="bg-white rounded p-3">
+                            <div className="declaration bg-white rounded p-3">
                               <span className="small">
                                 First Parent/Carer Name
                               </span>
@@ -1833,7 +1833,7 @@ const EnrolmentDetails = () => {
                             </div>
                           </Col>
                           <Col md={6}>
-                            <div className="bg-white rounded p-3">
+                            <div className="declaration bg-white rounded p-3">
                               <span className="small">
                                 Second Parent/Carer Name
                               </span>
@@ -1852,7 +1852,7 @@ const EnrolmentDetails = () => {
                             </div>
                           </Col>
                           <Col md={6}>
-                            <div className="bg-white rounded p-3">
+                            <div className="declaration bg-white rounded p-3">
                               <span className="small">Photo/Video Consent</span>
                               <p className="mb-0">
                                 <span
@@ -1870,7 +1870,7 @@ const EnrolmentDetails = () => {
                             </div>
                           </Col>
                           <Col md={6}>
-                            <div className="bg-white rounded p-3">
+                            <div className="declaration bg-white rounded p-3">
                               <span className="small">
                                 Medical Treatment Consent
                               </span>

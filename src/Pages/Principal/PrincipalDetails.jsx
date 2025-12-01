@@ -198,7 +198,7 @@ const PrincipalDetails = () => {
     return (
       <Container fluid className="px-4 py-3">
         {/* Header */}
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="content-header d-flex justify-content-between align-items-center mb-4">
           <div>
             <h4 className="H4-heading fw-bold">Principal Details</h4>
             <p className="text-muted mb-0">
@@ -209,11 +209,11 @@ const PrincipalDetails = () => {
 
         <Row>
           <Col lg={12}>
-            <Card>
-              <Card.Body className="text-center py-5">
-                <i className="bi bi-person-x display-1 text-muted mb-3"></i>
+            <div className="card">
+              <div className="card-body text-center py-5">
+                <i className="bi bi-person-x display-1 mb-3"></i>
                 <h4 className="mb-3">No Principal Assigned</h4>
-                <p className="text-muted mb-4">
+                <p className="mb-4">
                   There is currently no principal assigned for the current
                   academic year. Click the button below to assign a principal.
                 </p>
@@ -221,8 +221,8 @@ const PrincipalDetails = () => {
                   <i className="bi bi-plus-circle me-2"></i>
                   Assign Principal
                 </Link>
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
           </Col>
         </Row>
       </Container>
@@ -233,7 +233,7 @@ const PrincipalDetails = () => {
   return (
     <Container fluid className="px-4 py-3">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Principal Details</h4>
           <p className="text-muted mb-0">
@@ -260,11 +260,11 @@ const PrincipalDetails = () => {
       <Row>
         <Col lg={8}>
           {/* Principal Information Card */}
-          <Card className="mb-4">
-            <Card.Header className="d-flex justify-content-between align-items-center">
+          <div className="card mb-4">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Principal Information</h5>
               {principal.status && (
-                <div className="d-flex align-items-center gap-3">
+                <div className="content-header d-flex align-items-center gap-3">
                   <span className="text-muted">Status:</span>
                   <div className="form-check form-switch">
                     <input
@@ -289,11 +289,11 @@ const PrincipalDetails = () => {
                   </div>
                 </div>
               )}
-            </Card.Header>
-            <Card.Body>
+            </div>
+            <div className="card-body">
               <Row>
                 <Col md={6}>
-                  <Table borderless>
+                  <table borderless>
                     <tbody>
                       <tr>
                         <td className="fw-bold" style={{ width: "140px" }}>
@@ -328,10 +328,10 @@ const PrincipalDetails = () => {
                         <td>{principal.position}</td>
                       </tr>
                     </tbody>
-                  </Table>
+                  </table>
                 </Col>
                 <Col md={6}>
-                  <Table borderless>
+                  <table borderless>
                     <tbody>
                       <tr>
                         <td className="fw-bold" style={{ width: "140px" }}>
@@ -358,13 +358,13 @@ const PrincipalDetails = () => {
                         <td>{formatDate(principal.join_date)}</td>
                       </tr>
                     </tbody>
-                  </Table>
+                  </table>
                 </Col>
               </Row>
 
               {/* Nominator and Seconder Information */}
               <Row className="mt-3">
-                <Col md={6}>
+                <Col md={6} className="content-header">
                   <h6 className="mb-2">Nominator</h6>
                   <p className="mb-1">
                     {principal.rawData.nominator?.full_name || "N/A"}
@@ -373,7 +373,7 @@ const PrincipalDetails = () => {
                     PEID: {principal.rawData.nominator?.peid || "N/A"}
                   </small>
                 </Col>
-                <Col md={6}>
+                <Col md={6} className="content-header">
                   <h6 className="mb-2">Seconder</h6>
                   <p className="mb-1">
                     {principal.rawData.seconder?.full_name || "N/A"}
@@ -383,8 +383,8 @@ const PrincipalDetails = () => {
                   </small>
                 </Col>
               </Row>
-            </Card.Body>
-          </Card>
+            </div>
+          </div>
 
           {/* Tabbed Section for Additional Information */}
           <Card>
@@ -439,7 +439,7 @@ const PrincipalDetails = () => {
                   <Row>
                     <Col md={6}>
                       <h6 className="mb-3">Contact Information</h6>
-                      <Table borderless>
+                      <table borderless>
                         <tbody>
                           <tr>
                             <td className="fw-bold" style={{ width: "120px" }}>
@@ -466,11 +466,11 @@ const PrincipalDetails = () => {
                             </td>
                           </tr>
                         </tbody>
-                      </Table>
+                      </table>
                     </Col>
                     <Col md={6}>
                       <h6 className="mb-3">Position Information</h6>
-                      <Table borderless>
+                      <table borderless>
                         <tbody>
                           <tr>
                             <td className="fw-bold" style={{ width: "120px" }}>
@@ -487,7 +487,7 @@ const PrincipalDetails = () => {
                             <td>{formatDate(principal.join_date)}</td>
                           </tr>
                         </tbody>
-                      </Table>
+                      </table>
                     </Col>
                   </Row>
                 </div>
@@ -501,11 +501,11 @@ const PrincipalDetails = () => {
                       {schools.map((school, index) => (
                         <Col md={6} key={school.school_id} className="mb-3">
                           <Card className="h-100">
-                            <Card.Header className="bg-light">
+                            <Card.Header>
                               <h6 className="mb-0">{school.school_name}</h6>
                             </Card.Header>
                             <Card.Body>
-                              <Table borderless size="sm">
+                              <table borderless size="sm">
                                 <tbody>
                                   <tr>
                                     <td className="fw-bold">School ID:</td>
@@ -542,7 +542,7 @@ const PrincipalDetails = () => {
                                     </tr>
                                   )}
                                 </tbody>
-                              </Table>
+                              </table>
                             </Card.Body>
                           </Card>
                         </Col>
@@ -580,7 +580,7 @@ const PrincipalDetails = () => {
                               <i className="bi bi-briefcase"></i>
                             </div>
                           </div>
-                          <div className="flex-grow-1 ms-3 pb-3 border-bottom">
+                          <div className="content-header flex-grow-1 ms-3 pb-3 border-bottom">
                             <h6 className="mb-1">{job.position}</h6>
                             <p className="mb-1 text-muted">
                               {job.organization}
@@ -620,11 +620,11 @@ const PrincipalDetails = () => {
                       {qualifications.map((qual, index) => (
                         <Col md={6} key={qual.id} className="mb-3">
                           <Card className="h-100">
-                            <Card.Header className="bg-light">
+                            <Card.Header>
                               <h6 className="mb-0">{qual.degree}</h6>
                             </Card.Header>
                             <Card.Body>
-                              <Table borderless size="sm">
+                              <table borderless size="sm">
                                 <tbody>
                                   <tr>
                                     <td className="fw-bold">Institution:</td>
@@ -647,7 +647,7 @@ const PrincipalDetails = () => {
                                     </tr>
                                   )}
                                 </tbody>
-                              </Table>
+                              </table>
                             </Card.Body>
                           </Card>
                         </Col>
@@ -717,7 +717,7 @@ const PrincipalDetails = () => {
               <h5 className="mb-0">Principal Summary</h5>
             </Card.Header>
             <Card.Body>
-              <div className="text-center">
+              <div className="content-header text-center">
                 <div
                   className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
                   style={{ width: "80px", height: "80px" }}
@@ -773,7 +773,7 @@ const PrincipalDetails = () => {
               <h5 className="mb-0">Contact Information</h5>
             </Card.Header>
             <Card.Body>
-              <Table borderless size="sm">
+              <table borderless size="sm">
                 <tbody>
                   <tr>
                     <td className="fw-bold">
@@ -820,7 +820,7 @@ const PrincipalDetails = () => {
                     </tr>
                   )}
                 </tbody>
-              </Table>
+              </table>
             </Card.Body>
           </Card>
         </Col>

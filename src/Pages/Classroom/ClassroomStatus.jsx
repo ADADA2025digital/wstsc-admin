@@ -289,7 +289,7 @@ const ClassroomsStatus = () => {
             </tbody>
           </Table>
         ) : (
-          <div className="text-center py-5">
+          <div className="text-center class-card py-5">
             <i className="bi bi-house-door display-1 text-muted"></i>
             <h5 className="mt-3 text-muted">
               No {isActive ? "Active" : "Inactive"} Classrooms
@@ -308,7 +308,7 @@ const ClassroomsStatus = () => {
   return (
     <div className="container-fluid px-4 py-3">
       {/* Header Section */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Classroom Management</h4>
           <p className="text-muted mb-0">
@@ -361,7 +361,7 @@ const ClassroomsStatus = () => {
           <Card className="border-0 bg-success bg-opacity-10">
             <Card.Body>
               <div className="d-flex align-items-center">
-                <div className="flex-grow-1">
+                <div className="content-header flex-grow-1">
                   <h6 className="card-title text-success mb-1">
                     Active Classrooms
                   </h6>
@@ -383,7 +383,7 @@ const ClassroomsStatus = () => {
           <Card className="border-0 bg-secondary bg-opacity-10">
             <Card.Body>
               <div className="d-flex align-items-center">
-                <div className="flex-grow-1">
+                <div className="content-header flex-grow-1">
                   <h6 className="card-title text-secondary mb-1">
                     Inactive Classrooms
                   </h6>

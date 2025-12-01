@@ -455,14 +455,14 @@ const StudentsList = () => {
   const CardView = () => (
     <div className="container-fluid px-4 py-3">
       {/* Header Section */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="H4-heading fw-bold text-dark">{roleContent.title}</h4>
+          <h4 className="H4-heading fw-bold">{roleContent.title}</h4>
           <p className="text-muted mb-0">
             {roleContent.description}
           </p>
         </div>
-        <div className="d-flex align-items-center gap-2">
+        <div className="content-header d-flex align-items-center gap-2">
           {lastRefreshTime && (
             <small className="text-muted">
               Last updated: {lastRefreshTime.toLocaleTimeString()}
@@ -489,11 +489,11 @@ const StudentsList = () => {
       <Card className="border shadow-sm">
         <Card.Body className="p-4">
           {/* Welcome Section */}
-          <div className="text-center mb-5">
+          <div className="content-header text-center mb-5">
             <div className="mb-3">
               <i className={`bi ${roleContent.icon} display-4 text-primary opacity-75`}></i>
             </div>
-            <h5 className="fw-semibold text-dark mb-2">
+            <h5 className="fw-semibold mb-2">
               {roleContent.title} ({students.length})
             </h5>
             <p className="text-muted mb-0">
@@ -521,9 +521,9 @@ const StudentsList = () => {
                       <Card className="h-100 border shadow-sm hover-shadow transition-all">
                         <Card.Body className="p-4">
                           {/* Student Header */}
-                          <div className="d-flex justify-content-between align-items-start mb-3">
+                          <div className="content-header d-flex justify-content-between align-items-start mb-3">
                             <div>
-                              <h5 className="fw-bold text-dark mb-1">
+                              <h5 className="fw-bold mb-1">
                                 {student.full_name}
                               </h5>
                               {student.preferred_name && (
@@ -541,11 +541,11 @@ const StudentsList = () => {
                           </div>
 
                           {/* Student ID */}
-                          <div className="mb-3">
+                          <div className="content-header mb-3">
                             <small className="text-muted d-block">
                               Student ID
                             </small>
-                            <span className="fw-semibold text-dark">
+                            <span className="fw-semibold">
                               {student.student_id}
                             </span>
                           </div>
@@ -553,16 +553,16 @@ const StudentsList = () => {
                           {/* Student Details Grid */}
                           <Row className="g-2 mb-3">
                             <Col sm={6}>
-                              <div className="d-flex align-items-center mb-2">
+                              <div className="content-header d-flex align-items-center mb-2">
                                 <i className="bi bi-mortarboard-fill text-primary me-2 fs-14px"></i>
                                 <small className="text-muted">Class</small>
                               </div>
-                              <span className="fw-semibold text-dark d-block">
+                              <span className="fw-semibold d-block">
                                 {student.classroom}
                               </span>
                             </Col>
                             <Col sm={6}>
-                              <div className="d-flex align-items-center mb-2">
+                              <div className="content-header d-flex align-items-center mb-2">
                                 <i
                                   className={`bi ${getGenderIcon(
                                     student.gender
@@ -570,7 +570,7 @@ const StudentsList = () => {
                                 ></i>
                                 <small className="text-muted">Gender</small>
                               </div>
-                              <span className="fw-semibold text-dark d-block text-capitalize">
+                              <span className="fw-semibold d-block text-capitalize">
                                 {student.gender || "Not specified"}
                               </span>
                             </Col>
@@ -578,24 +578,24 @@ const StudentsList = () => {
 
                           <Row className="g-2 mb-3">
                             <Col sm={6}>
-                              <div className="d-flex align-items-center mb-2">
+                              <div className="content-header d-flex align-items-center mb-2">
                                 <i className="bi bi-calendar-event text-primary me-2 fs-14px"></i>
                                 <small className="text-muted">
                                   Date of Birth
                                 </small>
                               </div>
-                              <span className="fw-semibold text-dark d-block">
+                              <span className="fw-semibold d-block">
                                 {student.date_of_birth}
                               </span>
                             </Col>
                             <Col sm={6}>
-                              <div className="d-flex align-items-center mb-2">
+                              <div className="content-header d-flex align-items-center mb-2">
                                 <i className="bi bi-calendar-check text-primary me-2 fs-14px"></i>
                                 <small className="text-muted">
                                   Enrollment Year
                                 </small>
                               </div>
-                              <span className="fw-semibold text-dark d-block">
+                              <span className="fw-semibold d-block">
                                 {student.enrollment_year}
                               </span>
                             </Col>
@@ -604,11 +604,11 @@ const StudentsList = () => {
                           {/* Parent Information (show for admin and teacher) */}
                           {(currentRole === "admin" || currentRole === "teacher") && (
                             <div className="mb-4">
-                              <div className="d-flex align-items-center mb-2">
+                              <div className="content-header d-flex align-items-center mb-2">
                                 <i className="bi bi-person-badge text-primary me-2 fs-14px"></i>
                                 <small className="text-muted">Parent</small>
                               </div>
-                              <span className="fw-semibold text-dark d-block">
+                              <span className="fw-semibold d-block">
                                 {parentName}
                               </span>
                             </div>
@@ -641,11 +641,11 @@ const StudentsList = () => {
             </div>
           ) : (
             /* Empty State */
-            <div className="text-center py-5">
+            <div className="content-header text-center py-5">
               <div className="mb-4">
                 <i className="bi bi-person-x display-4 text-muted opacity-50"></i>
               </div>
-              <h6 className="fw-semibold text-dark mb-2">
+              <h6 className="fw-semibold mb-2">
                 {roleContent.emptyTitle}
               </h6>
               <p className="text-muted mb-4">
@@ -679,7 +679,7 @@ const StudentsList = () => {
   // Admin view with DataTable
   return (
     <div className="container-fluid px-4 py-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">{roleContent.title}</h4>
           {userData && (

@@ -110,7 +110,7 @@ const EnrolmentForm = () => {
 
         <div className="container py-4">
           <div className="row">
-            <div className="col-lg-10 p-0">
+            <div className="col-lg-10 p-0 content-header">
               <h5 className="dark-text text-secondary mb-3">
                 This enrolment and parent/carer consent form is to be completed
                 in English.

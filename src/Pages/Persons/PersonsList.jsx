@@ -399,7 +399,7 @@ export default function PersonsList() {
 
   return (
     <div className="container-fluid px-4 py-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Persons List</h4>
           <p className="text-muted mb-0">Manage all users in the system</p>

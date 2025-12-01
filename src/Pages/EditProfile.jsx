@@ -698,7 +698,7 @@ const EditProfile = () => {
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
+        <div className="content-header">
           <h4 className="fw-bold mb-1">
             {isMandatoryProfile ? "Complete Your Profile" : "Edit Profile"}
           </h4>
@@ -1274,7 +1274,7 @@ const EditProfile = () => {
 
               {/* Current Picture Info */}
               {profilePicture && !profilePictureFile && (
-                <div className="mt-3">
+                <div className="content-header mt-3">
                   <p className="text-muted small mb-0 text-start">
                     Current profile picture is active
                   </p>

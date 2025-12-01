@@ -119,7 +119,7 @@ export default function FamilyDetailsPhase3({ onNext }) {
   };
 
   return (
-    <section className="container bg-light p-3">
+    <section className="container enrol-form bg-light p-3">
       {/* Section E: Additional emergency contacts */}
       <div className="row mt-4">
         {/* <h2 className="h4 mb-3">E. Additional emergency contacts</h2> */}

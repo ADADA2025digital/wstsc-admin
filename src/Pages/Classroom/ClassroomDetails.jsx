@@ -878,7 +878,7 @@ export default function ClassroomDetails() {
       )}
 
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Classroom Details</h4>
           <p className="text-muted mb-0">

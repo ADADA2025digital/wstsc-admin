@@ -462,7 +462,7 @@ const StudentDetails = () => {
   if (error || !currentStudent) {
     return (
       <Container fluid className="px-4 py-3">
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="content-header d-flex justify-content-between align-items-center mb-4">
           <div>
             <h4 className="H4-heading fw-bold">Student Details</h4>
           </div>
@@ -507,7 +507,7 @@ const StudentDetails = () => {
   return (
     <Container fluid className="px-4 py-3">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Student Details</h4>
           <p className="text-muted mb-0">
@@ -543,7 +543,7 @@ const StudentDetails = () => {
             <Card.Header className="d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Student Information</h5>
               {student.status && (
-                <div className="d-flex align-items-center gap-3">
+                <div className="content-header d-flex align-items-center gap-3">
                   <span className="text-muted">Status:</span>
                   {userRole && userRole !== 'parent' ? (
                     <Form.Check
@@ -563,7 +563,7 @@ const StudentDetails = () => {
             <Card.Body>
               <Row>
                 <Col md={6}>
-                  <Table borderless>
+                  <table borderless>
                     <tbody>
                       <tr>
                         <td className="fw-bold" style={{ width: "140px" }}>Full Name:</td>
@@ -586,10 +586,10 @@ const StudentDetails = () => {
                         <td>{student.studid || "N/A"}</td>
                       </tr>
                     </tbody>
-                  </Table>
+                  </table>
                 </Col>
                 <Col md={6}>
-                  <Table borderless>
+                  <table borderless>
                     <tbody>
                       <tr>
                         <td className="fw-bold" style={{ width: "140px" }}>Enrollment ID:</td>
@@ -619,7 +619,7 @@ const StudentDetails = () => {
                         </td>
                       </tr>
                     </tbody>
-                  </Table>
+                  </table>
                 </Col>
               </Row>
               
@@ -629,17 +629,17 @@ const StudentDetails = () => {
                   <h6 className="mb-3">Submission Information</h6>
                   <Row>
                     <Col md={6}>
-                      <Table borderless size="sm">
+                      <table borderless size="sm">
                         <tbody>
                           <tr>
                             <td className="fw-bold">Submitted At:</td>
                             <td>{formatDate(student.submitted_at)}</td>
                           </tr>
                         </tbody>
-                      </Table>
+                      </table>
                     </Col>
                     <Col md={6}>
-                      <Table borderless size="sm">
+                      <table borderless size="sm">
                         <tbody>
                           <tr>
                             <td className="fw-bold">Approved At:</td>
@@ -652,7 +652,7 @@ const StudentDetails = () => {
                             </tr>
                           )}
                         </tbody>
-                      </Table>
+                      </table>
                     </Col>
                   </Row>
                 </div>
@@ -686,7 +686,7 @@ const StudentDetails = () => {
                                 </Badge>
                               )}
                             </h6>
-                            <Table borderless>
+                            <table borderless>
                               <tbody>
                                 <tr>
                                   <td className="fw-bold" style={{ width: "120px" }}>Name:</td>
@@ -707,11 +707,11 @@ const StudentDetails = () => {
                                   <td>{parent.occupation || "N/A"}</td>
                                 </tr>
                               </tbody>
-                            </Table>
+                            </table>
                           </Col>
                           <Col md={6}>
                             <h6 className="mb-3">&nbsp;</h6>
-                            <Table borderless>
+                            <table borderless>
                               <tbody>
                                 <tr>
                                   <td className="fw-bold" style={{ width: "120px" }}>Mobile:</td>
@@ -734,7 +734,7 @@ const StudentDetails = () => {
                                   </tr>
                                 )}
                               </tbody>
-                            </Table>
+                            </table>
                           </Col>
                         </Row>
                       </div>
@@ -765,7 +765,7 @@ const StudentDetails = () => {
                                 {contact.preference}
                               </Badge>
                             </h6>
-                            <Table borderless>
+                            <table borderless>
                               <tbody>
                                 <tr>
                                   <td className="fw-bold" style={{ width: "120px" }}>Name:</td>
@@ -776,11 +776,11 @@ const StudentDetails = () => {
                                   <td>{contact.relationship_to_student || "N/A"}</td>
                                 </tr>
                               </tbody>
-                            </Table>
+                            </table>
                           </Col>
                           <Col md={6}>
                             <h6 className="mb-3">&nbsp;</h6>
-                            <Table borderless>
+                            <table borderless>
                               <tbody>
                                 <tr>
                                   <td className="fw-bold" style={{ width: "120px" }}>Mobile:</td>
@@ -795,7 +795,7 @@ const StudentDetails = () => {
                                   <td>{contact.work_phone || "N/A"}</td>
                                 </tr>
                               </tbody>
-                            </Table>
+                            </table>
                           </Col>
                         </Row>
                       </div>
@@ -819,8 +819,8 @@ const StudentDetails = () => {
                     <Row>
                       {classes.map((classInfo, index) => (
                         <Col md={6} key={classInfo.class_id || index} className="mb-3">
-                          <Card className="h-100">
-                            <Card.Header className="bg-light">
+                          <div className="card h-100">
+                            <div className="card-header">
                               <h6 className="mb-0">
                                 {loadingClassrooms ? (
                                   <>
@@ -831,9 +831,9 @@ const StudentDetails = () => {
                                   getClassName(classInfo.class_id) || "Unnamed Class"
                                 )}
                               </h6>
-                            </Card.Header>
-                            <Card.Body>
-                              <Table borderless size="sm">
+                            </div>
+                            <div className="card-body">
+                              <table borderless size="sm">
                                 <tbody>
                                   <tr>
                                     <td className="fw-bold">Class ID:</td>
@@ -858,9 +858,9 @@ const StudentDetails = () => {
                                     </td>
                                   </tr>
                                 </tbody>
-                              </Table>
-                            </Card.Body>
-                          </Card>
+                              </table>
+                            </div>
+                          </div>
                         </Col>
                       ))}
                     </Row>
@@ -918,7 +918,7 @@ const StudentDetails = () => {
               <h5 className="mb-0">Student Summary</h5>
             </Card.Header>
             <Card.Body>
-              <div className="text-center">
+              <div className="content-header text-center">
                 <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{ width: "80px", height: "80px" }}>
                   <i className="bi bi-person-fill text-primary" style={{ fontSize: "2rem" }}></i>
                 </div>

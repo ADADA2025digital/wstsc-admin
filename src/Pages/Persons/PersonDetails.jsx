@@ -628,7 +628,7 @@ const PersonDetails = () => {
   return (
     <div className="container-fluid px-4 py-3">
       {/* Header Section */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">Person Details</h4>
           <p className="text-muted mb-0">
@@ -678,8 +678,8 @@ const PersonDetails = () => {
       )}
 
       {/* Person Summary Card */}
-      <Card className="mb-4 border-0 shadow-sm bg-light">
-        <Card.Header className="bg-transparent py-3">
+      <div className="card mb-4 border-0 shadow-sm bg-secondary bg-opacity-10">
+        <div className="card-header bg-transparent py-3">
           <div className="d-flex justify-content-between align-items-center">
             <h5 className="mb-0">
               <i className="bi bi-person-badge me-2"></i>
@@ -703,36 +703,36 @@ const PersonDetails = () => {
               </Badge>
             </div>
           </div>
-        </Card.Header>
-        <Card.Body className="p-4">
+        </div>
+        <div className="card-body p-4">
           <Row className="g-4">
             <Col md={4}>
               <div className="d-flex flex-column">
-                <span className="small fw-semibold text-muted">Full Name</span>
-                <span className="fs-6 fw-medium text-dark">
+                <span className="small fw-semibold">Full Name</span>
+                <span className="fs-6 fw-medium">
                   {personData.full_name}
                 </span>
               </div>
             </Col>
             <Col md={4}>
               <div className="d-flex flex-column">
-                <span className="small fw-semibold text-muted">Email</span>
-                <span className="fs-6 text-dark">
+                <span className="small fw-semibold">Email</span>
+                <span className="fs-6">
                   {personData.email || "—"}
                 </span>
               </div>
             </Col>
             <Col md={4}>
               <div className="d-flex flex-column">
-                <span className="small fw-semibold text-muted">Phone</span>
-                <span className="fs-6 text-dark">
+                <span className="small fw-semibold">Phone</span>
+                <span className="fs-6">
                   {personData.phone || "Not provided"}
                 </span>
               </div>
             </Col>
             <Col md={4}>
               <div className="d-flex flex-column">
-                <span className="small fw-semibold text-muted">Role</span>
+                <span className="small fw-semibold">Role</span>
                 <div className="d-flex align-items-center gap-2">
                   <Badge className={getRoleBadgeClass(personData.role_name)}>
                     {personData.role}
@@ -749,12 +749,12 @@ const PersonDetails = () => {
               </div>
             </Col>
           </Row>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
       {/* Detailed Information Tabs */}
-      <Card className="border-0 shadow-sm">
-        <Card.Body className="p-0">
+      <div className="card border-0 shadow-sm">
+        <div className="card-body p-0">
           <Tabs
             activeKey={activeTab}
             onSelect={(k) => setActiveTab(k)}
@@ -769,67 +769,67 @@ const PersonDetails = () => {
                     <InfoCard title="Personal Details" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
-                          <span className="small text-muted">First Name</span>
-                          <p className="mb-0 fw-medium text-dark">
+                          <span className="small">First Name</span>
+                          <p className="mb-0 fw-medium">
                             {personData.first_name}
                           </p>
                         </div>
                         <div>
-                          <span className="small text-muted">Last Name</span>
-                          <p className="mb-0 fw-medium text-dark">
+                          <span className="small">Last Name</span>
+                          <p className="mb-0 fw-medium">
                             {personData.last_name}
                           </p>
                         </div>
                         {personData.middle_name && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Middle Name
                             </span>
-                            <p className="mb-0 fw-medium text-dark">
+                            <p className="mb-0 fw-medium">
                               {personData.middle_name}
                             </p>
                           </div>
                         )}
                         <div>
-                          <span className="small text-muted">Gender</span>
-                          <p className="mb-0 fw-medium text-dark">
+                          <span className="small">Gender</span>
+                          <p className="mb-0 fw-medium">
                             {personData.gender || "Not specified"}
                           </p>
                         </div>
                         {personData.dob && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Date of Birth
                             </span>
-                            <p className="mb-0 fw-medium text-dark">
+                            <p className="mb-0 fw-medium">
                               {formatDateToDDMMYYYY(personData.dob)}
                             </p>
                           </div>
                         )}
                         {personData.nationality && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Nationality
                             </span>
-                            <p className="mb-0 fw-medium text-dark">
+                            <p className="mb-0 fw-medium">
                               {personData.nationality}
                             </p>
                           </div>
                         )}
                         {personData.marital_status && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Marital Status
                             </span>
-                            <p className="mb-0 fw-medium text-dark">
+                            <p className="mb-0 fw-medium">
                               {personData.marital_status}
                             </p>
                           </div>
                         )}
                         {personData.occupation && (
                           <div>
-                            <span className="small text-muted">Occupation</span>
-                            <p className="mb-0 fw-medium text-dark">
+                            <span className="small">Occupation</span>
+                            <p className="mb-0 fw-medium">
                               {personData.occupation}
                             </p>
                           </div>
@@ -842,7 +842,7 @@ const PersonDetails = () => {
                     <InfoCard title="Role Information" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
-                          <span className="small text-muted">Current Role</span>
+                          <span className="small">Current Role</span>
                           <div className="d-flex flex-wrap gap-2 mt-1">
                             <Badge
                               className={getRoleBadgeClass(
@@ -854,8 +854,8 @@ const PersonDetails = () => {
                           </div>
                         </div>
                         <div>
-                          <span className="small text-muted">Role Details</span>
-                          <div className="small text-muted">
+                          <span className="small">Role Details</span>
+                          <div className="small">
                             {personData.has_admin_role && (
                               <div>• Administrator</div>
                             )}
@@ -893,7 +893,7 @@ const PersonDetails = () => {
                           </div>
                         </div>
                         <div className="d-flex gap-3">
-                          <span className="small text-muted">Actions</span>
+                          <span className="small">Actions</span>
                           <Button
                             variant="primary"
                             size="sm"
@@ -918,25 +918,25 @@ const PersonDetails = () => {
                     <InfoCard title="Contact Details" className="bg-light">
                       <div className="d-flex flex-column gap-3">
                         <div>
-                          <span className="small text-muted">
+                          <span className="small">
                             Email Address
                           </span>
-                          <p className="mb-0 fw-medium text-dark text-truncate">
+                          <p className="mb-0 fw-medium text-truncate">
                             {personData.email || "—"}
                           </p>
                         </div>
                         <div>
-                          <span className="small text-muted">Phone Number</span>
-                          <p className="mb-0 text-dark">
+                          <span className="small">Phone Number</span>
+                          <p className="mb-0">
                             {personData.phone || "Not provided"}
                           </p>
                         </div>
                         {personData.alternate_phone && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Alternate Phone
                             </span>
-                            <p className="mb-0 text-dark">
+                            <p className="mb-0">
                               {personData.alternate_phone}
                             </p>
                           </div>
@@ -950,28 +950,28 @@ const PersonDetails = () => {
                       <div className="d-flex flex-column gap-3">
                         {personData.created_at && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Account Created
                             </span>
-                            <p className="mb-0 text-dark">
+                            <p className="mb-0">
                               {formatDateToDDMMYYYY(personData.created_at)}
                             </p>
                           </div>
                         )}
                         {personData.updated_at && (
                           <div>
-                            <span className="small text-muted">
+                            <span className="small">
                               Last Updated
                             </span>
-                            <p className="mb-0 text-dark">
+                            <p className="mb-0">
                               {formatDateToDDMMYYYY(personData.updated_at)}
                             </p>
                           </div>
                         )}
                         {personData.last_login && (
                           <div>
-                            <span className="small text-muted">Last Login</span>
-                            <p className="mb-0 text-dark">
+                            <span className="small">Last Login</span>
+                            <p className="mb-0">
                               {formatDateToDDMMYYYY(personData.last_login)}
                             </p>
                           </div>
@@ -983,8 +983,8 @@ const PersonDetails = () => {
               </div>
             </Tab>
           </Tabs>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
       {/* Role Update Modal */}
       <Modal

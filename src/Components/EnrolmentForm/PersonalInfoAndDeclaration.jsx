@@ -450,9 +450,9 @@ export default function PersonalInfoAndDeclaration({ onNext }) {
       )}
 
       {/* Main Form Content */}
-      <section className="container bg-light p-3">
+      <section className="container enrol-form bg-light p-3">
         <div className="row">
-          <div className="col-md-6">
+          <div className="content-header col-md-6">
             <p className="text-muted">
               The personal information collected on this information form is for
               purposes directly related to your child's attendance at a
@@ -485,7 +485,7 @@ export default function PersonalInfoAndDeclaration({ onNext }) {
             </p>
           </div>
 
-          <div className="col-md-6">
+          <div className="content-header col-md-6">
             <h2 className="h4 mb-3">Your consent and declaration</h2>
             <p className="text-muted">
               I have provided information related to the student in this

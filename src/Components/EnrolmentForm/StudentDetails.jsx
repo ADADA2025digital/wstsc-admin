@@ -102,7 +102,7 @@ export default function StudentDetails({ onNext }) {
   ];
 
   return (
-    <section className="container bg-light p-3">
+    <section className="container enrol-form bg-light p-3">
       {/* Loading and Error States */}
       {/* {loading && (
         <div className="alert alert-info">Loading grade options...</div>

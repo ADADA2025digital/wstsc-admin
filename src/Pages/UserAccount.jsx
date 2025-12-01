@@ -47,7 +47,7 @@ const UserAccount = () => {
   // Password strength state
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
-    feedback: ''
+    feedback: "",
   });
 
   // Fetch user profile data
@@ -86,36 +86,39 @@ const UserAccount = () => {
   // Password strength checker
   const checkPasswordStrength = useCallback((password) => {
     if (!password) {
-      setPasswordStrength({ score: 0, feedback: '' });
+      setPasswordStrength({ score: 0, feedback: "" });
       return;
     }
 
     let score = 0;
     let feedback = [];
-    
+
     // Length check
     if (password.length >= 8) score += 1;
-    else feedback.push('at least 8 characters');
-    
+    else feedback.push("at least 8 characters");
+
     // Uppercase check
     if (/[A-Z]/.test(password)) score += 1;
-    else feedback.push('one uppercase letter');
-    
+    else feedback.push("one uppercase letter");
+
     // Lowercase check
     if (/[a-z]/.test(password)) score += 1;
-    else feedback.push('one lowercase letter');
-    
+    else feedback.push("one lowercase letter");
+
     // Number check
     if (/[0-9]/.test(password)) score += 1;
-    else feedback.push('one number');
-    
+    else feedback.push("one number");
+
     // Special character check
     if (/[^A-Za-z0-9]/.test(password)) score += 1;
-    else feedback.push('one special character');
-    
+    else feedback.push("one special character");
+
     setPasswordStrength({
       score,
-      feedback: feedback.length > 0 ? `Consider adding: ${feedback.join(', ')}` : 'Strong password!'
+      feedback:
+        feedback.length > 0
+          ? `Consider adding: ${feedback.join(", ")}`
+          : "Strong password!",
     });
   }, []);
 
@@ -134,7 +137,7 @@ const UserAccount = () => {
         newPassword: "",
         confirmPassword: "",
       });
-      setPasswordStrength({ score: 0, feedback: '' });
+      setPasswordStrength({ score: 0, feedback: "" });
       setPasswordSuccess(null);
       // Reset password visibility states
       setShowCurrentPassword(false);
@@ -144,57 +147,63 @@ const UserAccount = () => {
   };
 
   // Optimized password change handler with useCallback
-  const handlePasswordChange = useCallback((field, value) => {
-    setPasswordForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Check password strength in real-time for new password
-    if (field === 'newPassword') {
-      checkPasswordStrength(value);
-    }
-
-    // Clear error without causing unnecessary re-renders
-    setPasswordErrors((prev) => {
-      if (!prev[field]) return prev;
-      return {
+  const handlePasswordChange = useCallback(
+    (field, value) => {
+      setPasswordForm((prev) => ({
         ...prev,
-        [field]: "",
-      };
-    });
-  }, [checkPasswordStrength]);
+        [field]: value,
+      }));
+
+      // Check password strength in real-time for new password
+      if (field === "newPassword") {
+        checkPasswordStrength(value);
+      }
+
+      // Clear error without causing unnecessary re-renders
+      setPasswordErrors((prev) => {
+        if (!prev[field]) return prev;
+        return {
+          ...prev,
+          [field]: "",
+        };
+      });
+    },
+    [checkPasswordStrength]
+  );
 
   // Generate strong password
   const generateStrongPassword = () => {
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*';
-    
+    const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const numbers = "0123456789";
+    const symbols = "!@#$%^&*";
+
     const allChars = uppercase + lowercase + numbers + symbols;
-    let password = '';
-    
+    let password = "";
+
     // Ensure at least one of each type
     password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
     password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
     password += numbers.charAt(Math.floor(Math.random() * numbers.length));
     password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-    
+
     // Fill the rest
     for (let i = 4; i < 12; i++) {
       password += allChars.charAt(Math.floor(Math.random() * allChars.length));
     }
-    
+
     // Shuffle the password
-    password = password.split('').sort(() => 0.5 - Math.random()).join('');
-    
-    setPasswordForm(prev => ({
+    password = password
+      .split("")
+      .sort(() => 0.5 - Math.random())
+      .join("");
+
+    setPasswordForm((prev) => ({
       ...prev,
       newPassword: password,
-      confirmPassword: password
+      confirmPassword: password,
     }));
-    
+
     checkPasswordStrength(password);
     setShowNewPassword(true);
     setShowConfirmPassword(true);
@@ -217,7 +226,8 @@ const UserAccount = () => {
       errors.newPassword = "Password must be at least 6 characters long";
       isValid = false;
     } else if (passwordForm.newPassword === passwordForm.currentPassword) {
-      errors.newPassword = "New password must be different from current password";
+      errors.newPassword =
+        "New password must be different from current password";
       isValid = false;
     }
 
@@ -236,7 +246,7 @@ const UserAccount = () => {
   // Handle password form submission
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!validatePasswordForm()) {
       return;
@@ -252,8 +262,10 @@ const UserAccount = () => {
       });
 
       if (response.data.success) {
-        setPasswordSuccess(response.data.message || "Password updated successfully!");
-        
+        setPasswordSuccess(
+          response.data.message || "Password updated successfully!"
+        );
+
         // Reset form
         setPasswordForm({
           currentPassword: "",
@@ -265,8 +277,8 @@ const UserAccount = () => {
           newPassword: "",
           confirmPassword: "",
         });
-        setPasswordStrength({ score: 0, feedback: '' });
-        
+        setPasswordStrength({ score: 0, feedback: "" });
+
         // Hide form after success
         setTimeout(() => {
           setShowPasswordForm(false);
@@ -282,23 +294,29 @@ const UserAccount = () => {
       }
     } catch (err) {
       console.error("Error updating password:", err);
-      
+
       // Handle different error scenarios
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          "Failed to update password. Please try again.";
-      
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Failed to update password. Please try again.";
+
       // Check for data leak error
-      if (errorMessage.toLowerCase().includes('data leak') || 
-          errorMessage.toLowerCase().includes('have been pwned') ||
-          errorMessage.toLowerCase().includes('appeared in a leak')) {
+      if (
+        errorMessage.toLowerCase().includes("data leak") ||
+        errorMessage.toLowerCase().includes("have been pwned") ||
+        errorMessage.toLowerCase().includes("appeared in a leak")
+      ) {
         setPasswordErrors({
-          newPassword: "This password has been found in data breaches. Please choose a more secure password that you haven't used elsewhere.",
+          newPassword:
+            "This password has been found in data breaches. Please choose a more secure password that you haven't used elsewhere.",
         });
-      } 
+      }
       // Check if it's a current password error
-      else if (errorMessage.toLowerCase().includes("current") || 
-               errorMessage.toLowerCase().includes("old")) {
+      else if (
+        errorMessage.toLowerCase().includes("current") ||
+        errorMessage.toLowerCase().includes("old")
+      ) {
         setPasswordErrors({
           currentPassword: errorMessage,
         });
@@ -607,24 +625,6 @@ const UserAccount = () => {
                 <div className="card-body">
                   <div className="row">
                     <div className="col-md-6 mb-3">
-                      <label className="form-label small">Person ID</label>
-                      <p className="mb-0 fw-semibold">{userData.person_id}</p>
-                    </div>
-
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label small">Account Status</label>
-                      <p className="mb-0 fw-semibold">
-                        <span
-                          className={`badge ${
-                            userData.is_active ? "bg-success" : "bg-danger"
-                          }`}
-                        >
-                          {userData.is_active ? "Active" : "Inactive"}
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="col-md-6 mb-3">
                       <label className="form-label small">
                         Account Created
                       </label>
@@ -655,7 +655,7 @@ const UserAccount = () => {
                 </div>
                 <div className="card-body">
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-md-4 mb-3">
                       <label className="form-label small">Address Line 1</label>
                       <p className="mb-0 fw-semibold">
                         {userData.address?.address_line1 || "Not provided"}
@@ -679,19 +679,19 @@ const UserAccount = () => {
                         {userData.address?.state || "Not provided"}
                       </p>
                     </div>
+                    <div className="col-4 mb-3">
+                      <label className="form-label small">Country</label>
+                      <p className="mb-0 fw-semibold">
+                        {userData.address?.country || "Not provided"}
+                      </p>
+                    </div>
                     <div className="col-md-4 mb-3">
                       <label className="form-label small">Postal Code</label>
                       <p className="mb-0 fw-semibold">
                         {userData.address?.postal_code || "Not provided"}
                       </p>
                     </div>
-                    <div className="col-12 mb-3">
-                      <label className="form-label small">Country</label>
-                      <p className="mb-0 fw-semibold">
-                        {userData.address?.country || "Not provided"}
-                      </p>
-                    </div>
-                    <div className="col-12">
+                    <div className="col-4">
                       <label className="form-label small">Address Type</label>
                       <p className="mb-0 fw-semibold text-capitalize">
                         {userData.address?.address_type || "Not specified"}
@@ -835,26 +835,43 @@ const UserAccount = () => {
                               </div>
                             )}
                           </div>
-                          
+
                           {/* Password Strength Indicator */}
                           {passwordForm.newPassword && (
                             <div className="mt-2">
                               <div className="d-flex align-items-center mb-1">
-                                <small className="me-2">Password Strength:</small>
-                                <div className="progress flex-grow-1" style={{ height: '5px' }}>
-                                  <div 
+                                <small className="me-2">
+                                  Password Strength:
+                                </small>
+                                <div
+                                  className="progress flex-grow-1"
+                                  style={{ height: "5px" }}
+                                >
+                                  <div
                                     className={`progress-bar ${
-                                      passwordStrength.score >= 4 ? 'bg-success' : 
-                                      passwordStrength.score >= 3 ? 'bg-warning' : 'bg-danger'
+                                      passwordStrength.score >= 4
+                                        ? "bg-success"
+                                        : passwordStrength.score >= 3
+                                        ? "bg-warning"
+                                        : "bg-danger"
                                     }`}
-                                    style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                                    style={{
+                                      width: `${
+                                        (passwordStrength.score / 5) * 100
+                                      }%`,
+                                    }}
                                   ></div>
                                 </div>
                               </div>
-                              <small className={`form-text ${
-                                passwordStrength.score >= 4 ? 'text-success' : 
-                                passwordStrength.score >= 3 ? 'text-warning' : 'text-danger'
-                              }`}>
+                              <small
+                                className={`form-text ${
+                                  passwordStrength.score >= 4
+                                    ? "text-success"
+                                    : passwordStrength.score >= 3
+                                    ? "text-warning"
+                                    : "text-danger"
+                                }`}
+                              >
                                 {passwordStrength.feedback}
                               </small>
                             </div>
@@ -975,14 +992,24 @@ const UserAccount = () => {
                       ></i>
                       <h5 className="mt-3">Password Security</h5>
                       <p className="text-muted">
-                        For your security, we check new passwords against known data breaches. 
+                        For your security, we check new passwords against known
+                        data breaches.
                         <br />
                         <strong>Tips for a secure password:</strong>
                       </p>
                       <ul className="list-unstyled text-muted small">
-                        <li><i className="bi bi-check text-success me-1"></i>Use at least 8 characters</li>
-                        <li><i className="bi bi-check text-success me-1"></i>Mix letters, numbers, and symbols</li>
-                        <li><i className="bi bi-check text-success me-1"></i>Avoid common words or patterns</li>
+                        <li>
+                          <i className="bi bi-check text-success me-1"></i>Use
+                          at least 8 characters
+                        </li>
+                        <li>
+                          <i className="bi bi-check text-success me-1"></i>Mix
+                          letters, numbers, and symbols
+                        </li>
+                        <li>
+                          <i className="bi bi-check text-success me-1"></i>Avoid
+                          common words or patterns
+                        </li>
                       </ul>
                     </div>
                   )}

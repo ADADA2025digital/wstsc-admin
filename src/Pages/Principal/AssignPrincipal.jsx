@@ -95,9 +95,7 @@ const AssignPrincipal = () => {
                 ? {
                     roleid: primaryRole.roleid ?? primaryRole.id ?? null,
                     role_name:
-                      primaryRole.role_name ??
-                      primaryRole.name ??
-                      "user",
+                      primaryRole.role_name ?? primaryRole.name ?? "user",
                     display_name:
                       primaryRole.display_name ??
                       primaryRole.role_name ??
@@ -112,10 +110,7 @@ const AssignPrincipal = () => {
         console.log("📋 Transformed persons:", transformedPersons);
         setPersons(transformedPersons);
       } else {
-        console.error(
-          "❌ Persons API returned success: false",
-          response.data
-        );
+        console.error("❌ Persons API returned success: false", response.data);
         setError("Failed to fetch persons");
         setPersons([]);
       }
@@ -154,9 +149,7 @@ const AssignPrincipal = () => {
 
           // Personal information
           person_first_name:
-            teacher.person?.first_name ||
-            teacher.name?.split(" ")[0] ||
-            "",
+            teacher.person?.first_name || teacher.name?.split(" ")[0] || "",
           person_last_name:
             teacher.person?.last_name ||
             teacher.name?.split(" ").slice(1).join(" ") ||
@@ -329,9 +322,7 @@ const AssignPrincipal = () => {
       } else {
         console.warn("⚠️ API returned success: false", response.data);
         setError(
-          `Assignment failed: ${
-            response.data.message || "Unknown error"
-          }`
+          `Assignment failed: ${response.data.message || "Unknown error"}`
         );
       }
     } catch (err) {
@@ -341,9 +332,7 @@ const AssignPrincipal = () => {
         if (err.response.status === 422) {
           if (err.response.data.errors) {
             const errorMessages = Object.entries(err.response.data.errors)
-              .map(
-                ([field, messages]) => `${field}: ${messages.join(", ")}`
-              )
+              .map(([field, messages]) => `${field}: ${messages.join(", ")}`)
               .join("; ");
             setError(`Validation failed: ${errorMessages}`);
           } else {
@@ -357,9 +346,7 @@ const AssignPrincipal = () => {
           setError(`Request failed with status ${err.response.status}`);
         }
       } else if (err.request) {
-        setError(
-          "Network error: Please check your connection and try again."
-        );
+        setError("Network error: Please check your connection and try again.");
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
@@ -448,11 +435,11 @@ const AssignPrincipal = () => {
   const isLoading = isLoadingTeachersList || isLoadingPersonsList;
 
   return (
-    <Container fluid className="px-4 py-3">
+    <Container fluid className="px-0 px-md-4 py-3">
       {/* Header */}
       <Row className="mb-4">
         <Col>
-          <div className="content-header d-flex justify-content-between align-items-center">
+          <div className="content-header d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
             <div>
               <h2 className="h4 fw-bold">Assign Principal</h2>
               <p className="text-muted mb-0">
@@ -485,7 +472,7 @@ const AssignPrincipal = () => {
         <Col lg={8}>
           {/* Search and Teachers List Card */}
           <Card className="mb-4">
-            <Card.Header className="content-header d-flex justify-content-between align-items-center">
+            <Card.Header className="content-header d-flex flex-column flex-md-row justify-content-between align-items-center">
               <div>
                 <h5 className="mb-0">
                   <i className="bi bi-person-badge me-2"></i>
@@ -796,9 +783,7 @@ const AssignPrincipal = () => {
                             <strong>{seconder.full_name}</strong>
                             <div>
                               <Badge
-                                bg={getRoleVariant(
-                                  getPersonRoleName(seconder)
-                                )}
+                                bg={getRoleVariant(getPersonRoleName(seconder))}
                               >
                                 {getPersonRoleDisplayName(seconder)}
                               </Badge>
@@ -874,9 +859,7 @@ const AssignPrincipal = () => {
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">Email:</td>
-                          <td>
-                            {selectedTeacher.person_email || "No email"}
-                          </td>
+                          <td>{selectedTeacher.person_email || "No email"}</td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">

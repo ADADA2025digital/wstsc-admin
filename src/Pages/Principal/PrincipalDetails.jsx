@@ -205,10 +205,10 @@ const PrincipalDetails = () => {
 
   // Principal Exists - Show Details
   return (
-    <Container fluid className="px-4 py-3">
+    <Container fluid className="px-0 px-md-4 py-3">
       {/* Header */}
-      <div className="content-header d-flex justify-content-between align-items-center mb-4">
-        <div>
+      <div className="content-header d-flex flex-md-row flex-column justify-content-between align-items-center mb-4">
+        <div className="mb-3 mb-md-0">
           <h4 className="H4-heading fw-bold">Principal Details</h4>
           <p className="text-muted mb-0">
             Current principal details and historical list of all principals.
@@ -236,10 +236,10 @@ const PrincipalDetails = () => {
           {/* Current Principal Information Card */}
           {principal && (
             <div className="card mb-4">
-              <div className="card-header d-flex justify-content-between align-items-center">
+              <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <h5 className="mb-0">Current Principal Information</h5>
                 {principal.status && (
-                  <div className="content-header d-flex align-items-center gap-3">
+                  <div className="content-header d-flex align-items-center justify-content-center justify-content-md-end gap-3 w-100">
                     <span className="text-muted">Status:</span>
                     <div className="form-check form-switch">
                       <input
@@ -265,6 +265,7 @@ const PrincipalDetails = () => {
                   </div>
                 )}
               </div>
+
               <div className="card-body">
                 <Row>
                   <Col md={6}>

@@ -9,17 +9,23 @@ import {
   Alert,
   Spinner,
   Form,
-  InputGroup
+  InputGroup,
 } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../config/axiosConfig";
 
 const AssignPrincipal = () => {
   const navigate = useNavigate();
+
+  // Persons (for nominator / seconder)
   const [persons, setPersons] = useState([]);
-  const [teachers, setTeachers] = useState([]);
   const [loadingPersons, setLoadingPersons] = useState(true);
+
+  // Teachers (available for principal)
+  const [teachers, setTeachers] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
+
+  // UI / state
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState(null);
@@ -31,24 +37,85 @@ const AssignPrincipal = () => {
   const [formData, setFormData] = useState({
     position: "Principal",
     year: new Date().getFullYear(),
-    status: "active"
+    status: "active",
   });
 
-  // Fetch all persons from the API (for nominator/seconder selection)
+  // 🔹 Helper to safely extract a role object from a person
+  const getPersonRole = (person) => {
+    if (!person) return null;
+    return (
+      person.user?.role ||
+      person.user?.primary_role || // fallback if not normalized
+      person.role ||
+      (Array.isArray(person.roles) ? person.roles[0] : null) ||
+      null
+    );
+  };
+
+  const getPersonRoleDisplayName = (person) => {
+    const role = getPersonRole(person);
+    return (
+      role?.display_name ||
+      role?.role_name ||
+      role?.name ||
+      person?.position_display_name ||
+      "No Role"
+    );
+  };
+
+  const getPersonRoleName = (person) => {
+    const role = getPersonRole(person);
+    return role?.role_name || role?.display_name || role?.name || "";
+  };
+
+  // 🔹 Fetch all persons for nominator & seconder
   const fetchPersons = async () => {
     try {
+      setLoadingPersons(true);
       setError(null);
-      console.log("🟡 Starting to fetch persons from /admin/persons...");
-      
+      console.log("🟡 Fetching persons from /admin/persons...");
+
       const response = await api.get("/admin/persons");
       console.log("✅ Persons API response:", response);
-      
+
       if (response.data.success) {
         const allPersons = response.data.data.persons || [];
-        console.log(`📊 Total persons loaded: ${allPersons.length}`);
-        setPersons(allPersons);
+        console.log(`📊 Persons loaded: ${allPersons.length}`);
+        console.log("📋 Raw persons data:", allPersons);
+
+        // Normalize to add user.role from user.primary_role
+        const transformedPersons = allPersons.map((p) => {
+          const primaryRole = p.user?.primary_role || null;
+
+          return {
+            ...p,
+            user: {
+              ...(p.user || {}),
+              role: primaryRole
+                ? {
+                    roleid: primaryRole.roleid ?? primaryRole.id ?? null,
+                    role_name:
+                      primaryRole.role_name ??
+                      primaryRole.name ??
+                      "user",
+                    display_name:
+                      primaryRole.display_name ??
+                      primaryRole.role_name ??
+                      primaryRole.name ??
+                      "User",
+                  }
+                : null,
+            },
+          };
+        });
+
+        console.log("📋 Transformed persons:", transformedPersons);
+        setPersons(transformedPersons);
       } else {
-        console.error("❌ API returned success: false", response.data);
+        console.error(
+          "❌ Persons API returned success: false",
+          response.data
+        );
         setError("Failed to fetch persons");
         setPersons([]);
       }
@@ -61,56 +128,64 @@ const AssignPrincipal = () => {
     }
   };
 
-  // Fetch available teachers from the dedicated API endpoint
+  // 🔹 Fetch available teachers from the dedicated API endpoint
   const fetchTeachers = async () => {
     try {
       setLoadingTeachers(true);
       setError(null);
-      console.log("🟡 Starting to fetch teachers from /classroom-teachers/available-teachers...");
-      
+      console.log(
+        "🟡 Starting to fetch teachers from /classroom-teachers/available-teachers..."
+      );
+
       const response = await api.get("/classroom-teachers/available-teachers");
       console.log("✅ Teachers API response:", response);
-      
+
       if (response.data.success) {
         const teachersData = response.data.data.teachers || [];
         console.log(`👨‍🏫 Teachers loaded: ${teachersData.length}`);
         console.log("📋 Raw teachers data:", teachersData);
-        
+
         // Transform the teacher data to match our expected format
-        const transformedTeachers = teachersData.map(teacher => ({
+        const transformedTeachers = teachersData.map((teacher) => ({
           // Primary identifiers
           tid: teacher.tid,
           uid: teacher.uid,
           peid: teacher.person?.peid || `T${teacher.tid}`,
-          
+
           // Personal information
-          person_first_name: teacher.person?.first_name || teacher.name?.split(' ')[0] || '',
-          person_last_name: teacher.person?.last_name || teacher.name?.split(' ').slice(1).join(' ') || '',
-          full_name: teacher.person?.full_name || teacher.name || '',
-          person_email: teacher.person?.email || teacher.email || '',
-          person_phone: teacher.person?.phone || teacher.phone || '',
-          
+          person_first_name:
+            teacher.person?.first_name ||
+            teacher.name?.split(" ")[0] ||
+            "",
+          person_last_name:
+            teacher.person?.last_name ||
+            teacher.name?.split(" ").slice(1).join(" ") ||
+            "",
+          full_name: teacher.person?.full_name || teacher.name || "",
+          person_email: teacher.person?.email || teacher.email || "",
+          person_phone: teacher.person?.phone || teacher.phone || "",
+
           // Status and position
-          person_status: teacher.person?.status || teacher.status || 'active',
+          person_status: teacher.person?.status || teacher.status || "active",
           position: teacher.position,
           position_display_name: teacher.position_display_name,
-          
+
           // Role information
           user: {
             uid: teacher.uid,
             role: teacher.role || {
               roleid: teacher.role?.roleid,
-              role_name: teacher.role?.role_name || 'teacher',
-              display_name: teacher.role?.display_name || 'Teacher'
-            }
+              role_name: teacher.role?.role_name || "teacher",
+              display_name: teacher.role?.display_name || "Teacher",
+            },
           },
-          
+
           // Additional data
           profile_picture: teacher.profile_picture,
           photo_url: teacher.photo_url || teacher.person?.photo_url,
-          
+
           // Keep original data for reference
-          originalData: teacher
+          originalData: teacher,
         }));
 
         console.log("📋 Transformed teachers:", transformedTeachers);
@@ -129,26 +204,25 @@ const AssignPrincipal = () => {
     }
   };
 
-  // Load both persons and teachers
-  const loadData = async () => {
-    setLoadingPersons(true);
-    setLoadingTeachers(true);
-    
-    try {
-      await Promise.all([
-        fetchPersons(),
-        fetchTeachers()
-      ]);
-    } catch (error) {
-      console.error("❌ Error loading data:", error);
-      setError("Failed to load required data");
-    }
-  };
+  // 🔹 Load teachers and persons
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await Promise.all([fetchTeachers(), fetchPersons()]);
+      } catch (e) {
+        console.error("❌ Error in loadData:", e);
+        setError("Failed to load required data");
+      }
+    };
+
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter teachers based on search term
-  const filteredTeachers = teachers.filter(teacher => {
+  const filteredTeachers = teachers.filter((teacher) => {
     if (!searchTerm) return true;
-    
+
     const searchLower = searchTerm.toLowerCase();
     return (
       teacher.full_name?.toLowerCase().includes(searchLower) ||
@@ -165,7 +239,7 @@ const AssignPrincipal = () => {
       peid: teacher.peid,
       full_name: teacher.full_name,
       position: teacher.position,
-      user_id: teacher.uid
+      user_id: teacher.uid,
     });
     setSelectedTeacher(teacher);
     setSuccessMessage("");
@@ -174,16 +248,16 @@ const AssignPrincipal = () => {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   // Handle form submission
   const handleAssignPrincipal = async () => {
     console.group("🚀 Starting Principal Assignment");
-    
+
     if (!selectedTeacher) {
       console.error("❌ No teacher selected");
       setError("Please select a teacher to assign as principal");
@@ -210,12 +284,16 @@ const AssignPrincipal = () => {
       setError("");
 
       const submissionData = {
+        // 🔴 Backend validation expects `tid`
+        tid: Number(selectedTeacher.tid),
+        // Keep teacher_id too if your controller uses it
         teacher_id: Number(selectedTeacher.tid),
+
         position: String(formData.position).trim(),
         year: Number(formData.year),
         nominated_by: String(nominator.peid).trim(),
         seconded_by: String(seconder.peid).trim(),
-        status: String(formData.status).trim()
+        status: String(formData.status).trim(),
       };
 
       console.log("📤 Prepared submission data:", submissionData);
@@ -225,23 +303,23 @@ const AssignPrincipal = () => {
           name: selectedTeacher.full_name,
           tid: selectedTeacher.tid,
           peid: selectedTeacher.peid,
-          current_position: selectedTeacher.position
+          current_position: selectedTeacher.position,
         },
         nominator: {
           name: nominator.full_name,
-          peid: nominator.peid
+          peid: nominator.peid,
         },
         seconder: {
           name: seconder.full_name,
-          peid: seconder.peid
-        }
+          peid: seconder.peid,
+        },
       });
 
       console.log("🌐 Making POST request to /principals...");
       const response = await api.post("/principals", submissionData);
-      
+
       console.log("✅ API Response received:", response);
-      
+
       if (response.data.success) {
         console.log("🎉 Principal assigned successfully!");
         setSuccessMessage("Principal assigned successfully!");
@@ -250,20 +328,28 @@ const AssignPrincipal = () => {
         }, 2000);
       } else {
         console.warn("⚠️ API returned success: false", response.data);
-        setError(`Assignment failed: ${response.data.message || "Unknown error"}`);
+        setError(
+          `Assignment failed: ${
+            response.data.message || "Unknown error"
+          }`
+        );
       }
     } catch (err) {
       console.error("❌ Error assigning principal:", err);
-      
+
       if (err.response) {
         if (err.response.status === 422) {
           if (err.response.data.errors) {
             const errorMessages = Object.entries(err.response.data.errors)
-              .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-              .join('; ');
+              .map(
+                ([field, messages]) => `${field}: ${messages.join(", ")}`
+              )
+              .join("; ");
             setError(`Validation failed: ${errorMessages}`);
           } else {
-            setError("Data validation failed. Please check all fields and try again.");
+            setError(
+              "Data validation failed. Please check all fields and try again."
+            );
           }
         } else if (err.response.data.message) {
           setError(`Server error: ${err.response.data.message}`);
@@ -271,7 +357,9 @@ const AssignPrincipal = () => {
           setError(`Request failed with status ${err.response.status}`);
         }
       } else if (err.request) {
-        setError("Network error: Please check your connection and try again.");
+        setError(
+          "Network error: Please check your connection and try again."
+        );
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
@@ -284,7 +372,7 @@ const AssignPrincipal = () => {
   // Get role badge variant
   const getRoleVariant = (roleName) => {
     if (!roleName) return "secondary";
-    
+
     switch (roleName.toLowerCase()) {
       case "admin":
         return "danger";
@@ -294,25 +382,30 @@ const AssignPrincipal = () => {
         return "warning";
       case "principal":
         return "primary";
+      case "committee":
+        return "info";
       default:
         return "secondary";
     }
   };
 
-  // Get role display name
+  // Get role display name (for teachers)
   const getRoleDisplayName = (person) => {
-    if (!person.user || !person.user.role) return person.position_display_name || "No Role";
-    
-    return person.user.role.display_name || 
-           person.position_display_name ||
-           person.user.role.role_name || 
-           "Unknown Role";
+    if (!person?.user || !person.user.role)
+      return person.position_display_name || "No Role";
+
+    return (
+      person.user.role.display_name ||
+      person.position_display_name ||
+      person.user.role.role_name ||
+      "Unknown Role"
+    );
   };
 
   // Get status variant
   const getStatusVariant = (status) => {
     if (!status) return "secondary";
-    
+
     switch (status.toLowerCase()) {
       case "active":
         return "success";
@@ -335,25 +428,24 @@ const AssignPrincipal = () => {
     setSuccessMessage("");
   };
 
-  // Handle nominator selection
+  // Handle nominator selection (from persons state)
   const handleNominatorSelect = (e) => {
     const selectedPeid = e.target.value;
-    const selectedPerson = persons.find(p => p.peid === selectedPeid);
+    const selectedPerson = persons.find((p) => p.peid === selectedPeid);
     setNominator(selectedPerson || null);
   };
 
-  // Handle seconder selection
+  // Handle seconder selection (from persons state)
   const handleSeconderSelect = (e) => {
     const selectedPeid = e.target.value;
-    const selectedPerson = persons.find(p => p.peid === selectedPeid);
+    const selectedPerson = persons.find((p) => p.peid === selectedPeid);
     setSeconder(selectedPerson || null);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const isLoadingTeachersList = loadingTeachers;
+  const isLoadingPersonsList = loadingPersons;
 
-  const isLoading = loadingPersons || loadingTeachers;
+  const isLoading = isLoadingTeachersList || isLoadingPersonsList;
 
   return (
     <Container fluid className="px-4 py-3">
@@ -367,11 +459,7 @@ const AssignPrincipal = () => {
                 Select a teacher to assign as principal and choose nominators
               </p>
             </div>
-            <Button
-              variant="outline-secondary"
-              as={Link}
-              to="/principals"
-            >
+            <Button variant="outline-secondary" as={Link} to="/principals">
               <i className="bi bi-arrow-left me-2"></i>
               Back to Principal Details
             </Button>
@@ -397,11 +485,13 @@ const AssignPrincipal = () => {
         <Col lg={8}>
           {/* Search and Teachers List Card */}
           <Card className="mb-4">
-            <Card.Header className="content-header">
-              <h5 className="mb-0">
-                <i className="bi bi-person-badge me-2"></i>
-                Available Teachers ({teachers.length})
-              </h5>
+            <Card.Header className="content-header d-flex justify-content-between align-items-center">
+              <div>
+                <h5 className="mb-0">
+                  <i className="bi bi-person-badge me-2"></i>
+                  Available Teachers ({teachers.length})
+                </h5>
+              </div>
               <small className="text-muted">
                 {filteredTeachers.length} teachers match your search
               </small>
@@ -431,7 +521,7 @@ const AssignPrincipal = () => {
               </div>
 
               {/* Teachers List */}
-              {isLoading ? (
+              {isLoadingTeachersList ? (
                 <div className="text-center py-5">
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-3 text-muted">Loading teachers...</p>
@@ -443,10 +533,9 @@ const AssignPrincipal = () => {
                     {searchTerm ? "No teachers found" : "No Teachers Available"}
                   </h5>
                   <p className="text-muted">
-                    {searchTerm 
-                      ? "Try adjusting your search terms" 
-                      : "There are no available teachers in the system."
-                    }
+                    {searchTerm
+                      ? "Try adjusting your search terms"
+                      : "There are no available teachers in the system."}
                   </p>
                   {searchTerm && (
                     <Button
@@ -463,7 +552,9 @@ const AssignPrincipal = () => {
                     <table className="table table-hover mb-0">
                       <thead className="bg-light">
                         <tr>
-                          <th width="60px" className="text-center">Select</th>
+                          <th width="60px" className="text-center">
+                            Select
+                          </th>
                           <th>Teacher Details</th>
                           <th>Contact</th>
                           <th>Position</th>
@@ -479,8 +570,14 @@ const AssignPrincipal = () => {
                             onClick={() => handleTeacherSelect(teacher)}
                             style={{
                               cursor: "pointer",
-                              backgroundColor: selectedTeacher?.tid === teacher.tid ? "#e3f2fd" : "transparent",
-                              borderLeft: selectedTeacher?.tid === teacher.tid ? "4px solid #0d6efd" : "4px solid transparent"
+                              backgroundColor:
+                                selectedTeacher?.tid === teacher.tid
+                                  ? "#e3f2fd"
+                                  : "transparent",
+                              borderLeft:
+                                selectedTeacher?.tid === teacher.tid
+                                  ? "4px solid #0d6efd"
+                                  : "4px solid transparent",
                             }}
                             className="align-middle"
                           >
@@ -495,11 +592,15 @@ const AssignPrincipal = () => {
                             <td>
                               <div className="d-flex align-items-center">
                                 {teacher.photo_url ? (
-                                  <img 
-                                    src={teacher.photo_url} 
+                                  <img
+                                    src={teacher.photo_url}
                                     alt={teacher.full_name}
                                     className="rounded-circle me-3"
-                                    style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      objectFit: "cover",
+                                    }}
                                   />
                                 ) : (
                                   <div
@@ -510,7 +611,9 @@ const AssignPrincipal = () => {
                                   </div>
                                 )}
                                 <div>
-                                  <h6 className="mb-1 fw-bold">{teacher.full_name}</h6>
+                                  <h6 className="mb-1 fw-bold">
+                                    {teacher.full_name}
+                                  </h6>
                                   <div className="d-flex flex-wrap gap-1">
                                     <Badge bg="secondary" className="fs-7">
                                       {teacher.peid}
@@ -523,7 +626,9 @@ const AssignPrincipal = () => {
                               <div>
                                 <div className="mb-1">
                                   <i className="bi bi-envelope text-muted me-1"></i>
-                                  <small>{teacher.person_email || "No email"}</small>
+                                  <small>
+                                    {teacher.person_email || "No email"}
+                                  </small>
                                 </div>
                                 {teacher.person_phone && (
                                   <div>
@@ -534,17 +639,31 @@ const AssignPrincipal = () => {
                               </div>
                             </td>
                             <td>
-                              <Badge bg={teacher.position === 'principal' ? 'primary' : 'info'}>
-                                {teacher.position_display_name || teacher.position || 'Teacher'}
+                              <Badge
+                                bg={
+                                  teacher.position === "principal"
+                                    ? "primary"
+                                    : "info"
+                                }
+                              >
+                                {teacher.position_display_name ||
+                                  teacher.position ||
+                                  "Teacher"}
                               </Badge>
                             </td>
                             <td>
-                              <Badge bg={getRoleVariant(teacher.user?.role?.role_name)}>
+                              <Badge
+                                bg={getRoleVariant(
+                                  teacher.user?.role?.role_name
+                                )}
+                              >
                                 {getRoleDisplayName(teacher)}
                               </Badge>
                             </td>
                             <td>
-                              <Badge bg={getStatusVariant(teacher.person_status)}>
+                              <Badge
+                                bg={getStatusVariant(teacher.person_status)}
+                              >
                                 {teacher.person_status || "Unknown"}
                               </Badge>
                             </td>
@@ -589,13 +708,20 @@ const AssignPrincipal = () => {
                         value={nominator?.peid || ""}
                         onChange={handleNominatorSelect}
                         required
+                        disabled={isLoadingPersonsList}
                       >
-                        <option value="">Choose a nominator...</option>
-                        {persons.map((person) => (
-                          <option key={person.peid} value={person.peid}>
-                            {person.full_name} - {person.user?.role?.display_name || 'No Role'}
-                          </option>
-                        ))}
+                        <option value="">
+                          {isLoadingPersonsList
+                            ? "Loading persons..."
+                            : "Choose a nominator..."}
+                        </option>
+                        {!isLoadingPersonsList &&
+                          persons.map((person) => (
+                            <option key={person.peid} value={person.peid}>
+                              {person.full_name} -{" "}
+                              {getPersonRoleDisplayName(person)}
+                            </option>
+                          ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
                         Person who is nominating this teacher as principal
@@ -614,11 +740,17 @@ const AssignPrincipal = () => {
                           <div>
                             <strong>{nominator.full_name}</strong>
                             <div>
-                              <Badge bg={getRoleVariant(nominator.user?.role?.role_name)}>
-                                {nominator.user?.role?.display_name || 'No Role'}
+                              <Badge
+                                bg={getRoleVariant(
+                                  getPersonRoleName(nominator)
+                                )}
+                              >
+                                {getPersonRoleDisplayName(nominator)}
                               </Badge>
                             </div>
-                            <small className="text-muted">{nominator.person_email}</small>
+                            <small className="text-muted">
+                              {nominator.person_email}
+                            </small>
                           </div>
                         </div>
                       </div>
@@ -631,13 +763,20 @@ const AssignPrincipal = () => {
                         value={seconder?.peid || ""}
                         onChange={handleSeconderSelect}
                         required
+                        disabled={isLoadingPersonsList}
                       >
-                        <option value="">Choose a seconder...</option>
-                        {persons.map((person) => (
-                          <option key={person.peid} value={person.peid}>
-                            {person.full_name} - {person.user?.role?.display_name || 'No Role'}
-                          </option>
-                        ))}
+                        <option value="">
+                          {isLoadingPersonsList
+                            ? "Loading persons..."
+                            : "Choose a seconder..."}
+                        </option>
+                        {!isLoadingPersonsList &&
+                          persons.map((person) => (
+                            <option key={person.peid} value={person.peid}>
+                              {person.full_name} -{" "}
+                              {getPersonRoleDisplayName(person)}
+                            </option>
+                          ))}
                       </Form.Select>
                       <Form.Text className="text-muted">
                         Person who is seconding this nomination
@@ -656,11 +795,17 @@ const AssignPrincipal = () => {
                           <div>
                             <strong>{seconder.full_name}</strong>
                             <div>
-                              <Badge bg={getRoleVariant(seconder.user?.role?.role_name)}>
-                                {seconder.user?.role?.display_name || 'No Role'}
+                              <Badge
+                                bg={getRoleVariant(
+                                  getPersonRoleName(seconder)
+                                )}
+                              >
+                                {getPersonRoleDisplayName(seconder)}
                               </Badge>
                             </div>
-                            <small className="text-muted">{seconder.person_email}</small>
+                            <small className="text-muted">
+                              {seconder.person_email}
+                            </small>
                           </div>
                         </div>
                       </div>
@@ -692,11 +837,15 @@ const AssignPrincipal = () => {
                     </h6>
                     <div className="text-center mb-3">
                       {selectedTeacher.photo_url ? (
-                        <img 
-                          src={selectedTeacher.photo_url} 
+                        <img
+                          src={selectedTeacher.photo_url}
                           alt={selectedTeacher.full_name}
                           className="rounded-circle mb-2"
-                          style={{ width: "60px", height: "60px", objectFit: "cover" }}
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            objectFit: "cover",
+                          }}
                         />
                       ) : (
                         <div
@@ -707,32 +856,53 @@ const AssignPrincipal = () => {
                         </div>
                       )}
                       <h6 className="mb-1">{selectedTeacher.full_name}</h6>
-                      <Badge bg={getRoleVariant(selectedTeacher.user?.role?.role_name)}>
+                      <Badge
+                        bg={getRoleVariant(
+                          selectedTeacher.user?.role?.role_name
+                        )}
+                      >
                         {getRoleDisplayName(selectedTeacher)}
                       </Badge>
                     </div>
                     <table className="table table-sm">
                       <tbody>
                         <tr>
-                          <td className="fw-bold text-muted" width="40%">PEID:</td>
+                          <td className="fw-bold text-muted" width="40%">
+                            PEID:
+                          </td>
                           <td>{selectedTeacher.peid}</td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">Email:</td>
-                          <td>{selectedTeacher.person_email || "No email"}</td>
+                          <td>
+                            {selectedTeacher.person_email || "No email"}
+                          </td>
                         </tr>
                         <tr>
-                          <td className="fw-bold text-muted">Current Position:</td>
+                          <td className="fw-bold text-muted">
+                            Current Position:
+                          </td>
                           <td>
-                            <Badge bg={selectedTeacher.position === 'principal' ? 'primary' : 'info'}>
-                              {selectedTeacher.position_display_name || selectedTeacher.position}
+                            <Badge
+                              bg={
+                                selectedTeacher.position === "principal"
+                                  ? "primary"
+                                  : "info"
+                              }
+                            >
+                              {selectedTeacher.position_display_name ||
+                                selectedTeacher.position}
                             </Badge>
                           </td>
                         </tr>
                         <tr>
                           <td className="fw-bold text-muted">Status:</td>
                           <td>
-                            <Badge bg={getStatusVariant(selectedTeacher.person_status)}>
+                            <Badge
+                              bg={getStatusVariant(
+                                selectedTeacher.person_status
+                              )}
+                            >
                               {selectedTeacher.person_status || "Unknown"}
                             </Badge>
                           </td>
@@ -804,11 +974,20 @@ const AssignPrincipal = () => {
                       variant="primary"
                       size="lg"
                       onClick={handleAssignPrincipal}
-                      disabled={assigningPrincipal || !selectedTeacher || !nominator || !seconder}
+                      disabled={
+                        assigningPrincipal ||
+                        !selectedTeacher ||
+                        !nominator ||
+                        !seconder
+                      }
                     >
                       {assigningPrincipal ? (
                         <>
-                          <Spinner animation="border" size="sm" className="me-2" />
+                          <Spinner
+                            animation="border"
+                            size="sm"
+                            className="me-2"
+                          />
                           Assigning Principal...
                         </>
                       ) : (

@@ -365,19 +365,6 @@ export default function ClassroomsList() {
           `✅ Filtered to ${activeClassrooms.length} active classroom assignments (from ${classroomsArray.length} total)`
         );
 
-        // MANUAL OVERRIDE: If you want to show only specific classrooms, uncomment and modify this section
-        // Replace "ADV_001" with the actual classroom code that should be assigned
-        /*
-        const specificClassroomCode = "ADV_001"; // Change this to the specific classroom code
-        const manuallyFilteredClassrooms = activeClassrooms.filter(item => 
-          item.classroom?.class_id === specificClassroomCode
-        );
-        
-        console.log(`🔧 MANUAL FILTER: Showing only ${manuallyFilteredClassrooms.length} classroom(s) with code ${specificClassroomCode}`);
-        const finalClassrooms = manuallyFilteredClassrooms.length > 0 ? manuallyFilteredClassrooms : activeClassrooms;
-        */
-
-        // Use the filtered classrooms (or manually filtered if enabled)
         const finalClassrooms = activeClassrooms;
 
         const classroomsData = await Promise.all(
@@ -551,7 +538,7 @@ export default function ClassroomsList() {
     );
   });
 
-  // Calculate total students and teachers
+  // Calculate total students and teachers for ALL classrooms
   const totalStudents = classrooms.reduce(
     (sum, cls) => sum + (cls.students || 0),
     0
@@ -560,6 +547,20 @@ export default function ClassroomsList() {
     (sum, cls) => sum + (cls.teachers || 0),
     0
   );
+
+  // Calculate total students and teachers for FILTERED classrooms only
+  const filteredStudents = filtered.reduce(
+    (sum, cls) => sum + (cls.students || 0),
+    0
+  );
+  const filteredTeachers = filtered.reduce(
+    (sum, cls) => sum + (cls.teachers || 0),
+    0
+  );
+
+  // Determine which totals to display based on search
+  const displayStudents = query ? filteredStudents : totalStudents;
+  const displayTeachers = query ? filteredTeachers : totalTeachers;
 
   // Handle view for both parent and admin - navigate to same path
   const handleView = async (cls) => {
@@ -811,14 +812,14 @@ export default function ClassroomsList() {
               <p className="mb-0">
                 Showing {filtered.length} of {classrooms.length} assigned
                 classrooms
-                {totalStudents > 0 && (
+                {displayStudents > 0 && (
                   <span className="text-muted ms-2">
-                    • Total Students: <strong>{totalStudents}</strong>
+                    • Total Students: <strong>{displayStudents}</strong>
                   </span>
                 )}
-                {totalTeachers > 0 && (
+                {displayTeachers > 0 && (
                   <span className="text-muted ms-2">
-                    • Total Teachers: <strong>{totalTeachers}</strong>
+                    • Total Teachers: <strong>{displayTeachers}</strong>
                   </span>
                 )}
               </p>
@@ -965,9 +966,9 @@ export default function ClassroomsList() {
               <p className="mb-0">
                 Showing {filtered.length} of {classrooms.length} classrooms with
                 your children
-                {totalStudents > 0 && (
+                {displayStudents > 0 && (
                   <span className="text-muted ms-2">
-                    • Total Children: <strong>{totalStudents}</strong>
+                    • Total Children: <strong>{displayStudents}</strong>
                   </span>
                 )}
               </p>
@@ -1136,14 +1137,14 @@ export default function ClassroomsList() {
             <div className="col-md-6">
               <p className="mb-0">
                 Showing {filtered.length} of {classrooms.length} classrooms
-                {totalStudents > 0 && (
+                {displayStudents > 0 && (
                   <span className="text-muted ms-2">
-                    • Total Students: <strong>{totalStudents}</strong>
+                    • Total Students: <strong>{displayStudents}</strong>
                   </span>
                 )}
-                {totalTeachers > 0 && (
+                {displayTeachers > 0 && (
                   <span className="text-muted ms-2">
-                    • Total Teachers: <strong>{totalTeachers}</strong>
+                    • Total Teachers: <strong>{displayTeachers}</strong>
                   </span>
                 )}
               </p>

@@ -1013,15 +1013,6 @@ export default function ClassroomDetails() {
                           <p className="mb-0">{classroom.code}</p>
                         </div>
                         <div>
-                          <span className="small">Status</span>{" "}
-                          <Badge
-                            bg={isActive ? "success" : "danger"}
-                            className="fs-7"
-                          >
-                            {classroom.status}
-                          </Badge>
-                        </div>
-                        <div>
                           <span className="small">Students</span>
                           <p className="mb-0">{studentCount}</p>
                         </div>

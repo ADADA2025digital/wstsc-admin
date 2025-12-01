@@ -510,13 +510,13 @@ const StudentDetails = () => {
       <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Student Details</h4>
-          <p className="text-muted mb-0">
+          {/* <p className="text-muted mb-0">
             {student.studid ? `Student ID: ${student.studid}` : 
              student.enrollment_id ? `Enrollment ID: ${student.enrollment_id}` : "Student Details"}
             {userRole === 'parent' && (
               <Badge bg="info" className="ms-2">Parent View</Badge>
             )}
-          </p>
+          </p> */}
         </div>
         <div className="d-flex gap-2">
           <Button variant="outline-secondary" onClick={() => navigate("/students")}>

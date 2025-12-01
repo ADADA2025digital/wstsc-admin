@@ -565,7 +565,7 @@ const PrincipalDetails = () => {
                 </Alert>
               ) : (
                 <>
-                  <div className="table-responsive">
+                  <div className="table-responsive custom-data-table">
                     <table className="table table-sm align-middle">
                       <thead>
                         <tr>

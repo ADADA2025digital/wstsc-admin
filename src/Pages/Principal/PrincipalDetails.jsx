@@ -6,7 +6,6 @@ import {
   Card,
   Button,
   Badge,
-  Table,
   Alert,
   Spinner,
   Tabs,
@@ -22,29 +21,6 @@ const PrincipalDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [principal, setPrincipal] = useState(null);
-
-  // Fetch principal data
-  const fetchPrincipal = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get("/principals");
-
-      if (response.data.success && response.data.data.principals.length > 0) {
-        // Use the first principal from the response
-        const principalData = response.data.data.principals[0];
-        setPrincipal(transformPrincipalData(principalData));
-      } else {
-        setPrincipal(null); // No principal exists
-      }
-    } catch (err) {
-      console.error("Error fetching principal:", err);
-      setError("Failed to fetch principal data");
-      setPrincipal(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Transform API data to match component structure
   const transformPrincipalData = (apiData) => {
@@ -74,6 +50,29 @@ const PrincipalDetails = () => {
       nominator: apiData.nominator,
       seconder: apiData.seconder,
     };
+  };
+
+  // Fetch principal data
+  const fetchPrincipal = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get("/principals");
+
+      if (response.data.success && response.data.data.principals.length > 0) {
+        // Use the first principal from the response
+        const principalData = response.data.data.principals[0];
+        setPrincipal(transformPrincipalData(principalData));
+      } else {
+        setPrincipal(null); // No principal exists
+      }
+    } catch (err) {
+      console.error("Error fetching principal:", err);
+      setError("Failed to fetch principal data");
+      setPrincipal(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -120,54 +119,14 @@ const PrincipalDetails = () => {
     }, 1000);
   };
 
-  // Mock data for demonstration (only used when principal exists)
-  const schools = principal
-    ? [
-        {
-          school_id: "SCH-001",
-          school_name: "Greenwood High School",
-          address: "456 Oak Street, Greenwood, GW 67890",
-          phone: "+1 (555) 987-6543",
-          is_active: true,
-          start_date: "2020-01-15",
-        },
-      ]
-    : [];
-
-  const employment_history = principal
-    ? [
-        {
-          id: 1,
-          position: principal.position,
-          organization: "Greenwood High School",
-          start_date: principal.join_date,
-          end_date: null,
-          description: "Leading academic programs and staff management",
-        },
-      ]
-    : [];
-
-  const qualifications = principal
-    ? [
-        {
-          id: 1,
-          degree: "Doctor of Education",
-          institution: "University of Education",
-          field_of_study: "Educational Leadership",
-          year_obtained: "2018",
-          grade: "Summa Cum Laude",
-        },
-      ]
-    : [];
-
   const summary = principal
     ? {
-        total_schools: 1,
+        total_schools: 0,
         years_experience: Math.floor(
           (new Date() - new Date(principal.join_date)) /
             (365 * 24 * 60 * 60 * 1000)
         ),
-        qualification_count: 1,
+        qualification_count: 0,
       }
     : {
         total_schools: 0,
@@ -236,9 +195,6 @@ const PrincipalDetails = () => {
       <div className="content-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="H4-heading fw-bold">Principal Details</h4>
-          <p className="text-muted mb-0">
-            Principal ID: {principal.principal_id}
-          </p>
         </div>
         <Button
           variant="outline-primary"
@@ -293,7 +249,7 @@ const PrincipalDetails = () => {
             <div className="card-body">
               <Row>
                 <Col md={6}>
-                  <table borderless>
+                  <table borderless="true">
                     <tbody>
                       <tr>
                         <td className="fw-bold" style={{ width: "140px" }}>
@@ -331,14 +287,8 @@ const PrincipalDetails = () => {
                   </table>
                 </Col>
                 <Col md={6}>
-                  <table borderless>
+                  <table borderless="true">
                     <tbody>
-                      <tr>
-                        <td className="fw-bold" style={{ width: "140px" }}>
-                          Principal ID:
-                        </td>
-                        <td>{principal.principal_id}</td>
-                      </tr>
                       {principal.status && (
                         <tr>
                           <td className="fw-bold">Status:</td>
@@ -369,18 +319,12 @@ const PrincipalDetails = () => {
                   <p className="mb-1">
                     {principal.rawData.nominator?.full_name || "N/A"}
                   </p>
-                  <small className="text-muted">
-                    PEID: {principal.rawData.nominator?.peid || "N/A"}
-                  </small>
                 </Col>
                 <Col md={6} className="content-header">
                   <h6 className="mb-2">Seconder</h6>
                   <p className="mb-1">
                     {principal.rawData.seconder?.full_name || "N/A"}
                   </p>
-                  <small className="text-muted">
-                    PEID: {principal.rawData.seconder?.peid || "N/A"}
-                  </small>
                 </Col>
               </Row>
             </div>
@@ -403,33 +347,6 @@ const PrincipalDetails = () => {
                     </span>
                   }
                 />
-                <Tab
-                  eventKey="schools"
-                  title={
-                    <span>
-                      <i className="bi bi-building me-1"></i>
-                      Schools
-                    </span>
-                  }
-                />
-                <Tab
-                  eventKey="employment"
-                  title={
-                    <span>
-                      <i className="bi bi-briefcase me-1"></i>
-                      Employment History
-                    </span>
-                  }
-                />
-                <Tab
-                  eventKey="qualifications"
-                  title={
-                    <span>
-                      <i className="bi bi-award me-1"></i>
-                      Qualifications
-                    </span>
-                  }
-                />
               </Tabs>
             </Card.Header>
             <Card.Body>
@@ -439,7 +356,7 @@ const PrincipalDetails = () => {
                   <Row>
                     <Col md={6}>
                       <h6 className="mb-3">Contact Information</h6>
-                      <table borderless>
+                      <table borderless="true">
                         <tbody>
                           <tr>
                             <td className="fw-bold" style={{ width: "120px" }}>
@@ -470,7 +387,7 @@ const PrincipalDetails = () => {
                     </Col>
                     <Col md={6}>
                       <h6 className="mb-3">Position Information</h6>
-                      <table borderless>
+                      <table borderless="true">
                         <tbody>
                           <tr>
                             <td className="fw-bold" style={{ width: "120px" }}>
@@ -492,224 +409,11 @@ const PrincipalDetails = () => {
                   </Row>
                 </div>
               )}
-
-              {/* Schools Tab */}
-              {activeTab === "schools" && (
-                <div>
-                  {schools.length > 0 ? (
-                    <Row>
-                      {schools.map((school, index) => (
-                        <Col md={6} key={school.school_id} className="mb-3">
-                          <Card className="h-100">
-                            <Card.Header>
-                              <h6 className="mb-0">{school.school_name}</h6>
-                            </Card.Header>
-                            <Card.Body>
-                              <table borderless size="sm">
-                                <tbody>
-                                  <tr>
-                                    <td className="fw-bold">School ID:</td>
-                                    <td>{school.school_id}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="fw-bold">Address:</td>
-                                    <td>{school.address}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="fw-bold">Phone:</td>
-                                    <td>{school.phone}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="fw-bold">Status:</td>
-                                    <td>
-                                      <Badge
-                                        bg={
-                                          school.is_active
-                                            ? "success"
-                                            : "secondary"
-                                        }
-                                      >
-                                        {school.is_active
-                                          ? "Active"
-                                          : "Inactive"}
-                                      </Badge>
-                                    </td>
-                                  </tr>
-                                  {school.start_date && (
-                                    <tr>
-                                      <td className="fw-bold">Start Date:</td>
-                                      <td>{formatDate(school.start_date)}</td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
-                  ) : (
-                    <div className="text-center py-4">
-                      <i
-                        className="bi bi-building text-muted"
-                        style={{ fontSize: "3rem" }}
-                      ></i>
-                      <p className="text-muted mt-3">
-                        No school information available.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Employment History Tab */}
-              {activeTab === "employment" && (
-                <div>
-                  {employment_history.length > 0 ? (
-                    <div className="timeline">
-                      {employment_history.map((job, index) => (
-                        <div
-                          key={job.id}
-                          className={`d-flex ${index > 0 ? "mt-4" : ""}`}
-                        >
-                          <div className="flex-shrink-0">
-                            <div
-                              className="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white"
-                              style={{ width: "40px", height: "40px" }}
-                            >
-                              <i className="bi bi-briefcase"></i>
-                            </div>
-                          </div>
-                          <div className="content-header flex-grow-1 ms-3 pb-3 border-bottom">
-                            <h6 className="mb-1">{job.position}</h6>
-                            <p className="mb-1 text-muted">
-                              {job.organization}
-                            </p>
-                            <p className="mb-1 small text-muted">
-                              {formatDate(job.start_date)} -{" "}
-                              {job.end_date
-                                ? formatDate(job.end_date)
-                                : "Present"}
-                            </p>
-                            {job.description && (
-                              <p className="mb-0 small">{job.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <i
-                        className="bi bi-briefcase text-muted"
-                        style={{ fontSize: "3rem" }}
-                      ></i>
-                      <p className="text-muted mt-3">
-                        No employment history available.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Qualifications Tab */}
-              {activeTab === "qualifications" && (
-                <div>
-                  {qualifications.length > 0 ? (
-                    <Row>
-                      {qualifications.map((qual, index) => (
-                        <Col md={6} key={qual.id} className="mb-3">
-                          <Card className="h-100">
-                            <Card.Header>
-                              <h6 className="mb-0">{qual.degree}</h6>
-                            </Card.Header>
-                            <Card.Body>
-                              <table borderless size="sm">
-                                <tbody>
-                                  <tr>
-                                    <td className="fw-bold">Institution:</td>
-                                    <td>{qual.institution}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="fw-bold">Field:</td>
-                                    <td>{qual.field_of_study}</td>
-                                  </tr>
-                                  {qual.year_obtained && (
-                                    <tr>
-                                      <td className="fw-bold">Year:</td>
-                                      <td>{qual.year_obtained}</td>
-                                    </tr>
-                                  )}
-                                  {qual.grade && (
-                                    <tr>
-                                      <td className="fw-bold">Grade:</td>
-                                      <td>{qual.grade}</td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
-                  ) : (
-                    <div className="text-center py-4">
-                      <i
-                        className="bi bi-award text-muted"
-                        style={{ fontSize: "3rem" }}
-                      ></i>
-                      <p className="text-muted mt-3">
-                        No qualifications available.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
             </Card.Body>
           </Card>
         </Col>
 
         <Col lg={4}>
-          {/* Quick Actions & Status */}
-          <Card className="mb-4">
-            <Card.Header>
-              <h5 className="mb-0">Quick Actions</h5>
-            </Card.Header>
-            <Card.Body>
-              <div className="d-grid gap-2">
-                <Button variant="outline-primary">
-                  <i className="bi bi-envelope me-2"></i>
-                  Send Message
-                </Button>
-                <Button variant="outline-success">
-                  <i className="bi bi-file-text me-2"></i>
-                  Generate Report
-                </Button>
-                <Button variant="outline-info">
-                  <i className="bi bi-calendar me-2"></i>
-                  View Schedule
-                </Button>
-                <Button
-                  variant="outline-warning"
-                  onClick={handleQuickStatusToggle}
-                  disabled={updatingStatus}
-                >
-                  {updatingStatus ? (
-                    <>
-                      <Spinner animation="border" size="sm" className="me-2" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-pause-circle me-2"></i>
-                      Deactivate Principal
-                    </>
-                  )}
-                </Button>
-              </div>
-            </Card.Body>
-          </Card>
 
           {/* Principal Summary */}
           <Card className="mb-4">
@@ -728,9 +432,6 @@ const PrincipalDetails = () => {
                   ></i>
                 </div>
                 <h5>{principal.name}</h5>
-                <p className="text-muted">
-                  Principal ID: {principal.principal_id}
-                </p>
 
                 {principal.status && (
                   <div className="mb-3">
@@ -773,7 +474,7 @@ const PrincipalDetails = () => {
               <h5 className="mb-0">Contact Information</h5>
             </Card.Header>
             <Card.Body>
-              <table borderless size="sm">
+              <table borderless="true">
                 <tbody>
                   <tr>
                     <td className="fw-bold">
